@@ -1,0 +1,21 @@
+
+interface ILocation {
+  id: ID
+  locationCode: String
+}
+
+type ShelfLocation implements ILocation {
+  id: ID
+  locationCode: String
+  area: String
+  aisle: String
+}
+
+type BaseLocation implements ILocation {
+  id: ID
+  locationCode: String
+}
+
+extend type LotLine {
+  location: ILocation
+}
