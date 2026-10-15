@@ -194,7 +194,25 @@ public class ZoneCollectingOrderManagerFactory extends BaseOrderHandlerBuilderFa
             throw new IllegalArgumentException("Configuration Error: You must define at least Volume OR Weight constraints.");
         }
 
+        // Validation Logic: If Min is defined (>0), Max must be >= Min.
+        validateMinMax("Volume", config.volumeMin, config.volumeMax);
+        validateMinMax("Weight", config.weightMin, config.weightMax);
+
         return config;
+    }
+
+    /**
+     * Validates that a maximum is not lower than a minimum.
+     *
+     * @param dimension The name of the dimension (e.g., "Volume").
+     * @param minVal    The minimum value.
+     * @param maxVal    The maximum value.
+     * @throws IllegalArgumentException if max < min.
+     */
+    private void validateMinMax(String dimension, double minVal, double maxVal) {
+        if (minVal > 0 && maxVal > 0 && minVal > maxVal) {
+            throw new IllegalArgumentException(String.format("Configuration Error: %s Max (%s) must be greater than or equal to %s Min (%s).", dimension, maxVal, dimension, minVal));
+        }
     }
 
     /**
@@ -361,10 +379,8 @@ public class ZoneCollectingOrderManagerFactory extends BaseOrderHandlerBuilderFa
                 }
             }
             setStatusToLot(lots, Lot.LotStatus.PLANNED_TO_BE_COLLECTED);
-            // 3. Finalize the last order if it exists
-            if (currentOrder != null) {
-                finalizeOrder(currentOrder, currentMetrics);
-            }
+            // 3. Finalize the last order (groups are never empty, so an order was always created)
+            finalizeOrder(currentOrder, currentMetrics);
         }
 
         /**
@@ -471,7 +487,7 @@ public class ZoneCollectingOrderManagerFactory extends BaseOrderHandlerBuilderFa
                   AND NOT EXISTS (
                       SELECT 1
                       FROM l.lines sll
-                      WHERE TYPE(sll.location) = ShelfLocation
+                      WHERE sll.location IS NOT NULL
                         AND (
                             (:area IS NOT NULL AND TREAT(sll.location AS ShelfLocation).area <> :area)
                             OR
@@ -483,7 +499,7 @@ public class ZoneCollectingOrderManagerFactory extends BaseOrderHandlerBuilderFa
             EntityManager em = Panache.getEntityManager();
             return em.createQuery(jpql, Lot.class)
                     .setParameter("store", store)
-                    .setParameter("cutoffDate", DateTimeProvider.now())
+                    .setParameter("cutoffDate", cutoffDate)
                     .setParameter("bCode", config.buildingCode)
                     .setParameter("area", config.area)
                     .setParameter("aisle", config.aisle)

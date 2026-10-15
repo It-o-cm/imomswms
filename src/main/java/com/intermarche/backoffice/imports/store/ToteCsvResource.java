@@ -50,7 +50,7 @@ public class ToteCsvResource extends ImporterCsvResource {
      * Fetches existing Totes and referenced Stores.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         Map<String, Object> context = new HashMap<>();
 
         // 1. Fetch existing Totes by Code
@@ -80,7 +80,7 @@ public class ToteCsvResource extends ImporterCsvResource {
      * Processes a single line to create or update a Tote.
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         String[] parts = data.parts;
         String code = data.code; // Col 0
         String storeCode = safeGet(parts, 1); // Col 1
@@ -94,9 +94,14 @@ public class ToteCsvResource extends ImporterCsvResource {
 
         // 2. Resolve Tote
         Tote tote = (Tote) entityMap.get(code);
-        boolean isUpdate = (tote != null);
+        if (tote != null) {
+            // Re-fetch the managed entity: the cached instance was loaded outside the
+            // transaction (detached), so mutating it would be lost at commit. A null
+            // result means the cached entity was a phantom from a rolled-back chunk.
+            tote = Tote.findById(tote.id);
+        }
 
-        if (!isUpdate) {
+        if (tote == null) {
             // Creation
             tote = new Tote();
             tote.code = code;
@@ -107,7 +112,7 @@ public class ToteCsvResource extends ImporterCsvResource {
             counters[0]++; // Created
         } else {
             // Update Check
-            int incomingChecksum = computeChecksum(parts, code, store.id);
+            int incomingChecksum = computeChecksum(parts, code);
             if (tote.checksum == incomingChecksum) {
                 return; // No change needed
             }
@@ -121,8 +126,36 @@ public class ToteCsvResource extends ImporterCsvResource {
      * Finds a single Tote entity for fallback processing.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         return Tote.findByCode(data.code);
+    }
+
+    /**
+     * Prepares the full context for a single line in 1-by-1 fallback mode.
+     * <p>
+     * The generic implementation only puts the found entity under the line code,
+     * but the tote logic also needs the referenced Store. This override rebuilds
+     * that context with a fresh lookup so that fallback processing behaves
+     * exactly like chunk processing.
+     *
+     * @param data The parsed CSV line data.
+     * @return The context map for this single line.
+     */
+    @Override
+    public Map<String, Object> prepareContextForLine(LineData data) {
+        Map<String, Object> context = new HashMap<>();
+        Object tote = findEntityForLine(data);
+        if (tote != null) {
+            context.put(data.code, tote);
+        }
+        String storeCode = safeGet(data.parts, 1);
+        if (storeCode != null) {
+            Store store = Store.findByCode(storeCode);
+            if (store != null) {
+                context.put("STORE_" + storeCode, store);
+            }
+        }
+        return context;
     }
 
     // --------------------------------------------------
@@ -142,15 +175,19 @@ public class ToteCsvResource extends ImporterCsvResource {
             try {
                 tote.toteType = Tote.ToteType.valueOf(typeStr.toUpperCase());
             } catch (IllegalArgumentException e) {
-                LOGGER.warn("Unknown ToteType '" + typeStr + "' for tote " + tote.code);
+                throw new IllegalArgumentException("Unknown ToteType '" + typeStr + "' for tote " + tote.code);
             }
         }
     }
 
     /**
      * Computes checksum for validation.
+     * <p>
+     * Mirrors {@link Tote#getChecksum()}: the store is represented by its natural
+     * key (storeCode, Column 1), never by the surrogate id — the resolved Store
+     * may be a lazy Hibernate proxy whose id field reads null.
      */
-    private int computeChecksum(String[] parts, String code, Long storeId) {
+    private int computeChecksum(String[] parts, String code) {
         String typeStr = safeGet(parts, 3);
         Object typeObj = typeStr;
         try {
@@ -165,7 +202,7 @@ public class ToteCsvResource extends ImporterCsvResource {
                 code,                    // code
                 safeParseBigDecimal(parts, 2), // volume
                 typeObj,                 // toteType
-                storeId                  // store.id
+                safeGetOrNull(parts, 1)  // storeCode
         );
     }
 }

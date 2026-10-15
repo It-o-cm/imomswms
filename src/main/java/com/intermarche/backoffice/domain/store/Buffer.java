@@ -206,13 +206,20 @@ public class Buffer extends BaseEntity {
 
     /**
      * Calculates a checksum based on the buffer's key attributes.
+     * <p>
+     * Covers exactly the fields imported by the Buffer CSV: buffer code, building link,
+     * purpose, location description, active flag and capacities.
      *
      * @return Checksum integer value.
      */
     @Override
     public int getChecksum() {
+        // Uses the building's natural key (buildingCode), not the surrogate id:
+        // building is a lazy @ManyToOne, and reading .id via field access on a
+        // Hibernate proxy returns null, which would corrupt the checksum.
         return Objects.hash(
-                building != null ? building.id : null,
+                bufferCode,
+                building != null ? building.buildingCode : null,
                 purpose,
                 locationDescription,
                 active,

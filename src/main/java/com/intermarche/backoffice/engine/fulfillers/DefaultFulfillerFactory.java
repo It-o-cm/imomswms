@@ -314,7 +314,8 @@ public class DefaultFulfillerFactory extends BaseFulfillerFactory {
                 ResolvedLocation resolved = findLocationInBuildings(line.product, targetBuildings);
                 if (resolved != null) {
                     // 1. Transfer delivery date if needed
-                    if (resolved.building() != null && sourceChunk.deliveryDate != null) {
+                    // (resolved.building() is never null: it comes from the target buildings list)
+                    if (sourceChunk.deliveryDate != null) {
                         // We ensure the target chunk gets the delivery date
                         FulfillmentChunk target = chunkByBuilding.get(resolved.building());
                         if (target != null && target.deliveryDate == null) {
@@ -337,7 +338,8 @@ public class DefaultFulfillerFactory extends BaseFulfillerFactory {
                     movedCount++;
                     logLineMoved(line, resolved.building().buildingCode);
                 } else {
-                    LOGGER.warnf("Product %s cannot be moved (no location found in target buildings).", line.product.ean);
+                    String ean = (line.product != null) ? line.product.ean : "Unknown";
+                    LOGGER.warnf("Product %s cannot be moved (no location found in target buildings).", ean);
                 }
             }
             return movedCount;

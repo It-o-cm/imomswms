@@ -135,7 +135,11 @@ public class GroupingExecution extends HandlingExecution implements GroupingOper
         List<PickedItem> pickedItems = fetchPickedItems(targetLotLineIds);
         validateItemCoverage(targetLotLineIds, pickedItems);
         Set<Long> involvedLoadedToteIds = validateItemsAndCollectTotes(pickedItems);
-        validateTotePurity(involvedLoadedToteIds, targetLotLineIds);
+        List<LoadedTote> involvedLoadedTotes = fetchActiveLoadedTotes(involvedLoadedToteIds);
+        validateTotePurity(involvedLoadedTotes, targetLotLineIds);
+        // Track the physical bins involved in this execution so that
+        // concludeExecution can verify they all reach the destination buffer.
+        this.loadedTotes.addAll(involvedLoadedTotes);
     }
 
     private Set<Long> extractLotLineIds(GroupingOrder groupingOrder) {
@@ -229,16 +233,11 @@ public class GroupingExecution extends HandlingExecution implements GroupingOper
      * This method splits the logic into three clear steps: extracting physical totes,
      * fetching their contents, and verifying purity.
      *
-     * @param involvedLoadedToteIds The set of LoadedTote IDs involved in this execution.
-     * @param allowedLotLineIds    The set of LotLine IDs permitted to be in these totes.
+     * @param activeLoadedTotes  The active LoadedTotes involved in this execution.
+     * @param allowedLotLineIds The set of LotLine IDs permitted to be in these totes.
      * @throws IllegalStateException if a foreign item is found.
      */
-    private void validateTotePurity(Set<Long> involvedLoadedToteIds, Set<Long> allowedLotLineIds) {
-        if (involvedLoadedToteIds.isEmpty()) {
-            return;
-        }
-
-        List<LoadedTote> activeLoadedTotes = fetchActiveLoadedTotes(involvedLoadedToteIds);
+    private void validateTotePurity(List<LoadedTote> activeLoadedTotes, Set<Long> allowedLotLineIds) {
         List<Tote> physicalTotes = extractPhysicalTotes(activeLoadedTotes);
         checkTotesPurity(physicalTotes, allowedLotLineIds);
     }

@@ -153,13 +153,14 @@ public class EventResource implements GraphQLTrait {
             event.label = input.label;
             event.description = input.description;
 
-            // Map String from GraphQL to Enum for the Database
-            if (input.urgencyLevel != null && !input.urgencyLevel.isBlank()) {
-                try {
-                    // TODO event.urgencyLevel = Event.UrgencyLevel.valueOf(input.urgencyLevel);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Invalid urgency level provided: " + input.urgencyLevel);
-                }
+            // Map String from GraphQL to Enum for the Database (mandatory: @NotNull on the entity)
+            if (input.urgencyLevel == null || input.urgencyLevel.isBlank()) {
+                throw new IllegalArgumentException("Urgency level is mandatory.");
+            }
+            try {
+                event.urgencyLevel = Event.UrgencyLevel.valueOf(input.urgencyLevel);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid urgency level provided: " + input.urgencyLevel);
             }
 
             event.store = store;
@@ -203,7 +204,7 @@ public class EventResource implements GraphQLTrait {
             }
             if (input.urgencyLevel != null && !input.urgencyLevel.isBlank()) {
                 try {
-                    // TODO event.urgencyLevel = Event.UrgencyLevel.valueOf(input.urgencyLevel);
+                    event.urgencyLevel = Event.UrgencyLevel.valueOf(input.urgencyLevel);
                 } catch (IllegalArgumentException e) {
                     throw new IllegalArgumentException("Invalid urgency level provided: " + input.urgencyLevel);
                 }

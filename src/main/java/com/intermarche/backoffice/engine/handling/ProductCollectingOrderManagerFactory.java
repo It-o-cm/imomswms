@@ -331,10 +331,8 @@ public class ProductCollectingOrderManagerFactory extends BaseOrderHandlerBuilde
                 }
             }
             setStatusToLot(lots, Lot.LotStatus.PLANNED_TO_BE_COLLECTED);
-            // 3. Finalize the last order if it exists
-            if (currentOrder != null) {
-                finalizeOrder(currentOrder, currentMetrics);
-            }
+            // 3. Finalize the last order (groups are never empty, so an order was always created)
+            finalizeOrder(currentOrder, currentMetrics);
         }
 
         /**
@@ -463,8 +461,12 @@ public class ProductCollectingOrderManagerFactory extends BaseOrderHandlerBuilde
                         AND po.store = :store
                   )
                   AND NOT EXISTS (
-                     SELECT 1 FROM fl.product p
-                     WHERE p.ean NOT IN :eans
+                     SELECT 1
+                     FROM Lot l2
+                     JOIN l2.lines ll2
+                     JOIN ll2.fulfillmentLine fl2
+                     WHERE l2 = l
+                       AND fl2.product.ean NOT IN :eans
                   )
                   ORDER BY l.id
                 """;
@@ -472,7 +474,7 @@ public class ProductCollectingOrderManagerFactory extends BaseOrderHandlerBuilde
             EntityManager em = Panache.getEntityManager();
             return em.createQuery(jpql, Lot.class)
                     .setParameter("store", store)
-                    .setParameter("cutoffDate", DateTimeProvider.now())
+                    .setParameter("cutoffDate", cutoffDate)
                     .setParameter("bCode", config.buildingCode)
                     .setParameter("eans", config.eans)
                     .getResultList();

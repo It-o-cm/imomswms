@@ -72,17 +72,25 @@ public class BufferCsvResource extends ImporterCsvResource {
      * Then bulk fetches existing {@link Buffer}s associated with these buildings.
      *
      * @param parsedLines The list of data for the current chunk.
-     * @param targetCodes The set of unique Building codes in this chunk (extracted from Col 1).
+     * @param targetCodes The set of unique Buffer codes in this chunk (extracted from Col 0).
      * @param counters    An array of size 2 to hold [createdCount, updatedCount].
      * @param errors      List to collect definitive error messages.
      * @return A map containing the cached entities (Buildings by code, Buffers by Building ID).
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         Map<String, Object> context = new HashMap<>();
 
-        // 1. Fetch referenced Buildings (Using targetCodes which are Building Codes)
-        List<Building> buildings = Building.list("buildingCode IN ?1", targetCodes);
+        // 1. Fetch referenced Buildings. The Building codes are in Column 1:
+        //    targetCodes holds the Buffer codes (Column 0), not the building codes.
+        Set<String> buildingCodes = new HashSet<>();
+        for (LineData d : parsedLines) {
+            String buildingCode = safeGet(d.parts, 1);
+            if (buildingCode != null) buildingCodes.add(buildingCode);
+        }
+        List<Building> buildings = buildingCodes.isEmpty()
+                ? List.of()
+                : Building.list("buildingCode IN ?1", buildingCodes);
         Set<Long> buildingIds = new HashSet<>();
         Map<String, Building> buildingMap = new HashMap<>();
 
@@ -122,7 +130,7 @@ public class BufferCsvResource extends ImporterCsvResource {
      * @param counters   An array of size 2 to hold [createdCount, updatedCount].
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         String[] parts = data.parts;
         // SWAPPED: BuildingCode is now at index 1
         String buildingCode = parts[1];
@@ -135,8 +143,13 @@ public class BufferCsvResource extends ImporterCsvResource {
         @SuppressWarnings("unchecked")
         Map<String, Buffer> bufferMap = (Map<String, Buffer>) entityMap.get("BUFFERS");
         Buffer buffer = bufferMap.get(data.code);
-        boolean isUpdate = (buffer != null);
-        if (!isUpdate) {
+        if (buffer != null) {
+            // Re-fetch the managed entity: the cached instance was loaded outside the
+            // transaction (detached), so mutating it would be lost at commit. A null
+            // result means the cached entity was a phantom from a rolled-back chunk.
+            buffer = Buffer.findById(buffer.id);
+        }
+        if (buffer == null) {
             // Creation
             buffer = new Buffer();
             buffer.building = building;
@@ -146,7 +159,7 @@ public class BufferCsvResource extends ImporterCsvResource {
             counters[0]++; // Created
         } else {
             // Update Check
-            int incomingChecksum = computeChecksum(parts, building.id);
+            int incomingChecksum = computeChecksum(parts);
             if (buffer.checksum == incomingChecksum) {
                 return; // No change
             }
@@ -163,12 +176,40 @@ public class BufferCsvResource extends ImporterCsvResource {
      * @return The Buffer entity or null if not found.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         // SWAPPED: BuildingCode is at index 1
         String buildingCode = data.parts[1];
         Building building = Building.find("buildingCode", buildingCode).firstResult();
         if (building == null) return null;
         return Buffer.findByBuilding(building);
+    }
+
+    /**
+     * Prepares the full context for a single line in 1-by-1 fallback mode.
+     * <p>
+     * The generic implementation only puts the found entity under the line code,
+     * but the buffer logic expects a "BUFFERS" map keyed by buffer code. Without
+     * this override, fallback processing would fail with a NullPointerException
+     * on every line. This override rebuilds that context with a fresh lookup so
+     * that fallback processing behaves exactly like chunk processing.
+     *
+     * @param data The parsed CSV line data.
+     * @return The context map for this single line.
+     */
+    @Override
+    public Map<String, Object> prepareContextForLine(LineData data) {
+        Map<String, Object> context = new HashMap<>();
+        String buildingCode = safeGet(data.parts, 1);
+        Building building = Building.find("buildingCode", buildingCode).firstResult();
+        if (building != null) {
+            Map<String, Buffer> bufferMap = new HashMap<>();
+            Buffer buffer = Buffer.findByBuilding(building);
+            if (buffer != null) {
+                bufferMap.put(buffer.bufferCode, buffer);
+            }
+            context.put("BUFFERS", bufferMap);
+        }
+        return context;
     }
 
     // --------------------------------------------------
@@ -189,7 +230,7 @@ public class BufferCsvResource extends ImporterCsvResource {
             try {
                 buffer.purpose = Buffer.BufferPurpose.valueOf(purposeStr.toUpperCase());
             } catch (IllegalArgumentException e) {
-                LOGGER.warn("Unknown BufferPurpose '" + purposeStr + "'. Skipping.");
+                throw new IllegalArgumentException("Unknown BufferPurpose '" + purposeStr + "' for buffer " + buffer.bufferCode);
             }
         }
 
@@ -202,7 +243,7 @@ public class BufferCsvResource extends ImporterCsvResource {
         buffer.maxWeightKg = safeParseDouble(parts, 6);
 
         // Location at 7
-        buffer.locationDescription = safeGet(parts, 7);
+        buffer.locationDescription = safeGetOrNull(parts, 7);
 
         // Active at 8
         buffer.active = safeParseBoolean(parts, 8);
@@ -210,8 +251,12 @@ public class BufferCsvResource extends ImporterCsvResource {
 
     /**
      * Computes a checksum.
+     * <p>
+     * Mirrors {@link Buffer#getChecksum()}: the building is represented by its
+     * natural key (buildingCode, Column 1), never by the surrogate id — the
+     * resolved Building may be a lazy Hibernate proxy whose id field reads null.
      */
-    private int computeChecksum(String[] parts, Long buildingId) {
+    private int computeChecksum(String[] parts) {
         String purposeStr = safeGet(parts, 2);
         Object purposeObj = purposeStr;
         try {
@@ -221,9 +266,10 @@ public class BufferCsvResource extends ImporterCsvResource {
         } catch (IllegalArgumentException e) { /* ignore */ }
 
         return Objects.hash(
-                buildingId,
+                parts[0] != null ? parts[0].trim() : null, // BufferCode
+                safeGetOrNull(parts, 1), // BuildingCode
                 purposeObj,
-                safeGet(parts, 7), // LocationDescription
+                safeGetOrNull(parts, 7), // LocationDescription
                 safeParseBoolean(parts, 8), // Active
                 safeParseInt(parts, 3), // Ambient
                 safeParseInt(parts, 4), // Chilled

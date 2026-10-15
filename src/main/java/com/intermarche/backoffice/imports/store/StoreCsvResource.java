@@ -65,7 +65,7 @@ public class StoreCsvResource extends ImporterCsvResource {
      * @param errors      List to collect definitive error messages.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         if (parsedLines.isEmpty()) return new HashMap<>();
         // 1. Bulk Fetch Existing Stores
         List<Store> existingStores = Store.list("code IN ?1", targetCodes);
@@ -89,7 +89,7 @@ public class StoreCsvResource extends ImporterCsvResource {
      * @param counters   An array of size 2 to hold [createdCount, updatedCount].
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         // Retrieve Store
         Store store = (Store) entityMap.get(data.code);
         if (store == null) {
@@ -119,7 +119,7 @@ public class StoreCsvResource extends ImporterCsvResource {
      * @return The Store entity or null if not found.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         return Store.find("code", data.code).firstResult();
     }
 
@@ -147,29 +147,27 @@ public class StoreCsvResource extends ImporterCsvResource {
      * Computes the checksum for the incoming CSV data.
      * <p>
      * Replicates {@link Store#getChecksum()} and {@link Adresse#getChecksum()} logic.
+     * Covers exactly the fields imported by the Store CSV: code, name and address.
      *
-     * @param data The parsed CSV line data.
+     * @param data  The parsed CSV line data.
      * @return The integer hash of the incoming data.
      */
     private int computeIncomingChecksum(LineData data) {
         String[] parts = data.parts;
-        // 1. Calculate Address Hash
+        // 1. Calculate Address Hash (matches Adresse.getChecksum(): no GPS)
         int addressHash = Objects.hash(
                 safeGet(parts, 2),             // streetLine1
                 safeGet(parts, 3),             // streetLine2
                 safeGet(parts, 4),             // postalCode
                 safeGet(parts, 5),             // city
-                safeGet(parts, 6),             // country
-                safeParseDouble(parts, 7),     // latitude
-                safeParseDouble(parts, 8)      // longitude
+                safeGet(parts, 6)              // country
         );
-        // 2. Calculate Store Hash
-        int storeChecksum = Objects.hash(
+        // 2. Calculate Store Hash (matches Store.getChecksum(): code, name, address)
+        return Objects.hash(
                 data.code,                    // code
                 safeGet(parts, 1),     // name
-                addressHash                   // address checksum
+                addressHash                  // address checksum
         );
-        return storeChecksum;
     }
 
 }

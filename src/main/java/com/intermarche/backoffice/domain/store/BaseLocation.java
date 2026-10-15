@@ -92,12 +92,14 @@ public abstract class BaseLocation extends BaseEntity implements Location {
             else if (!Objects.equals(commonAisle, currentAisle)) allSameAisle = false;
 
             if (!allSameArea && !allSameAisle) {
-                return new LocationSpecification(store, null, null, null);
+                return new LocationSpecification(store, building, null, null);
             }
         }
         if (allSameAisle && allSameArea) return new LocationSpecification(store, building, commonArea, commonAisle);
         if (allSameArea) return new LocationSpecification(store, building, commonArea, null);
-        return new LocationSpecification(store, building, null, null);
+        // The loop above returns early as soon as area and aisle both differ,
+        // so reaching this point implies allSameAisle is true.
+        return new LocationSpecification(store, building, null, commonAisle);
     }
 
     /**

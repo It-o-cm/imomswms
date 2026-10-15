@@ -128,8 +128,9 @@ public abstract class Building extends BaseEntity {
     /**
      * Calculates a checksum representing the current state of the building.
      * <p>
-     * Includes the owner Store ID, the building code, the checksums of the embedded objects,
-     * and the set of locations.
+     * Covers exactly the fields imported by the Building CSV: the building code and the
+     * checksums of the embedded objects (address, GPS position). The set of locations is
+     * managed by the Location CSV import and is deliberately excluded.
      *
      * @return An integer hash representing the building's state.
      */
@@ -141,8 +142,7 @@ public abstract class Building extends BaseEntity {
         return Objects.hash(
                 buildingCode,
                 addressHash,
-                locationHash,
-                locations
+                locationHash
         );
     }
 

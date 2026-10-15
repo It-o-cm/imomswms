@@ -243,7 +243,7 @@ public class PackingOrderManagerFactory extends BaseOrderHandlerBuilderFactory {
             EntityManager em = Panache.getEntityManager();
             return em.createQuery(jpql, Lot.class)
                 .setParameter("store", store)
-                .setParameter("cutoffDate", /*cutoffDate*/ DateTimeProvider.now())
+                .setParameter("cutoffDate", cutoffDate)
                 .getResultList();
         }
 

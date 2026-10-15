@@ -153,9 +153,9 @@ public class ReservationRecord {
      * @param recordAccessor          A function to extract the {@link ReservationRecord} from the entity instance.
      * @param leaseDurationSec        The duration of the lease in seconds.
      * @param batchSize               The maximum number of items to reserve.
-     * @param extraWhereCondition     Optional. An additional SQL fragment to append to the WHERE clause
-     *                                 (e.g., "store_id = 1"). The text is appended directly, so
-     *                                 ensure it is valid SQL and safe from injection if dynamic.
+     * @param extraWhereCondition     Optional. An additional SQL WHERE fragment to combine with the
+     *                                 standard condition using AND (e.g., "store_id = 1").
+     *                                 Ensure it is valid SQL and safe from injection if dynamic.
      * @param <T>                     The type of the entity.
      * @return A list of IDs of the reserved entities.
      */
@@ -170,17 +170,55 @@ public class ReservationRecord {
             long leaseDurationSec,
             int batchSize,
             String extraWhereCondition) {
+        return reserveBatch(em, entityClass, tableName, statusColumn, leasingColumn,
+                considerationInstantColumn, recordAccessor, leaseDurationSec, batchSize,
+                extraWhereCondition, "");
+    }
+
+    /**
+     * Generic method to reserve a batch of entities containing a ReservationRecord,
+     * with support for a custom ORDER BY clause (e.g., FIFO ordering).
+     *
+     * @param em                       The EntityManager to execute queries.
+     * @param entityClass              The class of the entity (e.g., OrderRequest.class).
+     * @param tableName                The database table name.
+     * @param statusColumn             The database column name for the status.
+     * @param leasingColumn            The database column name for the leasing timestamp.
+     * @param considerationInstantColumn The database column name for the consideration instant.
+     * @param recordAccessor          A function to extract the {@link ReservationRecord} from the entity instance.
+     * @param leaseDurationSec        The duration of the lease in seconds.
+     * @param batchSize               The maximum number of items to reserve.
+     * @param extraWhereCondition     Optional. An additional SQL WHERE fragment to combine with the
+     *                                 standard condition using AND (e.g., "store_id = 1").
+     * @param orderByClause           Optional. An SQL ORDER BY clause inserted before LIMIT
+     *                                 (e.g., "ORDER BY reservation_consideration ASC"). Blank for none.
+     * @param <T>                     The type of the entity.
+     * @return A list of IDs of the reserved entities.
+     */
+    public static <T> List<Long> reserveBatch(
+            EntityManager em,
+            Class<T> entityClass,
+            String tableName,
+            String statusColumn,
+            String leasingColumn,
+            String considerationInstantColumn,
+            Function<T, ReservationRecord> recordAccessor,
+            long leaseDurationSec,
+            int batchSize,
+            String extraWhereCondition,
+            String orderByClause) {
 
         // 1. Build the standard WHERE clause
         String whereClause = getReservableSqlCondition(statusColumn, leasingColumn, considerationInstantColumn);
         // 2. Append extra condition if provided
         if (extraWhereCondition != null && !extraWhereCondition.isBlank()) {
-            whereClause += extraWhereCondition;
+            whereClause += " AND " + extraWhereCondition;
         }
         // 3. Build Native Query to fetch entities directly
+        String orderBy = (orderByClause == null || orderByClause.isBlank()) ? "" : " " + orderByClause;
         String sql = String.format(
-                "SELECT e.* FROM %s e WHERE %s LIMIT ?1 FOR UPDATE SKIP LOCKED",
-                tableName, whereClause
+                "SELECT e.* FROM %s e WHERE %s%s LIMIT ?1 FOR UPDATE SKIP LOCKED",
+                tableName, whereClause, orderBy
         );
         // 4. Fetch and Lock
         @SuppressWarnings("unchecked")

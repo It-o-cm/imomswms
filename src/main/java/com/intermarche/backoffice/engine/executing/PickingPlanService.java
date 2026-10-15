@@ -100,7 +100,7 @@ public class PickingPlanService {
                 if (order instanceof PreparingOrder po && po.lots != null) {
                     for (Lot lot : po.lots) {
                         Building building = resolveBuildingFromLot(lot);
-                        if (lot.lines != null) {
+                        if (lot != null && lot.lines != null) {
                             for (LotLine line : lot.lines) {
                                 addStepToContext(contextsByBuilding, line, order, globalStepCounter++, building);
                             }
@@ -142,7 +142,7 @@ public class PickingPlanService {
         if (order instanceof PreparingOrder po && po.lots != null) {
             for (Lot lot : po.lots) {
                 Building b = resolveBuildingFromLot(lot);
-                if (lot.lines != null) {
+                if (lot != null && lot.lines != null) {
                     for (LotLine line : lot.lines) {
                         cache.put(line.id, b);
                     }
@@ -200,7 +200,8 @@ public class PickingPlanService {
      * Retrieves the optimized sequence of aisles to visit.
      */
     private List<String> getOptimizedAisleSequence(Building building, String startNode, Set<String> aisles) {
-        if (building != null && !aisles.isEmpty()) {
+        // building is never null: contexts are only created for non-null buildings
+        if (!aisles.isEmpty()) {
             return routeOptimizer.optimizeRoute(building, startNode, new ArrayList<>(aisles));
         }
         return new ArrayList<>(aisles);
@@ -210,7 +211,8 @@ public class PickingPlanService {
      * Calculates the total distance of the optimized route.
      */
     private int calculateRouteDistance(Building building, String startNode, List<String> route) {
-        if (building != null && !route.isEmpty()) {
+        // building is never null: contexts are only created for non-null buildings
+        if (!route.isEmpty()) {
             return routeOptimizer.calculateTotalRouteDistance(building, startNode, route);
         }
         return 0;
@@ -229,7 +231,8 @@ public class PickingPlanService {
 
         for (String aisleCode : optimizedAisleOrder) {
             List<RouteStepDTO> stepsInAisle = stepsByAisle.get(aisleCode);
-            if (stepsInAisle != null && !stepsInAisle.isEmpty()) {
+            // groupingBy never produces empty groups, so a present key implies a non-empty list
+            if (stepsInAisle != null) {
                 RouteGroupDTO group = new RouteGroupDTO();
                 group.aisleCode = aisleCode;
                 group.area = stepsInAisle.get(0).area;
@@ -244,7 +247,7 @@ public class PickingPlanService {
             if (!addedAisles.contains(entry.getKey())) {
                 RouteGroupDTO group = new RouteGroupDTO();
                 group.aisleCode = entry.getKey();
-                group.area = entry.getValue().isEmpty() ? "" : entry.getValue().get(0).area;
+                group.area = entry.getValue().get(0).area;
                 group.steps = entry.getValue();
                 routeGroups.add(group);
             }
@@ -318,7 +321,8 @@ public class PickingPlanService {
         step.sourceOrderId = order.id;
         step.sourceOrderCode = order.code;
 
-        if (item.lotLine != null && item.lotLine.fulfillmentLine != null && item.lotLine.fulfillmentLine.location instanceof ShelfLocation shelfLoc) {
+        // item.lotLine is never null here: the caller only maps items whose lotLine resolved a building
+        if (item.lotLine.fulfillmentLine != null && item.lotLine.fulfillmentLine.location instanceof ShelfLocation shelfLoc) {
             step.aisle = shelfLoc.aisle;
             step.unit = shelfLoc.unit;
             step.position = shelfLoc.position;

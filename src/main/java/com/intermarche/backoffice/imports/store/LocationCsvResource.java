@@ -59,7 +59,7 @@ public class LocationCsvResource extends ImporterCsvResource {
      * @return A context map containing Buildings, Products, and a cache of existing Locations.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         Map<String, Object> context = new HashMap<>();
         List<Building> buildings = fetchBuildingsWithLocations(targetCodes);
         cacheBuildings(buildings, context);
@@ -78,7 +78,7 @@ public class LocationCsvResource extends ImporterCsvResource {
      * @param counters   The counters array for tracking creation/updates.
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         LocationContext ctx = resolveLocationContext(data, entityMap);
         if (ctx.missingParents()) {
             LOGGER.warn("Skipping location line: missing parents. Building=" + ctx.buildingCode + ", Product=" + ctx.productEan);
@@ -91,13 +91,52 @@ public class LocationCsvResource extends ImporterCsvResource {
     }
 
     /**
+     * Prepares the full context for a single line in 1-by-1 fallback mode.
+     * <p>
+     * The generic implementation only puts the found entity under the line code,
+     * but the location logic needs the Building, the Product and the location
+     * lookup cache. This override rebuilds that context with fresh lookups so
+     * that fallback processing behaves exactly like chunk processing.
+     *
+     * @param data The parsed CSV line data.
+     * @return The context map for this single line.
+     */
+    @Override
+    public Map<String, Object> prepareContextForLine(LineData data) {
+        Map<String, Object> context = new HashMap<>();
+        String buildingCode = safeGet(data.parts, 0);
+        String productEan = safeGet(data.parts, 1);
+
+        Building building = Building.find("buildingCode", buildingCode).firstResult();
+        if (building != null) {
+            context.put("BLD_" + buildingCode, building);
+            Map<String, ShelfLocation> cache = new HashMap<>();
+            if (building.locations != null) {
+                for (BaseLocation loc : building.locations) {
+                    if (loc.product != null) {
+                        cache.put(generateLocationKey(buildingCode, loc.product.ean, typeTokenOf(loc)), (ShelfLocation) loc);
+                    }
+                }
+            }
+            context.put(CACHE_KEY_LOCATIONS, cache);
+        }
+
+        Product product = Product.find("ean", productEan).firstResult();
+        if (product != null) {
+            context.put("PRD_" + productEan, product);
+        }
+
+        return context;
+    }
+
+    /**
      * Finds a single Location entity for fallback processing (1-by-1 mode).
      *
      * @param data The parsed CSV line data.
      * @return The Location entity or null if not found.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         Building b = Building.find("buildingCode", safeGet(data.parts, 0)).firstResult();
         Product p = Product.find("ean", safeGet(data.parts, 1)).firstResult();
         if (b == null || p == null) return null;
@@ -146,6 +185,12 @@ public class LocationCsvResource extends ImporterCsvResource {
         @SuppressWarnings("unchecked")
         Map<String, ShelfLocation> locationCache = (Map<String, ShelfLocation>) entityMap.get(CACHE_KEY_LOCATIONS);
         ShelfLocation location = locationCache.get(cacheKey);
+        if (location != null) {
+            // Re-fetch the managed entity: the cached instance was loaded outside the
+            // transaction (detached), so mutating it would be lost at commit. A null
+            // result means the cached entity was a phantom from a rolled-back chunk.
+            location = ShelfLocation.findById(location.id);
+        }
         if (location == null) {
             location = handleNewLocation(ctx, cacheKey, locationCache);
             counters[0]++;
@@ -167,7 +212,11 @@ public class LocationCsvResource extends ImporterCsvResource {
      */
     private ShelfLocation handleNewLocation(LocationContext ctx, String cacheKey, Map<String, ShelfLocation> locationCache) {
         ShelfLocation location = createLocationInstance(ctx.typeStr);
-        if (location == null) return null; // Error logged in factory
+        if (location == null) {
+            // Throw to trigger the staged fallback: the line is reported as an error
+            // instead of being silently counted as created.
+            throw new IllegalArgumentException("Unknown location type: " + ctx.typeStr);
+        }
         location.product = ctx.product;
         Building building = Building.findById(ctx.building.id);
         building.locations.add(location);
@@ -223,6 +272,9 @@ public class LocationCsvResource extends ImporterCsvResource {
 
     /**
      * Creates a lookup map for existing locations.
+     * <p>
+     * The cache key uses the same type token as the CSV ("SHELF"/"BIN") so that
+     * lookups performed during line processing actually match existing locations.
      *
      * @param buildings The list of buildings containing locations.
      * @param context   The context map to populate.
@@ -232,12 +284,24 @@ public class LocationCsvResource extends ImporterCsvResource {
         for (Building b : buildings) {
             if (b.locations != null) {
                 for (BaseLocation loc : b.locations) {
-                    String key = generateLocationKey(b.buildingCode, loc.product.ean, loc.getClass().getSimpleName());
-                    cache.put(key, loc);
+                    if (loc.product != null) {
+                        String key = generateLocationKey(b.buildingCode, loc.product.ean, typeTokenOf(loc));
+                        cache.put(key, loc);
+                    }
                 }
             }
         }
         context.put(CACHE_KEY_LOCATIONS, cache);
+    }
+
+    /**
+     * Returns the CSV type token ("SHELF"/"BIN") matching the location's concrete class.
+     *
+     * @param loc The location entity.
+     * @return The CSV type token.
+     */
+    private static String typeTokenOf(BaseLocation loc) {
+        return loc instanceof WarehouseShelfLocation ? "BIN" : "SHELF";
     }
 
     /**
@@ -313,7 +377,9 @@ public class LocationCsvResource extends ImporterCsvResource {
         if (location instanceof StoreShelfLocation shelf) {
             shelf.facings = safeParseInt(parts, 8, 1);
             shelf.department = safeGet(parts, 9);
-        } else if (location instanceof WarehouseShelfLocation bin) {
+        } else {
+            // ShelfLocation has exactly two concrete subtypes: StoreShelfLocation and WarehouseShelfLocation
+            WarehouseShelfLocation bin = (WarehouseShelfLocation) location;
             bin.maxWeightKg = safeParseDouble(parts, 8);
             bin.maxPallets = safeParseInt(parts, 9, 1);
         }
@@ -349,6 +415,10 @@ public class LocationCsvResource extends ImporterCsvResource {
 
     /**
      * Computes the checksum for the incoming CSV data to detect changes.
+     * <p>
+     * Replicates the entity checksum structure exactly:
+     * {@code Objects.hash(super.getChecksum(), <type-specific fields>)} where
+     * {@code super.getChecksum()} is the hash of (area, aisle, unit, elevation, position).
      *
      * @param data The parsed CSV line data.
      * @return The integer hash representing the data state.
@@ -356,21 +426,14 @@ public class LocationCsvResource extends ImporterCsvResource {
     private int computeIncomingChecksum(LineData data) {
         String[] parts = data.parts;
         int baseHash = Objects.hash(safeGet(parts, 3), safeGet(parts, 4), safeGet(parts, 5), safeGet(parts, 6), safeGet(parts, 7));
-        int extraHash = computeSpecificChecksum(parts);
-        return Objects.hash(baseHash, extraHash);
-    }
-
-    /**
-     * Computes the hash for type-specific fields.
-     *
-     * @param parts The CSV line parts array.
-     * @return The hash of specific fields.
-     */
-    private int computeSpecificChecksum(String[] parts) {
         String typeStr = safeGet(parts, 2);
-        if ("SHELF".equalsIgnoreCase(typeStr)) return Objects.hash(safeParseInt(parts, 8, 1), safeGet(parts, 9));
-        if ("BIN".equalsIgnoreCase(typeStr)) return Objects.hash(safeParseDouble(parts, 8), safeParseInt(parts, 9, 1));
-        return 0;
+        if ("SHELF".equalsIgnoreCase(typeStr)) {
+            return Objects.hash(baseHash, safeParseInt(parts, 8, 1), safeGet(parts, 9));
+        }
+        if ("BIN".equalsIgnoreCase(typeStr)) {
+            return Objects.hash(baseHash, safeParseDouble(parts, 8), safeParseInt(parts, 9, 1));
+        }
+        return baseHash;
     }
 
     /**

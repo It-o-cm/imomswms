@@ -1,28 +1,23 @@
 package com.intermarche.backoffice.auth;
 
 import com.intermarche.backoffice.domain.auth.Account;
-import io.quarkus.arc.profile.IfBuildProfile;
 import io.smallrye.jwt.build.Jwt;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.Claims;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Service responsible for generating JWT tokens for development purposes.
  * <p>
- * This service is only active when the application is running in the 'dev' profile.
+ * This service is only used when the application is running in the 'dev' profile
+ * (guarded by runtime profile checks in {@code AuthenticationService}).
  * In production, token generation is handled by Keycloak.
  */
 @ApplicationScoped
-@IfBuildProfile("dev")
 public class TokenService {
 
     @ConfigProperty(name = "mp.jwt.verify.issuer")

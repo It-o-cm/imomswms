@@ -74,7 +74,7 @@ public class StoreGroupCsvResource extends ImporterCsvResource {
      * @return A Map containing the pre-fetched data for the chunk.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         if (parsedLines.isEmpty()) return new HashMap<>();
 
         // Step 1: Bulk Fetch Main Groups (The lines we are processing)
@@ -107,7 +107,7 @@ public class StoreGroupCsvResource extends ImporterCsvResource {
      * @return A map containing the specific entities for this line.
      */
     @Override
-    protected Map<String, Object> prepareContextForLine(LineData data) {
+    public Map<String, Object> prepareContextForLine(LineData data) {
         // Step 1: Fetch Main Group (The entity for the current line)
         StoreGroup group = (StoreGroup) findEntityForLine(data);
         Map<String, StoreGroup> groupMap = new HashMap<>();
@@ -155,7 +155,7 @@ public class StoreGroupCsvResource extends ImporterCsvResource {
      * @param counters  An array of size 2 to hold [createdCount, updatedCount].
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         // Step 1: Get or Create the StoreGroup (The Parent/Current Entity)
         StoreGroup group = getOrCreateStoreGroup(data, entityMap, counters);
 
@@ -303,7 +303,7 @@ public class StoreGroupCsvResource extends ImporterCsvResource {
      * @param columnIndex  The column index to extract codes from.
      * @return A set of unique codes found.
      */
-    Set<String> getCodesFromColumn(List<LineData> parsedLines, int columnIndex) {
+    public Set<String> getCodesFromColumn(List<LineData> parsedLines, int columnIndex) {
         Set<String> codes = new HashSet<>();
         for (LineData data : parsedLines) {
             String[] parts = parseSemicolonCodes(safeGet(data.parts, columnIndex));
@@ -325,7 +325,7 @@ public class StoreGroupCsvResource extends ImporterCsvResource {
      * @return The StoreGroup entity or null if not found.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         return StoreGroup.find("code", data.code).firstResult();
     }
 
@@ -335,7 +335,7 @@ public class StoreGroupCsvResource extends ImporterCsvResource {
      * @param raw The raw string from the CSV cell.
      * @return An array of trimmed codes.
      */
-    String[] parseSemicolonCodes(String raw) {
+    public String[] parseSemicolonCodes(String raw) {
         if (raw == null || raw.trim().isEmpty()) {
             return new String[0];
         }

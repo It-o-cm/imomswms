@@ -162,14 +162,15 @@ public class EmployeeResource implements GraphQLTrait {
                 employee.role = Employee.EmployeeRole.valueOf(input.role.toUpperCase());
             }
 
-            // Relationship mapping
-            if (input.storeId != null) {
-                Store store = Store.findById(input.storeId);
-                if (store == null) {
-                    throw new NoSuchElementException("Store with id " + input.storeId + " not found");
-                }
-                employee.store = store;
+            // Relationship mapping (mandatory: the entity requires a store)
+            if (input.storeId == null) {
+                throw new IllegalArgumentException("Store ID is mandatory to create an employee.");
             }
+            Store store = Store.findById(input.storeId);
+            if (store == null) {
+                throw new NoSuchElementException("Store with id " + input.storeId + " not found");
+            }
+            employee.store = store;
 
             employee.persist();
 

@@ -72,8 +72,7 @@ public class ProductFamilyCsvResource extends ImporterCsvResource {
      * @return A Map containing all entities (Families, Products, Sub-Families) needed for processing.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
-        System.out.println("Processing chunk with fallback: " + parsedLines.isEmpty());
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         if (parsedLines.isEmpty()) return new HashMap<>();
         Set<String> targetProductEans = getTargetProductEans(parsedLines);
         Set<String> targetSubFamilyCodes = getProductSubFamilyCodes(parsedLines);
@@ -185,7 +184,7 @@ public class ProductFamilyCsvResource extends ImporterCsvResource {
      * @param counters   An array of size 2 to hold [createdCount, updatedCount].
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         // 1. Retrieve Family
         ProductFamily family = (ProductFamily) entityMap.get(data.code);
         // 2. Retrieve Auxiliary Maps
@@ -202,7 +201,7 @@ public class ProductFamilyCsvResource extends ImporterCsvResource {
         prepareProductFamily(data, family, requestedEans, productMap);
         linkSubFamilies(family, requestedSubCodes, subFamilyMap);
         // 5. Persist or Update
-        int incomingChecksum = computeIncomingChecksum(data);
+        int incomingChecksum = computeIncomingChecksum(data, requestedEans, requestedSubCodes);
         if (isNew) {
             counters[0]++;
             Panache.getEntityManager().persist(family);
@@ -317,25 +316,31 @@ public class ProductFamilyCsvResource extends ImporterCsvResource {
      * @return The ProductFamily entity or null if not found.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         return ProductFamily.find("code", data.code).firstResult();
     }
 
     /**
      * Computes checksum for incoming CSV data.
      * <p>
-     * Replicates {@link ProductFamily#getChecksum()} logic.
-     * <p>
-     * Note: Children (products/subfamilies) are excluded from checksum in the entity.
+     * Replicates {@link ProductFamily#getChecksum()} logic: the linked products and
+     * sub-families are hashed as sorted sets of their codes (EANs / family codes),
+     * so the value matches the entity checksum computed from the resolved links.
      *
-     * @param data The parsed CSV line data.
+     * @param data               The parsed CSV line data.
+     * @param requestedEans      The product EANs requested by the line.
+     * @param requestedSubCodes  The sub-family codes requested by the line.
      * @return The integer hash of incoming data.
      */
-    private int computeIncomingChecksum(LineData data) {
+    private int computeIncomingChecksum(LineData data, List<String> requestedEans, List<String> requestedSubCodes) {
+        Set<String> productEans = new TreeSet<>(requestedEans);
+        Set<String> familyCodes = new TreeSet<>(requestedSubCodes);
         return Objects.hash(
                 data.code,
                 safeGet(data.parts, 1), // description
-                safeGet(data.parts, 2)  // flags
+                safeGet(data.parts, 2), // flags
+                productEans,
+                familyCodes
         );
     }
 }

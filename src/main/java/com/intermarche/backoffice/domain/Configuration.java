@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 /**
@@ -229,11 +230,18 @@ public class Configuration extends BaseEntity {
 
     /**
      * Calculates a checksum representing the state of the configuration.
+     * <p>
+     * Covers exactly the fields imported by the Configuration CSV: name, type,
+     * specification, priority and the linked store/group codes. Links are hashed
+     * as sorted sets of codes (not entity sets) so that the value is reproducible
+     * from the CSV data by the importer.
      *
      * @return An integer hash representing the state.
      */
     @Override
     public int getChecksum() {
-        return Objects.hash(name, type, specification, priority, stores, storeGroups);
+        Set<String> storeCodes = stores.stream().map(s -> s.code).collect(Collectors.toCollection(TreeSet::new));
+        Set<String> groupCodes = storeGroups.stream().map(g -> g.code).collect(Collectors.toCollection(TreeSet::new));
+        return Objects.hash(name, type, specification, priority, storeCodes, groupCodes);
     }
 }

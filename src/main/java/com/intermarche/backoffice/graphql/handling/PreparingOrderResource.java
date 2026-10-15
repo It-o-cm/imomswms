@@ -84,7 +84,9 @@ public class PreparingOrderResource implements HandlingOrderGraphQLTrait {
             String fetchJoins = optimizeHandlingOrderQuery(context);
 
             // 2. Construct the base query
-            StringBuilder jpql = new StringBuilder("SELECT DISTINCT po FROM PreparingOrder po JOIN po.lots lot ");
+            // The root alias MUST be "o": optimizeHandlingOrderQuery generates fetch joins
+            // hardcoded on that alias (e.g. "left join fetch o.store s").
+            StringBuilder jpql = new StringBuilder("SELECT DISTINCT o FROM PreparingOrder o JOIN o.lots lot ");
             jpql.append(fetchJoins);
 
             // Filter by the chunk ID.
@@ -92,7 +94,7 @@ public class PreparingOrderResource implements HandlingOrderGraphQLTrait {
 
             // 3. Apply Store scope security if user is not ADMIN
             if (storeContext != null) {
-                jpql.append("AND po.store.id = ?2");
+                jpql.append("AND o.store.id = ?2");
                 return BaseHandlingOrder.find(jpql.toString(), chunkId, storeContext.id).list();
             } else {
                 return BaseHandlingOrder.find(jpql.toString(), chunkId).list();

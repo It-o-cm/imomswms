@@ -153,6 +153,11 @@ public class StoreActivityEngine {
         } catch (IllegalStateException | IllegalArgumentException e) {
             // Re-throw business/configuration errors directly
             throw e;
+        } catch (RuntimeException e) {
+            // Re-throw builder construction failures directly so their specific
+            // message ("Failed to build order handler builder ...") is not buried
+            // under a misleading "Error parsing configuration" wrapper.
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Error parsing configuration for store " + store.code, e);
         }

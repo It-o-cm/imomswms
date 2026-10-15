@@ -244,12 +244,9 @@ public class HandlingOrderService {
     public void removeEmptyTote(Long executionId, String toteCode) {
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(executionId);
         if (execution == null) throw new IllegalArgumentException("Execution not found");
-        LoadedTote loadedTote = LoadedTote.find("code", toteCode).firstResult();
+        LoadedTote loadedTote = LoadedTote.find("tote.code = ?1 and status = ?2", toteCode, LoadedTote.Status.IN_USE).firstResult();
         if (loadedTote == null) throw new IllegalArgumentException("LoadedTote not found");
-        if (loadedTote.items != null && !loadedTote.items.isEmpty()) {
-            throw new IllegalArgumentException("Cannot remove a tote that contains items");
-        }
-        execution.loadedTotes.remove(loadedTote);
+        execution.removeEmptyTote(loadedTote.tote);
         loadedTote.delete();
     }
 
@@ -270,17 +267,17 @@ public class HandlingOrderService {
     @Transactional
     public void addItemToTote(Long executionId, String toteCode, Long pickedItemId, BigDecimal quantity, Long productId) {
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(executionId);
-        LoadedTote tote = LoadedTote.find("code", toteCode).firstResult();
+        LoadedTote tote = LoadedTote.find("tote.code = ?1 and status = ?2", toteCode, LoadedTote.Status.IN_USE).firstResult();
         PickedItem item = PickedItem.findById(pickedItemId);
         if (execution == null || tote == null || item == null) {
             throw new IllegalArgumentException("Invalid execution, tote, or item");
         }
+        Product newProduct = null;
         if (productId != null) {
-            Product newProduct = Product.findById(productId);
-            if (newProduct != null) item.product = newProduct;
+            newProduct = Product.findById(productId);
+            if (newProduct == null) throw new IllegalArgumentException("Product not found: " + productId);
         }
-        item.loadedTote = tote;
-        tote.items.add(item);
+        execution.addItemToTote(tote, item, quantity, newProduct);
     }
 
     /**
@@ -297,14 +294,16 @@ public class HandlingOrderService {
      */
     @Transactional
     public void moveItem(Long executionId, String sourceToteCode, String targetToteCode, Long pickedItemId) {
+        PickingExecution execution = (PickingExecution) HandlingExecution.findById(executionId);
+        if (execution == null) throw new IllegalArgumentException("Execution not found");
         PickedItem item = PickedItem.findById(pickedItemId);
-        LoadedTote targetTote = LoadedTote.find("code", targetToteCode).firstResult();
+        LoadedTote targetTote = LoadedTote.find("tote.code = ?1 and status = ?2", targetToteCode, LoadedTote.Status.IN_USE).firstResult();
         if (item == null || targetTote == null) throw new IllegalArgumentException("Item or Target Tote not found");
-        if (item.loadedTote != null) {
-            item.loadedTote.items.remove(item);
+        LoadedTote sourceTote = null;
+        if (sourceToteCode != null && !sourceToteCode.isBlank()) {
+            sourceTote = LoadedTote.find("tote.code = ?1 and status = ?2", sourceToteCode, LoadedTote.Status.IN_USE).firstResult();
         }
-        item.loadedTote = targetTote;
-        targetTote.items.add(item);
+        execution.moveItemToTote(sourceTote, targetTote, item);
     }
 
     /**

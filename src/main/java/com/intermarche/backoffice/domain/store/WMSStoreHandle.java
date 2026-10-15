@@ -88,6 +88,19 @@ public class WMSStoreHandle extends BaseEntity {
      * @return A list of IDs of the reserved handles.
      */
     public static List<Long> reserveBatch(long duration, int batchSize, String extraWhereClause) {
+        return reserveBatch(duration, batchSize, extraWhereClause, "");
+    }
+
+    /**
+     * Reserves a batch of store handles for processing, with a custom ORDER BY clause.
+     *
+     * @param duration         The duration of the lease in seconds.
+     * @param batchSize        The maximum number of handles to reserve.
+     * @param extraWhereClause An additional SQL WHERE fragment (e.g., "store_id = 1").
+     * @param orderByClause    An SQL ORDER BY clause inserted before LIMIT (e.g., FIFO ordering).
+     * @return A list of IDs of the reserved handles.
+     */
+    public static List<Long> reserveBatch(long duration, int batchSize, String extraWhereClause, String orderByClause) {
         return ReservationRecord.reserveBatch(
                 Panache.getEntityManager(),
                 WMSStoreHandle.class,
@@ -98,7 +111,8 @@ public class WMSStoreHandle extends BaseEntity {
                 (f) -> f.reservationRecord,    // Specific Accessor to the embedded record
                 duration,
                 batchSize,
-                extraWhereClause
+                extraWhereClause,
+                orderByClause
         );
     }
 

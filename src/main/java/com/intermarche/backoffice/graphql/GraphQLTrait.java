@@ -59,7 +59,7 @@ public interface GraphQLTrait {
             logger.error("Persistence error in " + operationName, pe);
             throw new GraphQLException("Database error while performing " + operationName + ". Please check your data.", pe);
         } catch (NoSuchElementException nsee) {
-            throw new GraphQLException(nsee.getMessage(), nsee);
+            throw nsee;
         } catch (Exception e) {
             // Handle any other unexpected errors (including H2 raw exceptions or runtime issues)
             logger.error("Unexpected error in " + operationName, e);

@@ -44,9 +44,9 @@ public abstract class ImporterCsvResource {
     private static final Logger LOGGER = Logger.getLogger(ImporterCsvResource.class);
 
     // Staged Fallback Sizes
-    protected static final int STAGE_1_SIZE = 1000;
-    protected static final int STAGE_2_SIZE = 100;
-    protected static final int STAGE_3_SIZE = 10;
+    public static final int STAGE_1_SIZE = 1000;
+    public static final int STAGE_2_SIZE = 100;
+    public static final int STAGE_3_SIZE = 10;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -54,7 +54,7 @@ public abstract class ImporterCsvResource {
      * The JTA Transaction Manager for handling programmatic transactions.
      */
     @Inject
-    TransactionManager tm;
+    public TransactionManager tm;
 
     /**
      * Main entry point for importing a CSV stream.
@@ -129,7 +129,7 @@ public abstract class ImporterCsvResource {
      * @param counters      An array of size 2 to hold [createdCount, updatedCount].
      * @param errors        List to collect definitive error messages.
      */
-    protected void processWithStages(List<LineData> lines, Map<String, Object> preFetchedMap, int chunkSize, int[] counters, List<String> errors) {
+    public void processWithStages(List<LineData> lines, Map<String, Object> preFetchedMap, int chunkSize, int[] counters, List<String> errors) {
         if (lines.isEmpty()) return;
         // Base Case: Atomic processing (1 by 1)
         if (chunkSize == 1) {
@@ -191,7 +191,7 @@ public abstract class ImporterCsvResource {
      * @return A map containing the line's code as the key and the corresponding entity as the value.
      *         If no entity is found, the map will be empty.
      */
-    protected Map<String, Object> prepareContextForLine(LineData data) {
+    public Map<String, Object> prepareContextForLine(LineData data) {
         // Fresh lookup for atomic operation
         Object freshEntity = findEntityForLine(data);
         // Create a temporary map for this single line
@@ -208,7 +208,7 @@ public abstract class ImporterCsvResource {
      * @param currentSize The size that just failed.
      * @return The next smaller size (1000 -> 100 -> 10 -> 1).
      */
-    protected int getNextSize(int currentSize) {
+    public int getNextSize(int currentSize) {
         if (currentSize > STAGE_2_SIZE) return STAGE_2_SIZE;
         if (currentSize > STAGE_3_SIZE) return STAGE_3_SIZE;
         return 1;
@@ -246,7 +246,7 @@ public abstract class ImporterCsvResource {
      * @param counters    An array of size 2 to hold [createdCount, updatedCount].
      * @param errors      List to collect definitive error messages.
      */
-    protected abstract Map<String, Object> processChunkWithFallback(
+    public abstract Map<String, Object> processChunkWithFallback(
             List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors);
 
     /**
@@ -258,7 +258,7 @@ public abstract class ImporterCsvResource {
      * @param entityMap  A map of existing entities (can be pre-fetched or a fresh lookup).
      * @param counters   An array of size 2 to hold [createdCount, updatedCount].
      */
-    protected abstract void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters);
+    public abstract void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters);
 
     /**
      * Abstract method to find a specific entity by its code.
@@ -268,7 +268,7 @@ public abstract class ImporterCsvResource {
      * @param data The parsed CSV line data containing the code.
      * @return The found entity or null.
      */
-    protected abstract Object findEntityForLine(LineData data);
+    public abstract Object findEntityForLine(LineData data);
 
     // --------------------------------------------------
     // Generic Utilities & Transaction Management
@@ -283,9 +283,9 @@ public abstract class ImporterCsvResource {
      *
      * @param <R> The type of the result returned by the processing logic.
      */
-    static class Executor<R> {
+    public static class Executor<R> {
         R result;
-        Exception ex;
+        public Exception ex;
 
         /**
          * Executes the provided consumer if the previous operation was successful (result is not null).
@@ -365,7 +365,7 @@ public abstract class ImporterCsvResource {
      * @param counters  The global counters array [created, updated].
      * @param lCounters The local counters array to merge in.
      */
-    protected void updateCounters(int[] counters, int[] lCounters) {
+    public void updateCounters(int[] counters, int[] lCounters) {
         counters[0] += lCounters[0];
         counters[1] += lCounters[1];
     }
@@ -383,8 +383,25 @@ public abstract class ImporterCsvResource {
      * @param index The index to retrieve.
      * @return The trimmed string or null if index is out of bounds.
      */
-    protected String safeGet(String[] parts, int index) {
+    public String safeGet(String[] parts, int index) {
         return index >= 0 && index < parts.length ? (parts[index] == null ? null : parts[index].trim()) : null;
+    }
+
+    /**
+     * Safely retrieves a string from an array by index, normalizing blank values to null.
+     * <p>
+     * Unlike {@link #safeGet(String[], int)}, an empty column is returned as {@code null}
+     * instead of an empty string, so that optional CSV fields map to a real {@code null}
+     * on the entity (e.g. "no connection" for an aisle extremity). The checksum computation
+     * must use the same normalization so that re-imports stay consistent.
+     *
+     * @param parts The string array.
+     * @param index The index to retrieve.
+     * @return The trimmed string, or null if the index is out of bounds or the value is blank.
+     */
+    public String safeGetOrNull(String[] parts, int index) {
+        String val = safeGet(parts, index);
+        return (val == null || val.isEmpty()) ? null : val;
     }
 
     /**
@@ -397,7 +414,7 @@ public abstract class ImporterCsvResource {
      * @param index The index to parse.
      * @return The Boolean value or false if parsing fails or index is out of bounds.
      */
-    protected boolean safeParseBoolean(String[] parts, int index) {
+    public boolean safeParseBoolean(String[] parts, int index) {
         if (index >= parts.length) return false;
         String val = parts[index].trim();
         if (val.isEmpty()) return false;
@@ -413,7 +430,7 @@ public abstract class ImporterCsvResource {
      * @param index The index to parse.
      * @return The BigDecimal value or null if parsing fails or index is out of bounds.
      */
-    protected BigDecimal safeParseBigDecimal(String[] parts, int index) {
+    public BigDecimal safeParseBigDecimal(String[] parts, int index) {
         if (index >= parts.length) return null;
         String val = parts[index].trim();
         if (val.isEmpty()) return null;
@@ -433,7 +450,7 @@ public abstract class ImporterCsvResource {
      * @param index The index to parse.
      * @return The Integer value or null if parsing fails or index is out of bounds.
      */
-    protected Integer safeParseInt(String[] parts, int index) {
+    public Integer safeParseInt(String[] parts, int index) {
         if (index >= parts.length) return null;
         String val = parts[index].trim();
         if (val.isEmpty()) return null;
@@ -452,7 +469,7 @@ public abstract class ImporterCsvResource {
      * @param defaultVal The default value if parsing fails or the value is null.
      * @return The parsed Integer or the default value.
      */
-    protected Integer safeParseInt(String[] parts, int index, int defaultVal) {
+    public Integer safeParseInt(String[] parts, int index, int defaultVal) {
         String val = safeGet(parts, index);
         if (val == null || val.isBlank()) return defaultVal;
         try { return Integer.parseInt(val); } catch (NumberFormatException e) { return defaultVal; }
@@ -468,7 +485,7 @@ public abstract class ImporterCsvResource {
      * @param index The index to parse.
      * @return The LocalDateTime value or null if parsing fails or index is out of bounds.
      */
-    protected LocalDateTime safeParseDateTime(String[] parts, int index) {
+    public LocalDateTime safeParseDateTime(String[] parts, int index) {
         if (index >= parts.length) return null;
         String val = parts[index].trim();
         if (val.isEmpty()) return null;
@@ -489,7 +506,7 @@ public abstract class ImporterCsvResource {
      * @param raw The raw string from CSV (e.g., "A, B, C").
      * @return A sorted list of non-empty codes.
      */
-    protected List<String> parseCodes(String raw) {
+    public List<String> parseCodes(String raw) {
         if (raw == null || raw.trim().isEmpty()) {
             return Collections.emptyList();
         }

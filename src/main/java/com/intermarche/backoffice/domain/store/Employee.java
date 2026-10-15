@@ -354,12 +354,18 @@ public class Employee extends BaseEntity implements Account {
     /**
      * Calculates a checksum based on the entity's current state.
      * <p>
-     * Includes the password reset fields in the calculation to detect changes.
+     * Covers exactly the fields imported by the Employee CSV (badgeId, firstName, lastName,
+     * email, role, active and the store link). The password is deliberately excluded: it is
+     * stored as a salted BCrypt hash, so it changes on every re-hash and cannot be compared
+     * across imports. Password reset fields are not CSV-imported and are excluded as well.
      *
      * @return the calculated checksum.
      */
     @Override
     public int getChecksum() {
-        return Objects.hash(firstName, lastName, password, role, store.id, badgeId, active, email, passwordResetToken, passwordResetTokenExpiry);
+        // Uses the store's natural key (code), not the surrogate id: store is a
+        // lazy @ManyToOne and reading .id via field access on a Hibernate proxy
+        // returns null, which would corrupt the checksum.
+        return Objects.hash(firstName, lastName, email, role, store.code, badgeId, active);
     }
 }

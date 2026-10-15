@@ -272,9 +272,9 @@ public class OrderScheduler {
         Duration orderDuration = getDuration(order);
         order.requestedStart = finalStart;
         order.requestedEnd = finalStart.plus(orderDuration);
-        if (order.status == BaseHandlingOrder.HandlingOrderStatus.OPEN) {
-            order.status = BaseHandlingOrder.HandlingOrderStatus.SCHEDULED;
-        }
+        // Orders reaching this point are always OPEN: both scheduling phases
+        // query with status = OPEN.
+        order.status = BaseHandlingOrder.HandlingOrderStatus.SCHEDULED;
         for (Lot lot : order.lots) {
             updatedLotMap.put(lot.id, finalStart);        }
     }
@@ -312,9 +312,7 @@ public class OrderScheduler {
      *         the order's requested start time (if the calculated time is later) or the new calculated start time.
      */
     private LocalDateTime enforceNoAdvance(PreparingOrder order, LocalDateTime newCalculatedStart) {
-        if (order.requestedStart == null) {
-            return newCalculatedStart;
-        }
+        // Both callers invoke getDuration(order) first, which rejects a null requestedStart.
         if (newCalculatedStart.isAfter(order.requestedStart)) {
             return order.requestedStart;
         }

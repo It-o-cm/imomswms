@@ -498,8 +498,9 @@ public class AuthenticationService {
      * @param account the account to persist.
      */
     private void persistAccount(Account account) {
+        // Account has exactly two implementations: Administrative and Employee
         if (account instanceof Administrative) ((Administrative) account).persist();
-        else if (account instanceof Employee) ((Employee) account).persist();
+        else ((Employee) account).persist();
     }
 
     /**

@@ -33,7 +33,6 @@ import java.util.Objects;
 public class LotLine extends BaseEntity {
 
     public LotLine() {
-        System.out.println("LotLine created");
     }
     /**
      * The quantity picked or processed for this specific line within the Lot.

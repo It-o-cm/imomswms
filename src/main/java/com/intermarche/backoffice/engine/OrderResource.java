@@ -292,7 +292,8 @@ public class OrderResource {
             LOGGER.error("Invalid JSON payload", e);
 
             // Emit explicit anomaly event in an independent transaction to guarantee persistence
-            Event.publishInNewTx(
+            // (never fatal: the store is unknown here, and Event.store is mandatory)
+            publishEventSafely(
                     "Format JSON Invalide Intercepté",
                     "Le payload reçu n'est pas un JSON valide (erreur de syntaxe, guillemets manquants, etc.). Cause technique: " + e.getMessage() + "\n\n--- PAYLOAD BRUT REÇU ---\n" + rawPayload,
                     Event.UrgencyLevel.HIGH,
@@ -353,7 +354,7 @@ public class OrderResource {
             LOGGER.warn("Schema validation failed: " + formattedErrors);
 
             // Emit Rejection Event in an independent transaction
-            Event.publishInNewTx(
+            publishEventSafely(
                     "Commande Rejetée (Schéma Invalide)",
                     "Le JSON est syntaxiquement correct mais ne respecte pas le schéma RetailOrder attendu.\n\nDétails des erreurs de validation:\n" + formattedErrors + "\n\n--- PAYLOAD BRUT REÇU ---\n" + rawPayload,
                     Event.UrgencyLevel.MEDIUM,
@@ -388,11 +389,12 @@ public class OrderResource {
         String storeCode = rootNode.path("orderHeader").path("store").path("code").asText();
 
         // 2. Validate mandatory fields
-        if (orderNumber == null || orderNumber.trim().isEmpty() || storeCode == null || storeCode.trim().isEmpty()) {
+        // (JsonNode.asText() never returns null: a missing node yields "")
+        if (orderNumber.trim().isEmpty() || storeCode.trim().isEmpty()) {
             LOGGER.warnf("Missing mandatory fields in payload: orderId=[%s], storeCode=[%s]", orderNumber, storeCode);
 
             // Emit Rejection Event in an independent transaction
-            Event.publishInNewTx(
+            publishEventSafely(
                     "Commande Rejetée (Données Manquantes)",
                     "Le schéma est valide, mais les champs métier obligatoires sont absents ou vides. " +
                             "Valeurs extraites -> orderId: '" + orderNumber + "', storeCode: '" + storeCode + "'.\n\n--- PAYLOAD BRUT REÇU ---\n" + rawPayload,
@@ -428,7 +430,7 @@ public class OrderResource {
             LOGGER.error("Failed to persist OrderRequest", e);
 
             // Emit Error Event in an INDEPENDENT transaction (current TX is rolling back)
-            Event.publishInNewTx(
+            publishEventSafely(
                     "Erreur Critique de Persistance",
                     "La commande était valide, mais une erreur technique est survenue lors de l'insertion en base de données. " +
                             "Message technique: " + e.getMessage() + "\n\n--- PAYLOAD BRUT REÇU ---\n" + rawPayload,
@@ -445,6 +447,29 @@ public class OrderResource {
     }
 
     /**
+     * Emits an anomaly event in an independent transaction without ever failing the request.
+     * <p>
+     * Event emission must never change the HTTP outcome: when the event cannot be persisted
+     * (e.g. the store is unknown while {@code Event.store} is mandatory), the error is logged
+     * and swallowed so the endpoint can still return its intended response.
+     *
+     * @param label            The event label.
+     * @param description      The event description.
+     * @param urgencyLevel     The event urgency level.
+     * @param store            The associated store (may be null).
+     * @param targetEntity     The entity instance triggering the event.
+     * @param targetEntityCode The functional business code of the entity triggering the event.
+     */
+    private void publishEventSafely(String label, String description, Event.UrgencyLevel urgencyLevel,
+                                    Store store, Object targetEntity, String targetEntityCode) {
+        try {
+            Event.publishInNewTx(label, description, urgencyLevel, store, targetEntity, targetEntityCode);
+        } catch (RuntimeException e) {
+            LOGGER.error("Failed to publish anomaly event '" + label + "'", e);
+        }
+    }
+
+    /**
      * Creates a fallback {@link OrderRequest} instance to be used as a target for {@link Event} creation
      * when the actual entity fails to validate or persist.
      * <p>
@@ -457,9 +482,11 @@ public class OrderResource {
      * @return A non-persisted OrderRequest with a dummy technical ID.
      */
     private OrderRequest createFallbackTarget(String orderNumber, String storeCode) {
+        // Event.targetEntityCode is @NotBlank: a blank business code must fall back to a placeholder
+        // (callers pass JsonNode.asText() results, which are never null)
         OrderRequest fallback = new OrderRequest(
-                orderNumber != null ? orderNumber : "INCONNU",
-                storeCode != null ? storeCode : "INCONNU",
+                orderNumber.isBlank() ? "INCONNU" : orderNumber,
+                storeCode.isBlank() ? "INCONNU" : storeCode,
                 ""
         );
         fallback.id = -1L; // Dummy ID to satisfy Event.targetEntityId @NotNull constraint

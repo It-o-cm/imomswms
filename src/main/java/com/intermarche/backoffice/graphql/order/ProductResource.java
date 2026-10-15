@@ -164,10 +164,10 @@ public class ProductResource implements GraphQLTrait {
             product.brand = input.brand;
             product.referenceWeight = input.referenceWeight;
             product.referenceVolume = input.referenceVolume;
-            // Convert String enum to Java Enum safely
-            product.productType = input.productType != null ? ProductType.valueOf(input.productType) : null;
-            // Mappage de la TemperatureZone
-            product.temperatureZone = input.temperatureZone != null ? TemperatureZone.valueOf(input.temperatureZone) : null;
+            // Convert String enum to Java Enum safely (default UNIT si non fourni)
+            product.productType = input.productType != null ? ProductType.valueOf(input.productType) : ProductType.UNIT;
+            // Mappage de la TemperatureZone (default AMBIENT si non fourni)
+            product.temperatureZone = input.temperatureZone != null ? TemperatureZone.valueOf(input.temperatureZone) : TemperatureZone.AMBIENT;
 
             product.unitName = input.unitName;
             // Default 'active' to true if not specified
@@ -296,7 +296,7 @@ public class ProductResource implements GraphQLTrait {
             return "ProductRecord [ean=" + ean + ", name=" + name + ", description=" + description +
                     ", brand=" + brand + ", referenceWeight=" + referenceWeight + ", referenceVolume=" + referenceVolume +
                     ", productType=" + productType + ", temperatureZone=" + temperatureZone +
-                    ", unitName=" + unitName + ", active=" + active;
+                    ", unitName=" + unitName + ", active=" + active + "]";
         }
 
     }

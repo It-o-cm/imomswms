@@ -50,7 +50,7 @@ public class AisleCsvResource extends ImporterCsvResource {
      * Fetches existing Aisles and referenced Buildings.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         Map<String, Object> context = new HashMap<>();
 
         // 1. Fetch existing Aisles by Code
@@ -80,7 +80,7 @@ public class AisleCsvResource extends ImporterCsvResource {
      * Processes a single line to create or update an Aisle.
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         String[] parts = data.parts;
         String code = data.code; // Col 0
         String buildingCode = safeGet(parts, 1); // Col 1
@@ -94,9 +94,14 @@ public class AisleCsvResource extends ImporterCsvResource {
 
         // 2. Resolve Aisle
         Aisle aisle = (Aisle) entityMap.get(code);
-        boolean isUpdate = (aisle != null);
+        if (aisle != null) {
+            // Re-fetch the managed entity: the cached instance was loaded outside the
+            // transaction (detached), so mutating it would be lost at commit. A null
+            // result means the cached entity was a phantom from a rolled-back chunk.
+            aisle = Aisle.findById(aisle.id);
+        }
 
-        if (!isUpdate) {
+        if (aisle == null) {
             // Creation
             aisle = new Aisle();
             aisle.code = code;
@@ -107,7 +112,7 @@ public class AisleCsvResource extends ImporterCsvResource {
             counters[0]++; // Created
         } else {
             // Update Check
-            int incomingChecksum = computeChecksum(parts, code, building.id);
+            int incomingChecksum = computeChecksum(parts, code);
             if (aisle.checksum == incomingChecksum) {
                 return; // No change needed
             }
@@ -121,9 +126,37 @@ public class AisleCsvResource extends ImporterCsvResource {
      * Finds a single Aisle entity for fallback processing.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         // Assuming Code is unique globally as per entity definition
         return Aisle.find("code", data.code).firstResult();
+    }
+
+    /**
+     * Prepares the full context for a single line in 1-by-1 fallback mode.
+     * <p>
+     * The generic implementation only puts the found entity under the line code,
+     * but the aisle logic also needs the referenced Building. This override rebuilds
+     * that context with a fresh lookup so that fallback processing behaves
+     * exactly like chunk processing.
+     *
+     * @param data The parsed CSV line data.
+     * @return The context map for this single line.
+     */
+    @Override
+    public Map<String, Object> prepareContextForLine(LineData data) {
+        Map<String, Object> context = new HashMap<>();
+        Object aisle = findEntityForLine(data);
+        if (aisle != null) {
+            context.put(data.code, aisle);
+        }
+        String buildingCode = safeGet(data.parts, 1);
+        if (buildingCode != null) {
+            Building building = Building.find("buildingCode", buildingCode).firstResult();
+            if (building != null) {
+                context.put("BUILDING_" + buildingCode, building);
+            }
+        }
+        return context;
     }
 
     // --------------------------------------------------
@@ -138,26 +171,30 @@ public class AisleCsvResource extends ImporterCsvResource {
         aisle.lengthMeters = safeParseDouble(parts, 2);
 
         // Col 3: AisleType
-        aisle.aisleType = safeGet(parts, 3);
+        aisle.aisleType = safeGetOrNull(parts, 3);
 
         // Col 4: ConnectedToHead
-        aisle.connectedToHead = safeGet(parts, 4);
+        aisle.connectedToHead = safeGetOrNull(parts, 4);
 
         // Col 5: ConnectedToTail
-        aisle.connectedToTail = safeGet(parts, 5);
+        aisle.connectedToTail = safeGetOrNull(parts, 5);
     }
 
     /**
      * Computes checksum for validation.
+     * <p>
+     * Mirrors {@link Aisle#getChecksum()}: the building is represented by its
+     * natural key (buildingCode, Column 1), never by the surrogate id — the
+     * resolved Building may be a lazy Hibernate proxy whose id field reads null.
      */
-     int computeChecksum(String[] parts, String code, Long buildingId) {
+     int computeChecksum(String[] parts, String code) {
         return Objects.hash(
                 code,                       // code
                 safeParseDouble(parts, 2),  // lengthMeters
-                safeGet(parts, 3),          // aisleType
-                safeGet(parts, 4),          // connectedToHead
-                safeGet(parts, 5),          // connectedToTail
-                buildingId                  // building.id
+                safeGetOrNull(parts, 3),    // aisleType
+                safeGetOrNull(parts, 4),    // connectedToHead
+                safeGetOrNull(parts, 5),    // connectedToTail
+                safeGetOrNull(parts, 1)     // buildingCode
         );
     }
 

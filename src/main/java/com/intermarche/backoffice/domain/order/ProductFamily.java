@@ -245,6 +245,9 @@ public class ProductFamily extends BaseEntity {
      * @return A Set of trimmed flag strings.
      */
     private Set<String> getFlagsSet() {
+        if (this.flags == null || this.flags.isBlank()) {
+            return new HashSet<>();
+        }
         return Arrays.stream(this.flags.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
@@ -260,9 +263,20 @@ public class ProductFamily extends BaseEntity {
         this.flags = String.join(",", flagSet);
     }
 
+    /**
+     * Calculates a checksum representing the state of the family.
+     * <p>
+     * Covers exactly the fields imported by the ProductFamily CSV: code,
+     * description, flags and the linked product EANs / sub-family codes.
+     * Links are hashed as sorted sets of codes (not entity sets) so that the
+     * value is reproducible from the CSV data by the importer.
+     *
+     * @return An integer hash representing the state.
+     */
     @Override
     public int getChecksum() {
-        // Excluding children from checksum for performance and stability.
-        return Objects.hash(code, description, flags);
+        Set<String> productEans = products.stream().map(p -> p.ean).collect(Collectors.toCollection(TreeSet::new));
+        Set<String> familyCodes = productFamilies.stream().map(f -> f.code).collect(Collectors.toCollection(TreeSet::new));
+        return Objects.hash(code, description, flags, productEans, familyCodes);
     }
 }

@@ -122,13 +122,16 @@ public class Aisle extends BaseEntity {
 
     @Override
     public int getChecksum() {
+        // Uses the building's natural key (buildingCode), not the surrogate id:
+        // building is a lazy @ManyToOne, and reading .id via field access on a
+        // Hibernate proxy returns null, which would corrupt the checksum.
         return Objects.hash(
                 code,
                 lengthMeters,
                 aisleType,
                 connectedToHead,
                 connectedToTail,
-                building != null ? building.id : null
+                building != null ? building.buildingCode : null
         );
     }
 }

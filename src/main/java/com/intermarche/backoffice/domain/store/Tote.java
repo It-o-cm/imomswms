@@ -144,7 +144,10 @@ public class Tote extends BaseEntity {
      */
     @Override
     public int getChecksum() {
-        return Objects.hash(code, volume, toteType, store.id);
+        // Uses the store's natural key (code), not the surrogate id: store is a
+        // lazy @ManyToOne and reading .id via field access on a Hibernate proxy
+        // returns null, which would corrupt the checksum.
+        return Objects.hash(code, volume, toteType, store.code);
     }
 
     // --------------------------------------------------

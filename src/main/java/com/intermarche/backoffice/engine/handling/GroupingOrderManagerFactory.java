@@ -242,7 +242,7 @@ public class GroupingOrderManagerFactory extends BaseOrderHandlerBuilderFactory 
             EntityManager em = Panache.getEntityManager();
             return em.createQuery(jpql, Lot.class)
                     .setParameter("store", store)
-                    .setParameter("cutoffDate", DateTimeProvider.now())
+                    .setParameter("cutoffDate", cutoffDate)
                     .getResultList();
         }
 
@@ -357,10 +357,13 @@ public class GroupingOrderManagerFactory extends BaseOrderHandlerBuilderFactory 
 
         /**
          * Generates a hash code based on the fields used for grouping.
+         * <p>
+         * Null-safe: the buffer is optional in the configuration, so a null
+         * buffer must not break the hash code (groupingBy relies on it).
          */
         @Override
         public int hashCode() {
-            return Objects.hash(customerId, buffer.id, slotStart);
+            return Objects.hash(customerId, buffer != null ? buffer.id : null, slotStart);
         }
 
         /**
@@ -370,7 +373,7 @@ public class GroupingOrderManagerFactory extends BaseOrderHandlerBuilderFactory 
         public String toString() {
             return "GroupKey{" +
                     "customerId=" + customerId +
-                    ", buildingId=" + buffer.id +
+                    ", buildingId=" + (buffer != null ? buffer.id : null) +
                     ", slotStart=" + slotStart +
                     '}';
         }

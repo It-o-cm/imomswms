@@ -72,9 +72,10 @@ public class OrderRequestResource implements GraphQLTrait {
         LOGGER.info("Entering method allOrderRequests");
         Store storeContext = getStoreContext();
         if (storeContext != null) {
-            String jpql = buildOptimizedQuery(context, "o.store.id = ?1");
-            LOGGER.info("Fetching OrderRequest for Store ID: " + storeContext.id);
-            return OrderRequest.list(jpql, storeContext.id);
+            // OrderRequest has no Store relation: the scope filter uses the store code
+            String jpql = buildOptimizedQuery(context, "o.storeCode = ?1");
+            LOGGER.info("Fetching OrderRequest for Store Code: " + storeContext.code);
+            return OrderRequest.list(jpql, storeContext.code);
         } else {
             String jpql = buildOptimizedQuery(context, null);
             LOGGER.info("Fetching ALL OrderRequest (Global Access)");

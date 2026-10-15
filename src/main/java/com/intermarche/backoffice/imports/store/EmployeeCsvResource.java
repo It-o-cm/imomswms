@@ -83,7 +83,7 @@ public class EmployeeCsvResource extends ImporterCsvResource {
      *         {@link Employee} entities keyed by BadgeId and {@link Store} entities keyed by "STORE_" + StoreCode.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         Map<String, Object> context = new HashMap<>();
 
         // 1. Fetch existing Employees by BadgeId to support Updates
@@ -128,7 +128,7 @@ public class EmployeeCsvResource extends ImporterCsvResource {
      * @throws IllegalArgumentException if the referenced Store does not exist.
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         String[] parts = data.parts;
         String badgeId = data.code;
         String storeCode = safeGet(parts, 1);
@@ -142,9 +142,14 @@ public class EmployeeCsvResource extends ImporterCsvResource {
 
         // 2. Resolve Employee
         Employee employee = (Employee) entityMap.get(badgeId);
-        boolean isUpdate = (employee != null);
+        if (employee != null) {
+            // Re-fetch the managed entity: the cached instance was loaded outside the
+            // transaction (detached), so mutating it would be lost at commit. A null
+            // result means the cached entity was a phantom from a rolled-back chunk.
+            employee = Employee.findById(employee.id);
+        }
 
-        if (!isUpdate) {
+        if (employee == null) {
             // Creation Logic
             employee = new Employee();
             employee.badgeId = badgeId;
@@ -156,7 +161,7 @@ public class EmployeeCsvResource extends ImporterCsvResource {
         } else {
             // Update Logic
             // Calculate checksum of incoming data to detect actual changes
-            int incomingChecksum = computeChecksum(parts, badgeId, store.id);
+            int incomingChecksum = computeChecksum(parts, badgeId);
 
             // Only update if the data has actually changed
             if (employee.checksum == incomingChecksum) {
@@ -179,8 +184,36 @@ public class EmployeeCsvResource extends ImporterCsvResource {
      * @return The {@link Employee} entity or null if not found.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         return Employee.findByBadgeId(data.code);
+    }
+
+    /**
+     * Prepares the full context for a single line in 1-by-1 fallback mode.
+     * <p>
+     * The generic implementation only puts the found entity under the line code,
+     * but the employee logic also needs the referenced Store. This override rebuilds
+     * that context with a fresh lookup so that fallback processing behaves
+     * exactly like chunk processing.
+     *
+     * @param data The parsed CSV line data.
+     * @return The context map for this single line.
+     */
+    @Override
+    public Map<String, Object> prepareContextForLine(LineData data) {
+        Map<String, Object> context = new HashMap<>();
+        Object employee = findEntityForLine(data);
+        if (employee != null) {
+            context.put(data.code, employee);
+        }
+        String storeCode = safeGet(data.parts, 1);
+        if (storeCode != null) {
+            Store store = Store.findByCode(storeCode);
+            if (store != null) {
+                context.put("STORE_" + storeCode, store);
+            }
+        }
+        return context;
     }
 
     // --------------------------------------------------
@@ -208,7 +241,7 @@ public class EmployeeCsvResource extends ImporterCsvResource {
             try {
                 employee.role = Employee.EmployeeRole.valueOf(roleStr.toUpperCase());
             } catch (IllegalArgumentException e) {
-                LOGGER.warn("Unknown Role '" + roleStr + "' for employee " + employee.badgeId);
+                throw new IllegalArgumentException("Unknown Role '" + roleStr + "' for employee " + employee.badgeId);
             }
         }
 
@@ -238,10 +271,9 @@ public class EmployeeCsvResource extends ImporterCsvResource {
      *
      * @param parts    The CSV data array.
      * @param badgeId  The employee's Badge ID.
-     * @param storeId  The ID of the associated store.
      * @return An integer hash code representing the data state.
      */
-    private int computeChecksum(String[] parts, String badgeId, Long storeId) {
+    private int computeChecksum(String[] parts, String badgeId) {
         String roleStr = safeGet(parts, 5);
         Object roleObj = roleStr;
         try {
@@ -257,7 +289,7 @@ public class EmployeeCsvResource extends ImporterCsvResource {
                 safeGet(parts, 3), // lastName
                 safeGet(parts, 4), // email
                 roleObj,           // role
-                storeId,           // store.id
+                safeGetOrNull(parts, 1), // storeCode (natural key, mirrors Employee.getChecksum())
                 badgeId,           // badgeId
                 safeParseBoolean(parts, 7) // active
         );

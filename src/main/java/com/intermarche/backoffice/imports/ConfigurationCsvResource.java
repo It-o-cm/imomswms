@@ -17,6 +17,7 @@ import org.jboss.logging.Logger;
 
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * REST Endpoint for bulk importing or updating Configurations from a CSV file stream.
@@ -58,7 +59,7 @@ public class ConfigurationCsvResource extends ImporterCsvResource {
      * @param errors      List to collect definitive error messages.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         if (parsedLines.isEmpty()) return new HashMap<>();
 
         // Fetch existing configurations by name
@@ -78,7 +79,7 @@ public class ConfigurationCsvResource extends ImporterCsvResource {
      * @param counters   An array of size 2 to hold [createdCount, updatedCount].
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         String[] parts = data.parts;
 
         // FORMAT ORDER:
@@ -96,6 +97,26 @@ public class ConfigurationCsvResource extends ImporterCsvResource {
         String storeCodes = safeGet(parts, 4);
         String groupCodes = safeGet(parts, 5);
 
+        // Resolve Stores (unknown codes are skipped with a warning)
+        List<Store> resolvedStores = new ArrayList<>();
+        if (storeCodes != null && !storeCodes.isBlank()) {
+            for (String code : storeCodes.split(",")) {
+                Store s = Store.findByCode(code.trim());
+                if (s != null) resolvedStores.add(s);
+                else LOGGER.warn("Store code not found: " + code);
+            }
+        }
+
+        // Resolve Groups (unknown codes are skipped with a warning)
+        List<StoreGroup> resolvedGroups = new ArrayList<>();
+        if (groupCodes != null && !groupCodes.isBlank()) {
+            for (String code : groupCodes.split(",")) {
+                StoreGroup g = StoreGroup.findByCode(code.trim());
+                if (g != null) resolvedGroups.add(g);
+                else LOGGER.warn("Group code not found: " + code);
+            }
+        }
+
         Configuration config = (Configuration) entityMap.get(configName);
 
         if (config == null) {
@@ -103,6 +124,10 @@ public class ConfigurationCsvResource extends ImporterCsvResource {
             config.name = configName;
             counters[0]++; // Created
         } else {
+            int incomingChecksum = computeIncomingChecksum(configName, configType, specification, priority, resolvedStores, resolvedGroups);
+            if (config.checksum == incomingChecksum) {
+                return; // No change: skip the line entirely
+            }
             // Clear existing links for update
             config.stores.clear();
             config.storeGroups.clear();
@@ -114,24 +139,37 @@ public class ConfigurationCsvResource extends ImporterCsvResource {
         config.specification = specification;
 
         // Link Stores
-        if (storeCodes != null && !storeCodes.isBlank()) {
-            for (String code : storeCodes.split(",")) {
-                Store s = Store.findByCode(code.trim());
-                if (s != null) config.stores.add(s);
-                else LOGGER.warn("Store code not found: " + code);
-            }
+        for (Store s : resolvedStores) {
+            config.stores.add(s);
         }
 
         // Link Groups
-        if (groupCodes != null && !groupCodes.isBlank()) {
-            for (String code : groupCodes.split(",")) {
-                StoreGroup g = StoreGroup.findByCode(code.trim());
-                if (g != null) config.storeGroups.add(g);
-                else LOGGER.warn("Group code not found: " + code);
-            }
+        for (StoreGroup g : resolvedGroups) {
+            config.storeGroups.add(g);
         }
 
         Panache.getEntityManager().persist(config);
+    }
+
+    /**
+     * Computes the checksum of the incoming CSV data.
+     * <p>
+     * Replicates {@link Configuration#getChecksum()} logic: the linked stores and
+     * groups are hashed as sorted sets of their codes, so the value matches the
+     * entity checksum computed from the resolved links.
+     *
+     * @param name         The configuration name.
+     * @param type         The configuration type.
+     * @param specification The specification JSON string.
+     * @param priority     The priority.
+     * @param stores       The resolved stores to link.
+     * @param groups       The resolved store groups to link.
+     * @return The integer hash of the incoming data.
+     */
+    private static int computeIncomingChecksum(String name, String type, String specification, int priority, List<Store> stores, List<StoreGroup> groups) {
+        Set<String> storeCodes = stores.stream().map(s -> s.code).collect(Collectors.toCollection(TreeSet::new));
+        Set<String> groupCodes = groups.stream().map(g -> g.code).collect(Collectors.toCollection(TreeSet::new));
+        return Objects.hash(name, type, specification, priority, storeCodes, groupCodes);
     }
 
     /**
@@ -141,7 +179,7 @@ public class ConfigurationCsvResource extends ImporterCsvResource {
      * @return The Configuration entity or null if not found.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         String configName = safeGet(data.parts, 0); // Name is at index 0
         return Configuration.find("name", configName).firstResult();
     }

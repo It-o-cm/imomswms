@@ -174,14 +174,15 @@ public class ToteResource implements GraphQLTrait {
                 tote.toteType = Tote.ToteType.valueOf(input.toteType.toUpperCase());
             }
 
-            // Relationship mapping
-            if (input.storeId != null) {
-                Store store = Store.findById(input.storeId);
-                if (store == null) {
-                    throw new NoSuchElementException("Store with id " + input.storeId + " not found");
-                }
-                tote.store = store;
+            // Relationship mapping (mandatory: the entity requires a store)
+            if (input.storeId == null) {
+                throw new IllegalArgumentException("Store ID is mandatory to create a tote.");
             }
+            Store store = Store.findById(input.storeId);
+            if (store == null) {
+                throw new NoSuchElementException("Store with id " + input.storeId + " not found");
+            }
+            tote.store = store;
 
             tote.persist();
 

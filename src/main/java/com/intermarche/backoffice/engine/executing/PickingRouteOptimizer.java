@@ -83,13 +83,10 @@ public class PickingRouteOptimizer {
                 }
             }
 
-            if (bestCandidate != null) {
-                route.add(bestPosition, bestCandidate);
-                remainingAisles.remove(bestCandidate);
-            } else {
-                // Fallback
-                route.add(remainingAisles.remove(0));
-            }
+            // Distances are always finite (disconnected nodes yield 0.0), so the
+            // cheapest insertion always exists and bestCandidate is never null.
+            route.add(bestPosition, bestCandidate);
+            remainingAisles.remove(bestCandidate);
         }
         return route;
     }
@@ -163,8 +160,9 @@ public class PickingRouteOptimizer {
                 nearest = candidate;
             }
         }
-        // Fallback if calculation failed (e.g. no connectivity)
-        return (nearest != null) ? nearest : candidates.get(0);
+        // The first candidate always has a finite distance (< MAX_VALUE), so nearest is
+        // always set for a non-empty candidate list (the only caller guarantees this).
+        return nearest;
     }
 
     /**
@@ -283,7 +281,8 @@ public class PickingRouteOptimizer {
     private double calculateEdgeCost(String fromCode, String toCode) {
         Aisle from = aisleMap.get(fromCode);
         Aisle to = aisleMap.get(toCode);
-        double lenFrom = (from != null && from.lengthMeters != null) ? from.lengthMeters : 0.0;
+        // fromCode always has neighbors (it was polled from the queue), so from is never null
+        double lenFrom = (from.lengthMeters != null) ? from.lengthMeters : 0.0;
         double lenTo = (to != null && to.lengthMeters != null) ? to.lengthMeters : 0.0;
         return (lenFrom / 2.0) + (lenTo / 2.0);
     }

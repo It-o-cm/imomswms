@@ -66,7 +66,7 @@ public class StoreActivityPollingConsumer {
      * Reserves batches of handles using {@link #reserveStores()} and processes them
      * sequentially until no more handles are available in the current batch.
      */
-    void pollAndProcessActivities() {
+    public void pollAndProcessActivities() {
         try {
             List<Long> reservedIds;
             do {
@@ -96,6 +96,7 @@ public class StoreActivityPollingConsumer {
         return WMSStoreHandle.reserveBatch(
                 LEASE_DURATION_SECONDS,
                 BATCH_SIZE,
+                "",
                 "ORDER BY reservation_consideration ASC"
         );
     }
@@ -190,7 +191,7 @@ public class StoreActivityPollingConsumer {
      * @param limit The maximum number of IDs to fetch.
      * @return A list of Store IDs.
      */
-    List<Long> findStoreIdsWithoutHandle(int limit) {
+    public List<Long> findStoreIdsWithoutHandle(int limit) {
         String sql = """
                 SELECT s.id
                 FROM stores s
@@ -212,7 +213,7 @@ public class StoreActivityPollingConsumer {
      * @param storeId The ID of the store.
      * @return true if creation succeeded, false otherwise.
      */
-    boolean createHandleForStore(Long storeId) {
+    public boolean createHandleForStore(Long storeId) {
         try {
             // Get a reference to the store (efficient, doesn't load all data)
             Store store = em.getReference(Store.class, storeId);

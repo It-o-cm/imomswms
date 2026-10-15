@@ -131,7 +131,6 @@ public class Store extends BaseEntity {
     public StoreBuilding getStoreBuilding() {
         StoreBuilding found = null;
         for (Building building : buildings) {
-            System.out.println("Building: " + building.getClass().getSimpleName());
             if (building instanceof StoreBuilding) {
                 if (found != null) {
                     throw new IllegalStateException(
@@ -166,12 +165,16 @@ public class Store extends BaseEntity {
 
     /**
      * Calculates a checksum based on the store's key attributes.
+     * <p>
+     * Covers exactly the fields imported by the Store CSV: code, name and address.
+     * The buildings collection is managed by the Building CSV import and is
+     * deliberately excluded.
      *
      * @return Checksum integer value.
      */
     @Override
     public int getChecksum() {
         int legalAddressChecksum = (address == null) ? 0 : address.getChecksum();
-        return Objects.hash(code, name, legalAddressChecksum, buildings);
+        return Objects.hash(code, name, legalAddressChecksum);
     }
 }

@@ -71,7 +71,7 @@ public class ProductCsvResource extends ImporterCsvResource {
      * @param errors      List to collect definitive error messages.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetEans, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetEans, int[] counters, List<String> errors) {
         if (parsedLines.isEmpty()) return new HashMap<>();
         // SPECIFIC: Bulk Fetch existing products
         Map<String, Object> contextMap = new HashMap<>();
@@ -95,7 +95,7 @@ public class ProductCsvResource extends ImporterCsvResource {
      * @param counters   An array of size 2 to hold [createdCount, updatedCount].
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         // Retrieve product from map (cast from Object)
         Product product = (Product) entityMap.get(data.code);
         if (product == null) {
@@ -125,7 +125,7 @@ public class ProductCsvResource extends ImporterCsvResource {
      * @return The Product entity or null if not found.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         return Product.find("ean", data.code).firstResult();
     }
 
@@ -184,7 +184,7 @@ public class ProductCsvResource extends ImporterCsvResource {
      * @param index The index to parse.
      * @return The ProductType value or null if parsing fails or index is out of bounds.
      */
-    ProductType safeParseProductType(String[] parts, int index) {
+    public ProductType safeParseProductType(String[] parts, int index) {
         if (index >= parts.length) return null;
         String val = parts[index].trim();
         if (val.isEmpty()) return null;
@@ -204,7 +204,7 @@ public class ProductCsvResource extends ImporterCsvResource {
      * @param index The index to parse.
      * @return The TemperatureZone value or null if parsing fails or index is out of bounds.
      */
-    TemperatureZone safeParseTemperatureZone(String[] parts, int index) {
+    public TemperatureZone safeParseTemperatureZone(String[] parts, int index) {
         if (index >= parts.length) return null;
         String val = parts[index].trim();
         if (val.isEmpty()) return null;

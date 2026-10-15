@@ -144,11 +144,16 @@ public class LoadedTote extends BaseEntity {
     public static LoadedTote useAnEmptyTote(Tote physicalTote) {
         // Verify that the physical Tote is not currently IN_USE by another active LoadedTote
         LoadedTote existing = find("tote = ?1 and status = ?2", physicalTote, Status.IN_USE).firstResult();
+        if (existing != null) {
+            throw new IllegalStateException(
+                    "Tote " + physicalTote.code + " is already in use by LoadedTote #" + existing.id);
+        }
         // The Tote is available; proceed with creating a new usage session
+        // Note: persist() is intentionally NOT called here. The caller must set
+        // the mandatory storageType field and then persist (or rely on cascade).
         LoadedTote newLoad = new LoadedTote();
         newLoad.tote = physicalTote;
         newLoad.status = Status.IN_USE;
-        newLoad.persist();
         return newLoad;
     }
 

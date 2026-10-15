@@ -21,7 +21,9 @@ public interface CollectingOrderGraphQLTrait extends HandlingOrderGraphQLTrait {
             if (wantsFulfillment) {
                 query.append("left join fetch l.fulfillment fl ");
                 if (wantsOrder) {
-                    query.append("left join fetch l.order o ");
+                    // The order is reached through the fulfillment (Lot has no direct order link),
+                    // and the alias must not clash with the root alias "o".
+                    query.append("left join fetch fl.order fo ");
                 }
             }
         }

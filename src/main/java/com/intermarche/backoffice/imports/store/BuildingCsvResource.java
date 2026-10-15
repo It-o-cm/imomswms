@@ -54,7 +54,7 @@ public class BuildingCsvResource extends ImporterCsvResource {
      * @return A map containing cached entities.
      */
     @Override
-    protected Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
+    public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
         Map<String, Object> context = new HashMap<>();
         List<Building> buildings = Building.list("buildingCode IN ?1", targetCodes);
         cacheBuildings(buildings, context);
@@ -72,7 +72,7 @@ public class BuildingCsvResource extends ImporterCsvResource {
      * @param counters   The counters array.
      */
     @Override
-    protected void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
+    public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
         BuildingContext ctx = resolveBuildingContext(data, entityMap);
         Building building = resolveOrCreateBuilding(ctx, entityMap, counters);
         if (building != null) {
@@ -87,8 +87,36 @@ public class BuildingCsvResource extends ImporterCsvResource {
      * @return The Building entity or null.
      */
     @Override
-    protected Object findEntityForLine(LineData data) {
+    public Object findEntityForLine(LineData data) {
         return Building.find("buildingCode", data.code).firstResult();
+    }
+
+    /**
+     * Prepares the full context for a single line in 1-by-1 fallback mode.
+     * <p>
+     * The generic implementation only puts the found entity under the line code,
+     * but the building logic also needs the referenced Store. This override rebuilds
+     * that context with a fresh lookup so that fallback processing behaves
+     * exactly like chunk processing.
+     *
+     * @param data The parsed CSV line data.
+     * @return The context map for this single line.
+     */
+    @Override
+    public Map<String, Object> prepareContextForLine(LineData data) {
+        Map<String, Object> context = new HashMap<>();
+        Object building = findEntityForLine(data);
+        if (building != null) {
+            context.put(data.code, building);
+        }
+        String storeCode = safeGet(data.parts, 1);
+        if (storeCode != null) {
+            Store store = Store.findByCode(storeCode);
+            if (store != null) {
+                context.put("STORE_" + storeCode, store);
+            }
+        }
+        return context;
     }
 
     // --------------------------------------------------
@@ -110,7 +138,7 @@ public class BuildingCsvResource extends ImporterCsvResource {
         Store store = (Store) entityMap.get("STORE_" + storeCode);
         if (store == null) {
             LOGGER.warn("Store with code " + storeCode + " not found for building " + buildingCode);
-            throw new IllegalArgumentException("Store not found for building " + buildingCode);
+            throw new IllegalArgumentException("Store with code '" + storeCode + "' not found for building " + buildingCode);
         }
         LOGGER.debugf("Resolving building context for %s, store: %s, type: %s", buildingCode, storeCode, typeStr);
         return new BuildingContext(buildingCode, storeCode, typeStr, store, data);
@@ -126,6 +154,12 @@ public class BuildingCsvResource extends ImporterCsvResource {
      */
     private Building resolveOrCreateBuilding(BuildingContext ctx, Map<String, Object> entityMap, int[] counters) {
         Building building = (Building) entityMap.get(ctx.buildingCode);
+        if (building != null) {
+            // Re-fetch the managed entity: the cached instance was loaded outside the
+            // transaction (detached), so mutating it would be lost at commit. A null
+            // result means the cached entity was a phantom from a rolled-back chunk.
+            building = Building.findById(building.id);
+        }
         if (building == null) {
             building = handleNewBuilding(ctx, entityMap);
             counters[0]++;
@@ -146,7 +180,6 @@ public class BuildingCsvResource extends ImporterCsvResource {
      */
     private Building handleNewBuilding(BuildingContext ctx, Map<String, Object> entityMap) {
         Building building = createBuildingInstance(ctx.typeStr);
-        if (building == null) return null;
 
         building.buildingCode = ctx.buildingCode;
         Store store = Store.findById(ctx.store.id);
@@ -267,18 +300,15 @@ public class BuildingCsvResource extends ImporterCsvResource {
         String[] parts = data.parts;
         int addressHash = Objects.hash(safeGet(parts, 3), safeGet(parts, 4), safeGet(parts, 5), safeGet(parts, 6), safeGet(parts, 7));
         int gpsHash = Objects.hash(safeParseDouble(parts, 8), safeParseDouble(parts, 9));
-        return Objects.hash(safeGet(parts, 1), data.code, addressHash, gpsHash);
+        // Matches Building.getChecksum(): buildingCode + address + GPS.
+        // The store code (col 1) is only used to resolve the parent store at creation
+        // and is not an entity field, so it is excluded from the checksum.
+        return Objects.hash(data.code, addressHash, gpsHash);
     }
 
     /**
      * Inner record for context.
      */
     private record BuildingContext(String buildingCode, String storeCode, String typeStr, Store store, LineData data) {
-        /**
-         * Checks if the store is missing.
-         *
-         * @return True if store is null.
-         */
-        boolean isStoreMissing() { return store == null; }
     }
 }
