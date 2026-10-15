@@ -217,6 +217,12 @@ public class LotTest {
         }
     }
 
+    @Test
+    void findCommonSpecification_shouldThrowNPE_whenLotIsNull() {
+        // lot.lines est déréférencé sans garde
+        assertThrows(NullPointerException.class, () -> Lot.findCommonSpecification(null));
+    }
+
     // --------------------------------------------------
     // addLine Tests
     // --------------------------------------------------

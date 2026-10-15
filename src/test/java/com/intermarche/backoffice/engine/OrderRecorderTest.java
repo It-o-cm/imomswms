@@ -592,6 +592,13 @@ class OrderRecorderTest {
             """;
 
     @Test
+    void persistOrderAndFulfillmentFromJson_nullRoot_throwsIllegalArgument() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> recorder.persistOrderAndFulfillmentFromJson(null));
+        assertTrue(ex.getMessage().contains("JSON payload cannot be null"));
+    }
+
+    @Test
     void persistOrderAndFulfillmentFromJson_newCustomer_persistsCustomerOrderAndFulfillment() throws Exception {
         Store store = new Store();
         store.code = "S001";

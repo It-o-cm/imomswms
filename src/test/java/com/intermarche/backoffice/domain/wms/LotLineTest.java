@@ -37,6 +37,15 @@ public class LotLineTest {
     }
 
     @Test
+    void setFulfillmentLine_shouldThrowIllegalArgument_whenNull() {
+        LotLine line = new LotLine();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> line.setFulfillmentLine(null));
+        assertTrue(ex.getMessage().contains("FulfillmentLine cannot be null"));
+    }
+
+    @Test
     void setFulfillmentLine_shouldCopyNullLocation() {
         LotLine line = new LotLine();
         FulfillmentLine fline = new FulfillmentLine();

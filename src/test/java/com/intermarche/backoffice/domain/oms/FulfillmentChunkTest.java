@@ -65,6 +65,16 @@ class FulfillmentChunkTest {
     }
 
     // --------------------------------------------------
+    // findCommonSpecification
+    // --------------------------------------------------
+
+    @Test
+    void findCommonSpecification_nullChunk_throwsNPE() {
+        // chunk.lines est déréférencé sans garde
+        assertThrows(NullPointerException.class, () -> FulfillmentChunk.findCommonSpecification(null));
+    }
+
+    // --------------------------------------------------
     // getChecksum
     // --------------------------------------------------
 

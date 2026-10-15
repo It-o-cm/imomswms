@@ -148,6 +148,19 @@ class OrderResourceTest {
     }
 
     @Test
+    void submitOrder_nullPayload_returns400AndPublishesAnomalyEvent() {
+        OrderResource resource = newResourceWithRealSchema();
+
+        Response response = resource.submitOrder(null);
+
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertTrue(response.getEntity().toString().contains("Malformed JSON payload"));
+        eventMock.verify(() -> Event.publishInNewTx(
+                eq("Format JSON Invalide Intercepté"), anyString(), eq(Event.UrgencyLevel.HIGH),
+                isNull(), any(OrderRequest.class), eq("JSON_INVALID")));
+    }
+
+    @Test
     void submitOrder_eventPublicationFailure_stillReturns400() {
         eventMock.when(() -> Event.publishInNewTx(any(), any(), any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("event store down"));

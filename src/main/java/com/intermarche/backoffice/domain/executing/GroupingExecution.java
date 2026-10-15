@@ -74,10 +74,13 @@ public class GroupingExecution extends HandlingExecution implements GroupingOper
      * buffer assignment to the target destination defined in the GroupingOrder.
      *
      * @param physicalTote The physical Tote to move.
-     * @throws IllegalArgumentException if the Tote is not found or not active.
+     * @throws IllegalArgumentException if the Tote is null, not found or not active.
      */
     @Override
     public void moveToteToDestination(Tote physicalTote) {
+        if (physicalTote == null) {
+            throw new IllegalArgumentException("Physical Tote cannot be null.");
+        }
         if (this.handlingOrder == null || !(this.handlingOrder instanceof GroupingOrder)) {
             throw new IllegalStateException("No GroupingOrder associated with this execution.");
         }

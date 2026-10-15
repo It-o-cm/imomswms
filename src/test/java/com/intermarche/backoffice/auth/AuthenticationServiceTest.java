@@ -149,6 +149,20 @@ class AuthenticationServiceTest {
     }
 
     @Test
+    void authenticate_nullUsername_throwsSecurityException() {
+        SecurityException exception = assertThrows(SecurityException.class,
+                () -> service.authenticate(null, "1234"));
+        assertEquals("Invalid credentials", exception.getMessage());
+    }
+
+    @Test
+    void authenticate_nullPassword_throwsSecurityException() {
+        SecurityException exception = assertThrows(SecurityException.class,
+                () -> service.authenticate("AS10", null));
+        assertEquals("Invalid credentials", exception.getMessage());
+    }
+
+    @Test
     void authenticate_unknownUser_throwsSecurityException() {
         AuthenticationService spyService = spy(service);
         doReturn(null).when(spyService).findAccountByUsername("GHOST");
@@ -401,6 +415,13 @@ class AuthenticationServiceTest {
     // --------------------------------------------------
     // resetPassword (dev) — success and error paths
     // --------------------------------------------------
+
+    @Test
+    void resetPassword_nullNewPassword_throwsIllegalArgumentException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.resetPassword("any-token", null));
+        assertEquals("New password cannot be null", exception.getMessage());
+    }
 
     @Test
     void resetPassword_devProfile_validToken_returnsNewToken() {

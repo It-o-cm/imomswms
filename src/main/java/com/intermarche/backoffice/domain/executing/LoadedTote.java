@@ -139,9 +139,13 @@ public class LoadedTote extends BaseEntity {
      *
      * @param physicalTote The physical Tote entity to be used. Cannot be null.
      * @return The newly created and persisted {@link LoadedTote} entity.
+     * @throws IllegalArgumentException if the physical Tote is null.
      * @throws IllegalStateException if the physical Tote is already {@link Status#IN_USE} by another process.
      */
     public static LoadedTote useAnEmptyTote(Tote physicalTote) {
+        if (physicalTote == null) {
+            throw new IllegalArgumentException("Physical Tote cannot be null.");
+        }
         // Verify that the physical Tote is not currently IN_USE by another active LoadedTote
         LoadedTote existing = find("tote = ?1 and status = ?2", physicalTote, Status.IN_USE).firstResult();
         if (existing != null) {
@@ -168,8 +172,12 @@ public class LoadedTote extends BaseEntity {
      * {@code loadedTote} reference on the item as well as adding it to this collection.
      *
      * @param item The {@link PickedItem} to be added to this tote.
+     * @throws IllegalArgumentException if the item is null.
      */
     public void addItem(PickedItem item) {
+        if (item == null) {
+            throw new IllegalArgumentException("PickedItem cannot be null.");
+        }
         this.items.add(item);
         item.loadedTote = this;
     }

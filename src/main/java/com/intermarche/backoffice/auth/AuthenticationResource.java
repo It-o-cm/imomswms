@@ -47,7 +47,7 @@ public class AuthenticationResource {
     @POST
     @Path("/login")
     public Response login(LoginRequest request) {
-        if (request.username == null || request.password == null) {
+        if (request == null || request.username == null || request.password == null) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("{\"error\": \"Username and Password are required\"}")
                     .build();
@@ -112,6 +112,11 @@ public class AuthenticationResource {
     @POST
     @Path("/password-reset/request")
     public Response requestPasswordReset(ResetRequest request) {
+        if (request == null || request.username == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("{\"error\": \"Username is required\"}")
+                    .build();
+        }
         try {
             authenticationService.initiatePasswordReset(request.username);
         } catch (IllegalArgumentException e) {
@@ -133,6 +138,11 @@ public class AuthenticationResource {
     @POST
     @Path("/password-reset/{token}")
     public Response performPasswordReset(@PathParam("token") String token, NewPasswordRequest request) {
+        if (request == null || request.newPassword == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("{\"error\": \"New password is required\"}")
+                    .build();
+        }
         try {
             String jwtToken = authenticationService.resetPassword(token, request.newPassword);
             return Response.ok(new TokenResponse(jwtToken, EIGHT_HOURS_IN_SECONDS)).build();

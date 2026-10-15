@@ -106,6 +106,10 @@ public class OrderRequestPollingConsumer {
      */
     @Transactional
     public void processSingleRequest(OrderRequest request) {
+        if (request == null) {
+            LOGGER.warn("Skipping null OrderRequest.");
+            return;
+        }
         LOGGER.infof("Processing Order Request ID %s", request.id);
         try {
             JsonNode json = objectMapper.readTree(request.specification);

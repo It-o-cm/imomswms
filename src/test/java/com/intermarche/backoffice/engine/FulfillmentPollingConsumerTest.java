@@ -79,6 +79,29 @@ class FulfillmentPollingConsumerTest {
     }
 
     @Test
+    void processSingleFulfillment_nullFulfillment_doesNothing() {
+        assertDoesNotThrow(() -> consumer.processSingleFulfillment(null));
+
+        verifyNoInteractions(fulfillmentEngine);
+        verifyNoInteractions(em);
+    }
+
+    @Test
+    void processSingleFulfillment_notFoundAfterRefresh_skips() throws Exception {
+        Fulfillment fulfillment = new Fulfillment();
+        fulfillment.id = 8L;
+
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            panacheMock.when(() -> PanacheEntityBase.findById(8L)).thenReturn(null);
+
+            consumer.processSingleFulfillment(fulfillment);
+
+            verifyNoInteractions(fulfillmentEngine);
+            verify(em, never()).merge(any());
+        }
+    }
+
+    @Test
     void processSingleFulfillment_success_processesViaEngine() throws Exception {
         Fulfillment fulfillment = new Fulfillment();
         fulfillment.id = 5L;

@@ -24,6 +24,15 @@ public class PreparingOrderTest {
     }
 
     @Test
+    void addLot_shouldThrowIllegalArgument_whenLotIsNull() {
+        ProductCollectingOrder order = new ProductCollectingOrder();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> order.addLot(null));
+        assertTrue(ex.getMessage().contains("Lot cannot be null"));
+    }
+
+    @Test
     void addLot_shouldSetLotStatusToPlannedToBePacked() {
         ProductCollectingOrder order = new ProductCollectingOrder();
         Lot lot = new Lot();

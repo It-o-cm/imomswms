@@ -164,9 +164,12 @@ public class Configuration extends BaseEntity {
      * @param store The store to find the configuration for.
      * @param type  The configuration type.
      * @return The configuration with the highest priority, or null if no configuration applies.
-     * @throws IllegalStateException if multiple configurations share the highest priority value.
+     * @throws IllegalStateException if the store is null or if multiple configurations share the highest priority value.
      */
     public static Configuration findHighestPriorityForStore(Store store, String type) {
+        if (store == null) {
+            throw new IllegalStateException("Store cannot be null.");
+        }
         List<Configuration> candidates = findConfigurationsForStore(store, type);
         if (candidates.isEmpty()) {
             throw new IllegalStateException(

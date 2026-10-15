@@ -459,6 +459,32 @@ class HandlingOrderServiceTest {
     }
 
     @Test
+    void getBatchState_nullExecutionIds_returnsEmptyStateWithoutQuery() {
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            PickingExecutionStateDTO state = service.getBatchState(null);
+
+            assertNotNull(state);
+            assertTrue(state.executions.isEmpty());
+            assertTrue(state.items.isEmpty());
+            assertTrue(state.totes.isEmpty());
+            panacheMock.verifyNoInteractions();
+        }
+    }
+
+    @Test
+    void getBatchState_emptyExecutionIds_returnsEmptyStateWithoutQuery() {
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            PickingExecutionStateDTO state = service.getBatchState(List.of());
+
+            assertNotNull(state);
+            assertTrue(state.executions.isEmpty());
+            assertTrue(state.items.isEmpty());
+            assertTrue(state.totes.isEmpty());
+            panacheMock.verifyNoInteractions();
+        }
+    }
+
+    @Test
     void getBatchState_executionsWithItemsAndTotes_aggregatesAndSortsByAisle() {
         BaseHandlingOrder order = orderMock(1L, "ORD-1", BaseHandlingOrder.HandlingOrderStatus.SCHEDULED);
         PickingExecution execution = pickingExecution(100L, order);
@@ -1386,6 +1412,54 @@ class HandlingOrderServiceTest {
     }
 
     @Test
+    void saveAndConcludeExecution_nullRequest_throwsIAE() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.saveAndConcludeExecution(100L, null));
+        assertEquals("Request cannot be null", ex.getMessage());
+    }
+
+    @Test
+    void saveAndConcludeExecution_nullToteReport_throwsIAE() {
+        BaseHandlingOrder order = orderMock(1L, "ORD-1", BaseHandlingOrder.HandlingOrderStatus.SCHEDULED);
+        PickingExecution execution = pickingExecution(100L, order);
+        ExecutionReportRequest request = new ExecutionReportRequest();
+        request.bufferId = null;
+        List<ToteReportDTO> totes = new ArrayList<>();
+        totes.add(null);
+        request.totes = totes;
+
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            stubFindById(panacheMock, Map.of(100L, execution));
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> service.saveAndConcludeExecution(100L, request));
+            assertEquals("Tote report cannot be null", ex.getMessage());
+        }
+    }
+
+    @Test
+    void saveAndConcludeExecution_nullItemReport_throwsIAE() {
+        BaseHandlingOrder order = orderMock(1L, "ORD-1", BaseHandlingOrder.HandlingOrderStatus.SCHEDULED);
+        PickingExecution execution = pickingExecution(100L, order);
+        LoadedTote loadedTote = loadedTote(50L, tote(60L, "TOTE-1"));
+        ExecutionReportRequest request = new ExecutionReportRequest();
+        request.bufferId = null;
+        List<ToteItemReportDTO> items = new ArrayList<>();
+        items.add(null);
+        request.totes = List.of(toteReport("TOTE-1", TemperatureZone.AMBIENT, items));
+
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            stubFindById(panacheMock, Map.of(100L, execution));
+            stubFind(panacheMock, List.of(
+                    new FindEntry("tote.code = ?1", "TOTE-1", loadedTote)));
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> service.saveAndConcludeExecution(100L, request));
+            assertEquals("Item report cannot be null", ex.getMessage());
+        }
+    }
+
+    @Test
     void saveAndConcludeExecution_noBufferNoTotes_marksDoneOnly() {
         BaseHandlingOrder order = orderMock(1L, "ORD-1", BaseHandlingOrder.HandlingOrderStatus.SCHEDULED);
         PickingExecution execution = pickingExecution(100L, order);
@@ -1552,6 +1626,26 @@ class HandlingOrderServiceTest {
     }
 
     @Test
+    void createAndConcludeBatch_nullRequest_throwsIAE() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.createAndConcludeBatch(null));
+        assertEquals("Request cannot be null", ex.getMessage());
+    }
+
+    @Test
+    void createAndConcludeBatch_nullReport_throwsIAE() {
+        BatchValidationRequest request = new BatchValidationRequest();
+        request.orderIds = List.of(1L);
+        List<OrderReportDTO> reports = new ArrayList<>();
+        reports.add(null);
+        request.reports = reports;
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.createAndConcludeBatch(request));
+        assertEquals("Order report cannot be null", ex.getMessage());
+    }
+
+    @Test
     void createAndConcludeBatch_orderNotFound_throwsIAE() {
         BatchValidationRequest request = new BatchValidationRequest();
         request.orderIds = List.of(1L);
@@ -1633,6 +1727,32 @@ class HandlingOrderServiceTest {
             IllegalStateException ex = assertThrows(IllegalStateException.class,
                     () -> service.createAndConcludeBatch(request));
             assertEquals("Execution for order 1 is not a PickingExecution", ex.getMessage());
+        }
+    }
+
+    @Test
+    void createAndConcludeBatch_nullToteReportInReport_throwsIAE() {
+        BaseHandlingOrder order = orderMock(1L, "ORD-1", BaseHandlingOrder.HandlingOrderStatus.SCHEDULED);
+        Employee employee = employee(7L, "BADGE-1");
+        PickingExecution execution = pickingExecution(100L, order);
+        when(order.createExecution(employee)).thenReturn(execution);
+        when(authenticationService.getConnectedAccount()).thenReturn(employee);
+        BatchValidationRequest request = new BatchValidationRequest();
+        request.orderIds = List.of(1L);
+        request.bufferId = null;
+        List<ToteReportDTO> totes = new ArrayList<>();
+        totes.add(null);
+        request.reports = List.of(orderReport(1L, totes));
+
+        try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
+             MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            PanacheTestSupport.mockArcSession(arcMock);
+            stubFindById(panacheMock, Map.of(1L, order));
+            stubFind(panacheMock, List.of(new FindEntry("handlingOrder.id", 1L, null)));
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> service.createAndConcludeBatch(request));
+            assertEquals("Tote report cannot be null", ex.getMessage());
         }
     }
 

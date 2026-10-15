@@ -45,8 +45,28 @@ class LoadedToteTest {
     }
 
     // --------------------------------------------------
+    // useAnEmptyTote — guard clause
+    // --------------------------------------------------
+
+    @Test
+    void useAnEmptyTote_nullTote_throwsIllegalArgument() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> LoadedTote.useAnEmptyTote(null));
+        assertTrue(ex.getMessage().contains("Physical Tote cannot be null"));
+    }
+
+    // --------------------------------------------------
     // addItem — bidirectional relationship
     // --------------------------------------------------
+
+    @Test
+    void addItem_nullItem_throwsIllegalArgument() {
+        LoadedTote loadedTote = new LoadedTote();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> loadedTote.addItem(null));
+        assertTrue(ex.getMessage().contains("PickedItem cannot be null"));
+    }
 
     @Test
     void addItem_addsToItems() {

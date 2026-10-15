@@ -40,6 +40,13 @@ class OrderRequestPollingConsumerTest {
     }
 
     @Test
+    void processSingleRequest_nullRequest_doesNothing() {
+        assertDoesNotThrow(() -> consumer.processSingleRequest(null));
+
+        verifyNoInteractions(orderRecorder);
+    }
+
+    @Test
     void processSingleRequest_invalidJson_marksFailed() {
         OrderRequest request = new OrderRequest("ORD-1", "STORE-1", "{invalid json");
 

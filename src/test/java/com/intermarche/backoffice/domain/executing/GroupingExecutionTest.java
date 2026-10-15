@@ -34,6 +34,15 @@ public class GroupingExecutionTest {
     // --------------------------------------------------
 
     @Test
+    void moveToteToDestination_shouldThrowIllegalArgument_whenToteIsNull() {
+        GroupingExecution execution = new GroupingExecution();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> execution.moveToteToDestination(null));
+        assertTrue(ex.getMessage().contains("Physical Tote cannot be null"));
+    }
+
+    @Test
     void moveToteToDestination_shouldThrowIllegalState_whenNoHandlingOrder() {
         GroupingExecution execution = new GroupingExecution();
 

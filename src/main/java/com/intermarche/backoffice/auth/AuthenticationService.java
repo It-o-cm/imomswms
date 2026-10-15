@@ -110,6 +110,9 @@ public class AuthenticationService {
      * @throws SecurityException if authentication fails.
      */
     public String authenticate(String username, String password) {
+        if (username == null || password == null) {
+            throw new SecurityException("Invalid credentials");
+        }
         if ("dev".equals(profile)) {
             return authenticateDev(username, password);
         } else {
@@ -195,10 +198,14 @@ public class AuthenticationService {
      * @param token       the reset token.
      * @param newPassword the new plain text password.
      * @return the JWT access token for the authenticated session.
+     * @throws IllegalArgumentException if the new password is null.
      * @throws SecurityException if the token is invalid or expired.
      */
     @Transactional
     public String resetPassword(String token, String newPassword) {
+        if (newPassword == null) {
+            throw new IllegalArgumentException("New password cannot be null");
+        }
         if ("dev".equals(profile)) {
             return resetPasswordDev(token, newPassword);
         } else {

@@ -48,8 +48,12 @@ public class OrderRecorder {
      *
      * @param root The root JSON node of the order payload.
      * @return The ID of the newly created Fulfillment.
+     * @throws IllegalArgumentException if the root JSON node is null.
      */
     public void persistOrderAndFulfillmentFromJson(JsonNode root) {
+        if (root == null) {
+            throw new IllegalArgumentException("JSON payload cannot be null.");
+        }
         JsonNode header = root.path("orderHeader");
         JsonNode customerNode = root.path("customer");
         JsonNode linesNode = root.path("lines");

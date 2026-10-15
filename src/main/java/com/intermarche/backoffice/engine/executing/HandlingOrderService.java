@@ -172,6 +172,9 @@ public class HandlingOrderService {
      */
     @Transactional
     public PickingExecutionStateDTO getBatchState(List<Long> executionIds) {
+        if (executionIds == null || executionIds.isEmpty()) {
+            return buildCurrentState(List.of());
+        }
         List<PickingExecution> executions = PickingExecution.list("id in ?1", executionIds);
         return buildCurrentState(executions);
     }
@@ -418,10 +421,13 @@ public class HandlingOrderService {
      *
      * @param executionId The unique identifier of the execution.
      * @param request     The request body containing the final state and buffer ID.
-     * @throws IllegalArgumentException if the execution is not found.
+     * @throws IllegalArgumentException if the request is null or the execution is not found.
      */
     @Transactional
     public void saveAndConcludeExecution(Long executionId, ExecutionReportRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request cannot be null");
+        }
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(executionId);
         if (execution == null) {
             throw new IllegalArgumentException("Execution not found");
@@ -447,18 +453,24 @@ public class HandlingOrderService {
      * </p>
      *
      * @param request The request containing order IDs, buffer ID, and detailed reports for each order.
-     * @throws IllegalArgumentException if input parameters are invalid (e.g., null order IDs,
+     * @throws IllegalArgumentException if input parameters are invalid (e.g., null request, null order IDs,
      *                                  order not found, or order already has an execution).
      * @throws IllegalStateException if the created execution is not of the expected type (PickingExecution).
      */
     @Transactional
     public void createAndConcludeBatch(BatchValidationRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request cannot be null");
+        }
         if (request.orderIds == null || request.orderIds.isEmpty()) {
             throw new IllegalArgumentException("Order IDs list cannot be null or empty");
         }
         Map<Long, OrderReportDTO> reportMap = new HashMap<>();
         if (request.reports != null) {
             for (OrderReportDTO r : request.reports) {
+                if (r == null) {
+                    throw new IllegalArgumentException("Order report cannot be null");
+                }
                 reportMap.put(r.orderId, r);
             }
         }
@@ -525,6 +537,9 @@ public class HandlingOrderService {
      *                    or from a pre-loaded map (used in batch operations).
      */
     private void assignItemsToTote(PickingExecution execution, ToteReportDTO toteDto, Function<Long, PickedItem> itemLookup) {
+        if (toteDto == null) {
+            throw new IllegalArgumentException("Tote report cannot be null");
+        }
         LoadedTote loadedTote = LoadedTote.find("tote.code = ?1", toteDto.code).firstResult();
         if (loadedTote == null) {
             Tote physicalTote = Tote.find("code", toteDto.code).firstResult();
@@ -538,6 +553,9 @@ public class HandlingOrderService {
         }
         if (toteDto.items != null) {
             for (ToteItemReportDTO itemDto : toteDto.items) {
+                if (itemDto == null) {
+                    throw new IllegalArgumentException("Item report cannot be null");
+                }
                 PickedItem item = itemLookup.apply(itemDto.pickedItemId);
                 if (item != null) {
                     item.loadedTote = loadedTote;

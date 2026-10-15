@@ -33,8 +33,12 @@ public abstract class PreparingOrder extends BaseHandlingOrder {
      * Helper method to add a Lot to this collecting order.
      *
      * @param lot The lot to add.
+     * @throws IllegalArgumentException if the lot is null.
      */
     public void addLot(Lot lot) {
+        if (lot == null) {
+            throw new IllegalArgumentException("Lot cannot be null.");
+        }
         this.lots.add(lot);
         lot.status = Lot.LotStatus.PLANNED_TO_BE_PACKED;
     }

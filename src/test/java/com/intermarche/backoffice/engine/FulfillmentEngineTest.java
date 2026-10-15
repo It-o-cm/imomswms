@@ -296,6 +296,12 @@ class FulfillmentEngineTest {
     }
 
     @Test
+    void process_nullFulfillment_throwsNPE() {
+        // fulfillment.order.store est déréférencé sans garde (dans le try puis dans le catch)
+        assertThrows(NullPointerException.class, () -> engine.process(null));
+    }
+
+    @Test
     void process_appliesFulfillersAndMarksDoneWhenAllChunksReady() throws Exception {
         Fulfillment fulfillment = newFulfillmentWithChunk(FulfillmentChunk.READY);
         BaseFulfillerFactory.BaseFulfiller fulfiller = mock(BaseFulfillerFactory.BaseFulfiller.class);

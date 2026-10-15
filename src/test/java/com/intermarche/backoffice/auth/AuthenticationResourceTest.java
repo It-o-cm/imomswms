@@ -78,6 +78,15 @@ class AuthenticationResourceTest {
     }
 
     @Test
+    void login_nullRequest_returns400() {
+        Response response = resource.login(null);
+
+        assertEquals(400, response.getStatus());
+        assertTrue(response.getEntity().toString().contains("Username and Password are required"));
+        verifyNoInteractions(authenticationService);
+    }
+
+    @Test
     void login_success_returns200WithTokenResponse() {
         when(authenticationService.authenticate("user", "pass")).thenReturn("token-123");
 
@@ -204,6 +213,26 @@ class AuthenticationResourceTest {
     }
 
     @Test
+    void requestPasswordReset_nullRequest_returns400() {
+        Response response = resource.requestPasswordReset(null);
+
+        assertEquals(400, response.getStatus());
+        assertTrue(response.getEntity().toString().contains("Username is required"));
+        verifyNoInteractions(authenticationService);
+    }
+
+    @Test
+    void requestPasswordReset_nullUsername_returns400() {
+        var request = new AuthenticationResource.ResetRequest();
+        request.username = null;
+        Response response = resource.requestPasswordReset(request);
+
+        assertEquals(400, response.getStatus());
+        assertTrue(response.getEntity().toString().contains("Username is required"));
+        verifyNoInteractions(authenticationService);
+    }
+
+    @Test
     void requestPasswordReset_serviceThrowsIAE_stillReturns200() {
         doThrow(new IllegalArgumentException("unknown user"))
                 .when(authenticationService).initiatePasswordReset("ghost");
@@ -232,6 +261,26 @@ class AuthenticationResourceTest {
         var tokenResponse = (AuthenticationResource.TokenResponse) response.getEntity();
         assertEquals("jwt-token", tokenResponse.token);
         assertEquals(28800L, tokenResponse.expiresIn);
+    }
+
+    @Test
+    void performPasswordReset_nullRequest_returns400() {
+        Response response = resource.performPasswordReset("token-abc", null);
+
+        assertEquals(400, response.getStatus());
+        assertTrue(response.getEntity().toString().contains("New password is required"));
+        verifyNoInteractions(authenticationService);
+    }
+
+    @Test
+    void performPasswordReset_nullNewPassword_returns400() {
+        var request = new AuthenticationResource.NewPasswordRequest();
+        request.newPassword = null;
+        Response response = resource.performPasswordReset("token-abc", request);
+
+        assertEquals(400, response.getStatus());
+        assertTrue(response.getEntity().toString().contains("New password is required"));
+        verifyNoInteractions(authenticationService);
     }
 
     @Test

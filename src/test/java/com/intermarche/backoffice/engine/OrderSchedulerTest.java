@@ -345,4 +345,10 @@ class OrderSchedulerTest {
             assertTrue(ex.getMessage().contains("cannot be scheduled"));
         }
     }
+
+    @Test
+    void scheduleOpenedOrders_nullStore_throwsNPE() {
+        // store.code est déréférencé sans garde dans le log d'entrée
+        assertThrows(NullPointerException.class, () -> scheduler.scheduleOpenedOrders(null));
+    }
 }

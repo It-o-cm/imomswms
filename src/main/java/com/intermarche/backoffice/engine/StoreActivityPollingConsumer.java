@@ -129,8 +129,17 @@ public class StoreActivityPollingConsumer {
      * @param handle The WMSStoreHandle to process.
      */
     public void processSingleStore(WMSStoreHandle handle) {
+        if (handle == null) {
+            LOGGER.warn("Skipping null WMSStoreHandle.");
+            return;
+        }
         try {
-            handle = WMSStoreHandle.findById(handle.id); // Refresh to get the latest state after each fulfiller
+            WMSStoreHandle refreshed = WMSStoreHandle.findById(handle.id); // Refresh to get the latest state after each fulfiller
+            if (refreshed == null) {
+                LOGGER.warnf("WMSStoreHandle ID %d not found after refresh. Skipping.", handle.id);
+                return;
+            }
+            handle = refreshed;
             storeActivityEngine.process(handle.store);
             LOGGER.infof("After Processing Single Activities of Store : %s", handle);
         } catch (Exception e) {

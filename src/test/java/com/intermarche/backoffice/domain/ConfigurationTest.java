@@ -243,4 +243,15 @@ class ConfigurationTest {
                     eq("TYPE"), eq(store), any()));
         }
     }
+
+    // --------------------------------------------------
+    // findHighestPriorityForStore
+    // --------------------------------------------------
+
+    @Test
+    void findHighestPriorityForStore_nullStore_throwsIllegalState() {
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> Configuration.findHighestPriorityForStore(null, "TYPE"));
+        assertTrue(exception.getMessage().contains("Store cannot be null"));
+    }
 }

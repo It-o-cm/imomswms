@@ -51,6 +51,9 @@ public class HandlingOrderController {
     @POST
     @Path("/{id}/reserve")
     public Response reserveOrder(@PathParam("id") Long id, ReserveRequest request) {
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
+        }
         HandlingOrderService.HandlingExecutionDTO dto = handlingOrderService.reserveOrder(id, request.badgeId);
         if (dto == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -86,6 +89,9 @@ public class HandlingOrderController {
     @POST
     @Path("/executions/batch")
     public Response startBatchExecutions(BatchStartRequest request) {
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
+        }
         try {
             String badgeId = "CURRENT_USER_BADGE";
             HandlingOrderService.BatchStartResponse response = handlingOrderService.startBatchExecutions(request.orderIds, badgeId);
@@ -128,6 +134,9 @@ public class HandlingOrderController {
             @PathParam("executionId") Long executionId,
             @PathParam("itemId") Long itemId,
             SubstituteProductRequest request) {
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
+        }
         try {
             handlingOrderService.substituteProduct(executionId, itemId, request.newProductId);
             return Response.noContent().build();
@@ -151,6 +160,9 @@ public class HandlingOrderController {
     @POST
     @Path("/{executionId}/totes")
     public Response addTote(@PathParam("executionId") Long executionId, AddToteRequest request) {
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
+        }
         try {
             handlingOrderService.addTote(executionId, request.toteCode, request.usage);
             return Response.status(Response.Status.CREATED).build();
@@ -192,6 +204,9 @@ public class HandlingOrderController {
     public Response addItemToTote(@PathParam("executionId") Long executionId,
                                   @PathParam("toteCode") String toteCode,
                                   AddItemRequest request) {
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
+        }
         try {
             handlingOrderService.addItemToTote(executionId, toteCode, request.pickedItemId, request.quantity, request.productId);
             return Response.noContent().build();
@@ -211,6 +226,9 @@ public class HandlingOrderController {
     @POST
     @Path("/{executionId}/items/move")
     public Response moveItem(@PathParam("executionId") Long executionId, MoveItemRequest request) {
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
+        }
         try {
             handlingOrderService.moveItem(executionId, request.sourceToteCode, request.targetToteCode, request.pickedItemId);
             return Response.noContent().build();
@@ -271,6 +289,9 @@ public class HandlingOrderController {
     @POST
     @Path("/{executionId}/conclude")
     public Response concludeExecution(@PathParam("executionId") Long executionId, ConcludeRequest request) {
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
+        }
         try {
             handlingOrderService.concludePickingExecution(executionId, request.bufferId);
             return Response.noContent().build();
@@ -338,6 +359,9 @@ public class HandlingOrderController {
     public Response validateReport(
             @PathParam("executionId") Long executionId,
             HandlingOrderService.ExecutionReportRequest request) {
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
+        }
         try {
             handlingOrderService.saveAndConcludeExecution(executionId, request);
             return Response.noContent().build();
@@ -358,6 +382,9 @@ public class HandlingOrderController {
     @POST
     @Path("/executions/batch-validate")
     public Response createAndValidateBatch(HandlingOrderService.BatchValidationRequest request) {
+        if (request == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
+        }
         try {
             handlingOrderService.createAndConcludeBatch(request);
             return Response.noContent().build();

@@ -66,4 +66,10 @@ public class TokenServiceTest {
         long exp = payload.get("exp").asLong();
         assertEquals(8 * 3600, exp - iat, "The token must expire 8 hours after its issue time");
     }
+
+    @Test
+    void generateToken_nullAccount_throwsNPE() {
+        // account.getRoles() est déréférencé sans garde
+        assertThrows(NullPointerException.class, () -> tokenService.generateToken(null));
+    }
 }

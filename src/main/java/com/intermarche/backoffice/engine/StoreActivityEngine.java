@@ -227,6 +227,10 @@ public class StoreActivityEngine {
      * @throws Exception if builders cannot be initialized or if any builder fails during processing.
      */
     public void process(Store store) throws Exception {
+        if (store == null) {
+            LOGGER.warn("Skipping null Store.");
+            return;
+        }
         try {
             // Fetch the list from the cache
             List<BaseOrderHandlerBuilderFactory.BaseOrderHandlerBuilder> builders = getOrderHandlerBuildersForStore(store);

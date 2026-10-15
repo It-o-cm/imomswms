@@ -78,8 +78,12 @@ public class LotLine extends BaseEntity {
      *
      * @param fulfillmentLine the FulfillmentLine to be associated with this LotLine.
      *                         Must not be null and should represent a valid fulfillment line.
+     * @throws IllegalArgumentException if the FulfillmentLine is null.
      */
     public void setFulfillmentLine(FulfillmentLine fulfillmentLine) {
+        if (fulfillmentLine == null) {
+            throw new IllegalArgumentException("FulfillmentLine cannot be null.");
+        }
         this.fulfillmentLine = fulfillmentLine;
         this.location = fulfillmentLine.location;
     }

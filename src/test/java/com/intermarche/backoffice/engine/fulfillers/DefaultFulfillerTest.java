@@ -401,6 +401,14 @@ class DefaultFulfillerTest {
     // --------------------------------------------------
 
     @Test
+    void process_nullFulfillment_throwsNPE() throws Exception {
+        // fulfillment.id est déréférencé sans garde avant l'appel à findById
+        DefaultFulfillerFactory.DefaultFulfiller fulfiller = buildFulfiller("{}");
+
+        assertThrows(NullPointerException.class, () -> fulfiller.process(null));
+    }
+
+    @Test
     void process_missingStore_throwsIllegalState() throws Exception {
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {

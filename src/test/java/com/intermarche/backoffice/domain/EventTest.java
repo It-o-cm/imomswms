@@ -82,6 +82,13 @@ class EventTest {
         assertEquals("com.intermarche.backoffice.domain.order.Order", event.targetEntityType);
     }
 
+    @Test
+    void convenienceConstructor_nullTargetEntityType_throwsNPE() {
+        // targetEntityType.getName() est appelé sans garde dans le constructeur
+        assertThrows(NullPointerException.class,
+                () -> new Event("label", "desc", Event.UrgencyLevel.LOW, new Store(), null, 1L, "CODE"));
+    }
+
     // --------------------------------------------------
     // getChecksum
     // --------------------------------------------------
@@ -163,6 +170,12 @@ class EventTest {
     }
 
     @Test
+    void findByTarget_nullType_throwsNPE() {
+        // targetEntityType.getName() est appelé sans garde avant la requête
+        assertThrows(NullPointerException.class, () -> Event.findByTarget(null, 1L));
+    }
+
+    @Test
     void findCriticalByStore_listsCriticalEventsForStore() {
         Store store = new Store();
         store.id = 1L;
@@ -237,6 +250,22 @@ class EventTest {
             panacheMock.when(PanacheEntityBase::getEntityManager).thenReturn(em);
 
             assertNull(event.getTargetEntityAs(Order.class));
+        }
+    }
+
+    @Test
+    void getTargetEntityAs_nullType_throwsNPE() {
+        // L'entité résolue est non nulle : type.isInstance(entity) est appelé sans garde
+        Event event = createEvent();
+        Order order = new Order();
+        order.id = 42L;
+        EntityManager em = mock(EntityManager.class);
+        when(em.find(Order.class, 42L)).thenReturn(order);
+
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            panacheMock.when(PanacheEntityBase::getEntityManager).thenReturn(em);
+
+            assertThrows(NullPointerException.class, () -> event.getTargetEntityAs(null));
         }
     }
 

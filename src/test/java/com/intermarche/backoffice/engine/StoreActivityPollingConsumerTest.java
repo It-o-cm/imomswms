@@ -138,6 +138,33 @@ class StoreActivityPollingConsumerTest {
     }
 
     @Test
+    void processSingleStore_nullHandle_doesNothing() {
+        assertDoesNotThrow(() -> consumer.processSingleStore(null));
+
+        verifyNoInteractions(storeActivityEngine);
+        verifyNoInteractions(em);
+    }
+
+    @Test
+    void processSingleStore_notFoundAfterRefresh_skipsEngineButResetsReservation() throws Exception {
+        WMSStoreHandle handle = new WMSStoreHandle();
+        handle.id = 3L;
+        handle.store = new Store();
+
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            panacheMock.when(() -> PanacheEntityBase.findById(3L)).thenReturn(null);
+
+            consumer.processSingleStore(handle);
+
+            verify(storeActivityEngine, never()).process(any());
+            // Le bloc finally réinitialise quand même la réservation sur le handle d'origine
+            assertEquals(ReservationRecord.ReservationStatus.PENDING, handle.reservationRecord.status);
+            assertNotNull(handle.lastReservationDate);
+            verify(em).merge(handle);
+        }
+    }
+
+    @Test
     void processSingleStore_success_resetsReservationToPending() throws Exception {
         WMSStoreHandle handle = new WMSStoreHandle();
         handle.id = 1L;

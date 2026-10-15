@@ -101,8 +101,16 @@ public class FulfillmentPollingConsumer {
      * @throws Exception If processing fails.
      */
     public void processSingleFulfillment(Fulfillment fulfillment) {
+        if (fulfillment == null) {
+            LOGGER.warn("Skipping null Fulfillment.");
+            return;
+        }
         try {
             fulfillment = Fulfillment.findById(fulfillment.id); // Refresh to get the latest state after each fulfiller
+            if (fulfillment == null) {
+                LOGGER.warn("Fulfillment not found after refresh. Skipping.");
+                return;
+            }
             fulfillmentEngine.process(fulfillment);
             LOGGER.infof("After Processing Single Fulfillment: %s with chunk size: %d", fulfillment, fulfillment.chunks.size());
         } catch (Exception e) {

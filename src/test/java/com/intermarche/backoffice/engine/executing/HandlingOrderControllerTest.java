@@ -63,6 +63,15 @@ class HandlingOrderControllerTest {
     }
 
     @Test
+    void reserveOrder_nullRequest_returns400() {
+        Response response = controller.reserveOrder(1L, null);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Request body is required", response.getEntity());
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void reserveOrder_notFound_returns404() {
         when(service.reserveOrder(99L, "BADGE-1")).thenReturn(null);
 
@@ -102,6 +111,15 @@ class HandlingOrderControllerTest {
     }
 
     @Test
+    void startBatchExecutions_nullRequest_returns400() {
+        Response response = controller.startBatchExecutions(null);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Request body is required", response.getEntity());
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void startBatchExecutions_illegalArgument_returns400() {
         when(service.startBatchExecutions(anyList(), anyString()))
                 .thenThrow(new IllegalArgumentException("No orders"));
@@ -123,6 +141,18 @@ class HandlingOrderControllerTest {
 
         assertEquals(200, response.getStatus());
         assertSame(state, response.getEntity());
+    }
+
+    @Test
+    void getBatchState_nullIds_delegatesToService() {
+        var state = new HandlingOrderService.PickingExecutionStateDTO();
+        when(service.getBatchState(isNull())).thenReturn(state);
+
+        Response response = controller.getBatchState(null);
+
+        assertEquals(200, response.getStatus());
+        assertSame(state, response.getEntity());
+        verify(service).getBatchState(null);
     }
 
     @Test
@@ -152,6 +182,15 @@ class HandlingOrderControllerTest {
     }
 
     @Test
+    void substituteProduct_nullRequest_returns400() {
+        Response response = controller.substituteProduct(1L, 2L, null);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Request body is required", response.getEntity());
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void substituteProduct_illegalArgument_returns400() {
         doThrow(new IllegalArgumentException("bad item")).when(service).substituteProduct(anyLong(), anyLong(), anyLong());
 
@@ -174,6 +213,15 @@ class HandlingOrderControllerTest {
 
         assertEquals(201, response.getStatus());
         verify(service).addTote(1L, "TOTE-1", TemperatureZone.AMBIENT);
+    }
+
+    @Test
+    void addTote_nullRequest_returns400() {
+        Response response = controller.addTote(1L, null);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Request body is required", response.getEntity());
+        verifyNoInteractions(service);
     }
 
     @Test
@@ -223,6 +271,15 @@ class HandlingOrderControllerTest {
     }
 
     @Test
+    void addItemToTote_nullRequest_returns400() {
+        Response response = controller.addItemToTote(1L, "TOTE-1", null);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Request body is required", response.getEntity());
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void addItemToTote_illegalArgument_returns400() {
         doThrow(new IllegalArgumentException("bad item")).when(service).addItemToTote(anyLong(), anyString(), anyLong(), any(), anyLong());
 
@@ -247,6 +304,15 @@ class HandlingOrderControllerTest {
 
         assertEquals(204, response.getStatus());
         verify(service).moveItem(1L, "TOTE-A", "TOTE-B", 2L);
+    }
+
+    @Test
+    void moveItem_nullRequest_returns400() {
+        Response response = controller.moveItem(1L, null);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Request body is required", response.getEntity());
+        verifyNoInteractions(service);
     }
 
     @Test
@@ -310,6 +376,15 @@ class HandlingOrderControllerTest {
 
         assertEquals(204, response.getStatus());
         verify(service).concludePickingExecution(1L, 5L);
+    }
+
+    @Test
+    void concludeExecution_nullRequest_returns400() {
+        Response response = controller.concludeExecution(1L, null);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Request body is required", response.getEntity());
+        verifyNoInteractions(service);
     }
 
     @Test
@@ -394,6 +469,15 @@ class HandlingOrderControllerTest {
     }
 
     @Test
+    void validateReport_nullRequest_returns400() {
+        Response response = controller.validateReport(1L, null);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Request body is required", response.getEntity());
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void validateReport_illegalArgument_returns400() {
         doThrow(new IllegalArgumentException("bad report")).when(service).saveAndConcludeExecution(anyLong(), any());
 
@@ -425,6 +509,15 @@ class HandlingOrderControllerTest {
 
         assertEquals(204, response.getStatus());
         verify(service).createAndConcludeBatch(request);
+    }
+
+    @Test
+    void createAndValidateBatch_nullRequest_returns400() {
+        Response response = controller.createAndValidateBatch(null);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Request body is required", response.getEntity());
+        verifyNoInteractions(service);
     }
 
     @Test

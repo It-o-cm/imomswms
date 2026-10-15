@@ -35,6 +35,12 @@ public class BaseLocationTest {
     }
 
     @Test
+    void findCommonSpecification_shouldThrowNPE_whenLocationsNull() {
+        // locations.isEmpty() est appelé sans garde
+        assertThrows(NullPointerException.class, () -> BaseLocation.findCommonSpecification(null));
+    }
+
+    @Test
     void locationSpecification_shouldExposeConstructorValues() {
         Store store = new Store();
         StoreBuilding building = new StoreBuilding();

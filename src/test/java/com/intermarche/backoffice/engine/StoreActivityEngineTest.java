@@ -390,6 +390,16 @@ class StoreActivityEngineTest {
     // --------------------------------------------------
 
     @Test
+    void process_nullStore_doesNothing() {
+        OrderScheduler scheduler = mock(OrderScheduler.class);
+        StoreActivityEngine engine = newEngine(scheduler);
+
+        assertDoesNotThrow(() -> engine.process(null));
+
+        verify(scheduler, never()).scheduleOpenedOrders(any());
+    }
+
+    @Test
     void process_buildersPresent_processesEachBuilderInOrderThenSchedules() throws Exception {
         Store store = storeWithId(1L, "S1");
         OrderScheduler scheduler = mock(OrderScheduler.class);
