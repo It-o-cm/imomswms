@@ -18,7 +18,7 @@ import com.intermarche.e2e.Authenticate;
  */
 public class BuildingImporterClient {
 
-    private static final String BASE_URL = "http://localhost:8080";
+    private static final String BASE_URL = "http://localhost:8040";
     private static final String IMPORT_URL = BASE_URL + "/buildings/import";
 
     /**

@@ -1,5 +1,6 @@
 package com.intermarche.backoffice.graphql;
 
+import com.intermarche.backoffice.domain.store.Store;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.persistence.PersistenceException;
 import org.eclipse.microprofile.graphql.GraphQLException;
@@ -8,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for the {@link GraphQLTrait} interface.
@@ -148,5 +151,71 @@ public class GraphQLTraitTest {
 
         assertEquals(message, ex.getMessage());
         assertEquals(cause, ex.getCause());
+    }
+
+    // --------------------------------------------------
+    // Read scope
+    // --------------------------------------------------
+
+    /**
+     * Builds a trait whose identity has the given roles and whose employee belongs to the given store.
+     *
+     * @param admin whether the user is an administrator
+     * @param serviceCaller whether the user is an integration service
+     * @param own store of the employee
+     * @return the trait
+     */
+    private GraphQLTrait scoped(boolean admin, boolean serviceCaller, Store own) {
+        SecurityIdentity identity = mock(SecurityIdentity.class);
+        when(identity.hasRole("ADMIN")).thenReturn(admin);
+        when(identity.hasRole("SERVICE_CALLER")).thenReturn(serviceCaller);
+        return new GraphQLTrait() {
+            @Override
+            public SecurityIdentity getIdentity() {
+                return identity;
+            }
+
+            @Override
+            public Store getStoreContext() {
+                if (own == null) throw new SecurityException("User not linked to a store and lacks global privileges.");
+                return own;
+            }
+        };
+    }
+
+    /**
+     * Builds a store with an identifier.
+     *
+     * @param id identifier
+     * @return the store
+     */
+    private static Store store(long id) {
+        Store store = new Store();
+        store.id = id;
+        return store;
+    }
+
+    /**
+     * Administrators and integration services read every store, even when linked to one; a manager reads their store.
+     */
+    @Test
+    void readScope_isGlobalForAdministratorsAndServices_andTheOwnStoreForAManager() {
+        Store own = store(1);
+        assertNull(scoped(true, false, own).readScope());
+        assertNull(scoped(false, true, own).readScope());
+        assertSame(own, scoped(false, false, own).readScope());
+        assertThrows(SecurityException.class, () -> scoped(false, false, null).readScope());
+    }
+
+    /**
+     * A store addressed explicitly must exist and be readable by the user.
+     */
+    @Test
+    void checkReadable_acceptsTheOwnStoreOrGlobalAccess_andRefusesAnotherOrUnknownStore() {
+        Store own = store(1);
+        assertDoesNotThrow(() -> scoped(false, false, own).checkReadable(store(1)));
+        assertDoesNotThrow(() -> scoped(true, false, own).checkReadable(store(2)));
+        assertThrows(SecurityException.class, () -> scoped(false, false, own).checkReadable(store(2)));
+        assertThrows(NoSuchElementException.class, () -> scoped(true, false, own).checkReadable(null));
     }
 }

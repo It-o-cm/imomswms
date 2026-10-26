@@ -236,4 +236,20 @@ public class PreparingOrderResourceTest {
         List<BaseHandlingOrder> otherResult = preparingOrderResource.preparingOrdersByChunkId(otherChunk.id, mockContext());
         assertTrue(otherResult.isEmpty());
     }
+
+    /**
+     * A manager only reads the handling orders of their store.
+     */
+    @Test
+    @TestSecurity(user = "scopedManager", roles = {"MANAGER"})
+    void testHandlingOrder_ManagerOnlyReadsTheOrdersOfTheirStore() throws GraphQLException {
+        Store own = createStore("STORE_HS_OWN");
+        Store other = createStore("STORE_HS_OTHER");
+        createEmployee("scopedManager", own);
+        PackingOrder mine = createPackingOrder(own, "PAK-HS-OWN");
+        PackingOrder foreign = createPackingOrder(other, "PAK-HS-OTH");
+
+        assertEquals(mine.id, preparingOrderResource.handlingOrder(mine.id).id);
+        assertThrows(NoSuchElementException.class, () -> preparingOrderResource.handlingOrder(foreign.id));
+    }
 }

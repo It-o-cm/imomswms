@@ -23,7 +23,7 @@ import com.intermarche.e2e.Authenticate;
 public class GroupingOrderGraphQLClient {
 
     // GraphQL Endpoint
-    private static final String BASE_URL = "http://localhost:8080";
+    private static final String BASE_URL = "http://localhost:8040";
     private static final String GRAPHQL_URL = BASE_URL + "/graphql";
 
     public static void main(String[] args) {

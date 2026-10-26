@@ -131,10 +131,10 @@ public class FulfillmentResource implements CollectingOrderGraphQLTrait {
     }
 
     /**
-     * Retrieves a list of all fulfillments in the database.
+     * Retrieves a list of all fulfillments the user may read: those of their store for a manager.
      *
      * @param context The SmallRye GraphQL context.
-     * @return A {@link List} of all {@link Fulfillment} entities.
+     * @return A {@link List} of the readable {@link Fulfillment} entities.
      * @throws GraphQLException if execution fails.
      */
     @Query
@@ -142,8 +142,9 @@ public class FulfillmentResource implements CollectingOrderGraphQLTrait {
     @RolesAllowed("MANAGER")
     public List<Fulfillment> allFulfillments(Context context) throws GraphQLException {
         return this.execute(() -> {
-            String jpql = buildOptimizedQuery(context, null, false);
-            return Fulfillment.list(jpql);
+            Store scope = readScope();
+            if (scope == null) return Fulfillment.list(buildOptimizedQuery(context, null, false));
+            return Fulfillment.list(buildOptimizedQuery(context, "o.store.id = ?1", true), scope.id);
         }, FulfillmentResource.class, "allFulfillments");
     }
 
@@ -153,7 +154,7 @@ public class FulfillmentResource implements CollectingOrderGraphQLTrait {
      * @param id      The unique technical ID (Primary Key) of the Fulfillment.
      * @param context The SmallRye GraphQL context.
      * @return The found {@link Fulfillment} entity.
-     * @throws NoSuchElementException if no Fulfillment exists with the given ID.
+     * @throws NoSuchElementException if no Fulfillment exists with the given ID in the scope of the user.
      * @throws GraphQLException if execution fails.
      */
     @Query
@@ -161,8 +162,10 @@ public class FulfillmentResource implements CollectingOrderGraphQLTrait {
     @RolesAllowed("MANAGER")
     public Fulfillment fulfillment(@Name("id") Long id, Context context) throws GraphQLException {
         return this.execute(() -> {
-            String jpql = buildOptimizedQuery(context, "f.id = ?1", false);
-            Fulfillment fulfillment = Fulfillment.find(jpql, id).firstResult();
+            Store scope = readScope();
+            Fulfillment fulfillment = scope == null
+                    ? Fulfillment.find(buildOptimizedQuery(context, "f.id = ?1", false), id).firstResult()
+                    : Fulfillment.find(buildOptimizedQuery(context, "f.id = ?1 and o.store.id = ?2", true), id, scope.id).firstResult();
             if (fulfillment == null) {
                 throw new NoSuchElementException("Fulfillment with id " + id + " not found");
             }
@@ -176,7 +179,7 @@ public class FulfillmentResource implements CollectingOrderGraphQLTrait {
      * @param orderId The business identifier of the linked Order.
      * @param context The SmallRye GraphQL context.
      * @return The found {@link Fulfillment} entity.
-     * @throws NoSuchElementException if no Fulfillment exists for the given Order ID.
+     * @throws NoSuchElementException if no Fulfillment exists for the given Order ID in the scope of the user.
      * @throws GraphQLException if execution fails.
      */
     @Query
@@ -184,8 +187,10 @@ public class FulfillmentResource implements CollectingOrderGraphQLTrait {
     @RolesAllowed("MANAGER")
     public Fulfillment fulfillmentByOrderId(@Name("orderId") String orderId, Context context) throws GraphQLException {
         return this.execute(() -> {
-            String jpql = buildOptimizedQuery(context, "o.orderId = ?1", true);
-            Fulfillment fulfillment = Fulfillment.find(jpql, orderId).firstResult();
+            Store scope = readScope();
+            Fulfillment fulfillment = scope == null
+                    ? Fulfillment.find(buildOptimizedQuery(context, "o.orderId = ?1", true), orderId).firstResult()
+                    : Fulfillment.find(buildOptimizedQuery(context, "o.orderId = ?1 and o.store.id = ?2", true), orderId, scope.id).firstResult();
             if (fulfillment == null) {
                 throw new NoSuchElementException("Fulfillment for orderId '" + orderId + "' not found");
             }

@@ -89,6 +89,20 @@ public abstract class ShelfLocation extends BaseLocation {
     public String position;
 
     /**
+     * Position of the bay along its aisle, as a fraction of the aisle path
+     * length (0 = head node, 1 = tail node). Allows free placement of a bay
+     * anywhere along the aisle, independently of the other bays.
+     * <p>
+     * Null means "automatic placement" (bays evenly spread along the aisle).
+     * All the locations of a same bay share the same value.
+     * <p>
+     * Not part of the CSV import contract: excluded from {@link #getChecksum()}.
+     */
+    @Column(name = "aisle_position")
+    public Double aislePosition;
+
+
+    /**
      * Calculates a checksum based on the common physical components.
      * <p>
      * Subclasses should call this method via {@code super.getChecksum()} and

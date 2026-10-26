@@ -43,6 +43,7 @@ public class PreparingOrderResource implements HandlingOrderGraphQLTrait {
      *
      * @param id The unique technical ID of the handling order.
      * @return The BaseHandlingOrder entity.
+     * @throws NoSuchElementException if no handling order exists with the given ID in the scope of the user.
      */
     @Query
     @Description("Get a handling order by its ID")
@@ -50,6 +51,8 @@ public class PreparingOrderResource implements HandlingOrderGraphQLTrait {
     public BaseHandlingOrder handlingOrder(@Name("id") Long id) throws GraphQLException {
         return this.execute(() -> {
             BaseHandlingOrder order = BaseHandlingOrder.findById(id);
+            Store scope = readScope();
+            if (order != null && scope != null && !scope.id.equals(order.store.id)) order = null;
             if (order == null) {
                 // Le GraphQLTrait va intercepter ce NoSuchElementException
                 // et le transformer en erreur GraphQL propre pour le frontend

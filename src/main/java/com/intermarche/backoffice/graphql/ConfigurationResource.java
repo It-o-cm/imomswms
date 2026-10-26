@@ -39,6 +39,70 @@ public class ConfigurationResource implements GraphQLTrait {
     @Inject
     SecurityIdentity identity;
 
+    @Inject com.intermarche.backoffice.rules.RuleSchemaRegistry ruleSchemas;
+    @Inject jakarta.enterprise.event.Event<com.intermarche.backoffice.engine.ConfigurationChanged> configurationChanged;
+    /**
+     * Notifies the engines that a configuration changed, when the event is available.
+     */
+    private void notifyConfigurationChanged(){if(configurationChanged!=null) configurationChanged.fire(new com.intermarche.backoffice.engine.ConfigurationChanged());}
+
+    /**
+     * Executes an action, turning validation and security errors into GraphQL errors carrying their message; other
+     * errors follow the standard handling of {@link GraphQLTrait#execute}.
+     *
+     * @param <T> result type
+     * @param action the action
+     * @param context class used for logging
+     * @param operation operation name used for logging
+     * @return the result of the action
+     * @throws GraphQLException if the action fails
+     */
+    @Override
+    public <T> T execute(java.util.function.Supplier<T> action,Class<?> context,String operation) throws GraphQLException {
+        try {return action.get();}
+        catch(IllegalArgumentException | IllegalStateException | SecurityException e) {throw new GraphQLException(e.getMessage(),e);}
+        catch(RuntimeException e) {return GraphQLTrait.super.execute(() -> {throw e;},context,operation);}
+    }
+
+    /**
+     * Resolves a store the user may access: any store for an administrator, their own store for a manager.
+     *
+     * @param id store identifier
+     * @return the store
+     * @throws NoSuchElementException if the store does not exist
+     * @throws SecurityException if a manager addresses another store
+     */
+    private Store scopedStore(Long id) {
+        Store store=Store.findById(id);
+        if(store==null) throw new NoSuchElementException("Store not found");
+        if(!identity.hasRole("ADMIN")) {
+            Store own=getStoreContext();
+            if(own==null || !own.id.equals(id)) throw new SecurityException("Magasin hors de votre périmètre");
+        }
+        return store;
+    }
+
+    /**
+     * Checks that a non-administrator only writes rule-based configurations of their own store.
+     *
+     * @param config configuration being modified, or null for a creation
+     * @param input submitted configuration
+     */
+    private void checkWrite(Configuration config,ConfigurationRecord input) {
+        if(identity.hasRole("ADMIN")) return;
+        Store own=getStoreContext();
+        if(own==null) throw new SecurityException("Magasin requis");
+        if(config!=null && (config.stores.size()!=1 || config.stores.stream().noneMatch(s -> s.id.equals(own.id)) || !config.storeGroups.isEmpty())) throw new SecurityException("Configuration partagée ou hors magasin");
+        if(config!=null && !com.intermarche.backoffice.rules.RuleSchemaRegistry.CATEGORIES.contains(config.type)) throw new SecurityException("Type de règle non autorisé");
+        if(input!=null) {
+            if(input.storeIds!=null && (input.storeIds.size()!=1 || !own.id.equals(input.storeIds.get(0)))) throw new SecurityException("Magasin hors de votre périmètre");
+            if(input.storeGroupIds!=null && !input.storeGroupIds.isEmpty()) throw new SecurityException("Les groupes sont réservés à l’administration");
+            String type=input.type!=null ? input.type : config==null?null:config.type;
+            if(!com.intermarche.backoffice.rules.RuleSchemaRegistry.CATEGORIES.contains(type==null?"":type)) throw new SecurityException("Type de règle non autorisé");
+            input.storeIds=java.util.List.of(own.id);input.storeGroupIds=java.util.List.of();
+        }
+    }
+
     /**
      * Retrieves the current security identity of the user or context.
      *
@@ -61,10 +125,10 @@ public class ConfigurationResource implements GraphQLTrait {
      */
     @Query
     @Description("Get all configurations directly linked to a specific store")
-    @RolesAllowed("MANAGER")
+    @RolesAllowed({"ADMIN", "MANAGER"})
     public List<Configuration> configurationsByStore(@Name("storeId") Long storeId) {
         LOGGER.info("Entering method configurationsByStore for storeId: " + storeId);
-        Store store = Store.findById(storeId);
+        Store store = scopedStore(storeId);
         if (store == null) {
             throw new NoSuchElementException("Store with id " + storeId + " not found");
         }
@@ -82,10 +146,10 @@ public class ConfigurationResource implements GraphQLTrait {
      */
     @Query
     @Description("Get all configurations applicable to a store (direct or via groups) by type")
-    @RolesAllowed("MANAGER")
+    @RolesAllowed({"ADMIN", "MANAGER"})
     public List<Configuration> configurationsForStore(@Name("storeId") Long storeId, @Name("type") String type) {
         LOGGER.info("Entering method configurationsForStore for storeId: " + storeId + " and type: " + type);
-        Store store = Store.findById(storeId);
+        Store store = scopedStore(storeId);
         if (store == null) {
             throw new NoSuchElementException("Store with id " + storeId + " not found");
         }
@@ -106,10 +170,10 @@ public class ConfigurationResource implements GraphQLTrait {
      */
     @Query
     @Description("Get the effective configuration (highest priority) for a store and type")
-    @RolesAllowed("MANAGER")
+    @RolesAllowed({"ADMIN", "MANAGER"})
     public Configuration effectiveConfigurationForStore(@Name("storeId") Long storeId, @Name("type") String type) {
         LOGGER.info("Entering method effectiveConfigurationForStore for storeId: " + storeId + " and type: " + type);
-        Store store = Store.findById(storeId);
+        Store store = scopedStore(storeId);
         if (store == null) {
             throw new NoSuchElementException("Store with id " + storeId + " not found");
         }
@@ -132,12 +196,13 @@ public class ConfigurationResource implements GraphQLTrait {
      */
     @Mutation
     @Description("Create a new configuration linked to stores and groups")
-    @RolesAllowed("ADMIN")
+    @RolesAllowed({"ADMIN", "MANAGER"})
     @Transactional(rollbackOn = Exception.class)
     public Configuration createConfiguration(@Name("input") ConfigurationRecord input) throws GraphQLException {
         return this.execute(() -> {
             LOGGER.info("Entering method createConfiguration");
 
+            checkWrite(null,input);
             Configuration config = new Configuration();
             config.name = input.name;
             config.type = input.type;
@@ -172,7 +237,10 @@ public class ConfigurationResource implements GraphQLTrait {
                 }
             }
 
+            ruleSchemas.validateSpecification(config.type,config.specification,config.stores);
+            config.specification=ruleSchemas.normalize(config.type,config.specification);
             config.persist();
+            notifyConfigurationChanged();
 
             LOGGER.info("Exiting method createConfiguration. Created ID: " + config.id);
             return config;
@@ -199,6 +267,7 @@ public class ConfigurationResource implements GraphQLTrait {
                 throw new NoSuchElementException("Configuration with id " + id + " not found");
             }
 
+            checkWrite(config,input);
             // Update basic fields
             if (input.name != null) config.name = input.name;
             if (input.type != null) config.type = input.type;
@@ -223,6 +292,9 @@ public class ConfigurationResource implements GraphQLTrait {
                 }
             }
 
+            ruleSchemas.validateSpecification(config.type,config.specification,config.stores);
+            config.specification=ruleSchemas.normalize(config.type,config.specification);
+            notifyConfigurationChanged();
             LOGGER.info("Exiting method updateConfiguration");
             return config;
         }, ConfigurationResource.class, "updateConfiguration");
@@ -237,12 +309,16 @@ public class ConfigurationResource implements GraphQLTrait {
      */
     @Mutation
     @Description("Delete a configuration by ID")
-    @RolesAllowed("ADMIN")
+    @RolesAllowed({"ADMIN", "MANAGER"})
     @Transactional(rollbackOn = Exception.class)
     public boolean deleteConfiguration(@Name("id") Long id) throws GraphQLException {
         return this.execute(() -> {
             LOGGER.info("Entering method deleteConfiguration for id: " + id);
+            Configuration config=Configuration.findById(id);
+            if(config==null) return false;
+            checkWrite(config,null);
             boolean result = Configuration.deleteById(id);
+            notifyConfigurationChanged();
             LOGGER.info("Exiting method deleteConfiguration. Result: " + result);
             return result;
         }, ConfigurationResource.class, "deleteConfiguration");
@@ -295,6 +371,11 @@ public class ConfigurationResource implements GraphQLTrait {
         public ConfigurationRecord() {
         }
 
+        /**
+         * Describes the record for logging.
+         *
+         * @return the name, type, priority and specification of the record
+         */
         @Override
         public String toString() {
             return "ConfigurationRecord [name=" + name + ", type=" + type +

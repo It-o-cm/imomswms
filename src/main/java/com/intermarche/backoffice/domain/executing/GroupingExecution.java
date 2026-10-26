@@ -91,7 +91,7 @@ public class GroupingExecution extends HandlingExecution implements GroupingOper
             throw new IllegalArgumentException("No active LoadedTote found for Tote: " + physicalTote.code);
         }
         // Update the buffer to the destination specified by the GroupingOrder
-        loadedTote.buffer = order.buffer;
+        loadedTote.clearCell();loadedTote.buffer = order.buffer;
     }
 
     /**

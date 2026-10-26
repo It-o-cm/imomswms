@@ -5,6 +5,7 @@ import com.intermarche.backoffice.domain.order.Order;
 import com.intermarche.backoffice.domain.order.OrderLine;
 import com.intermarche.backoffice.domain.order.Product;
 import com.intermarche.backoffice.domain.order.ProductType;
+import com.intermarche.backoffice.domain.store.Employee;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.graphql.order.OrderResource;
 import com.intermarche.e2e.domain.util.DomainUtils;
@@ -24,6 +25,7 @@ import java.util.Set;
 import org.eclipse.microprofile.graphql.GraphQLException;
 import org.hibernate.Hibernate;
 import org.junit.jupiter.api.Test;
+import org.mindrot.jbcrypt.BCrypt;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -107,7 +109,7 @@ public class OrderResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllOrders_Empty() {
         List<Order> orders = orderResource.allOrders(mockContext());
         assertNotNull(orders);
@@ -115,7 +117,7 @@ public class OrderResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllOrders_ReturnsAllOrders() {
         Store store = createStore("STORE_O1");
         Customer customer = createCustomer("CUST_O1");
@@ -127,7 +129,7 @@ public class OrderResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllOrders_LinesSelection_FetchJoinsLinesAndProducts() {
         Store store = createStore("STORE_O2");
         Customer customer = createCustomer("CUST_O2");
@@ -149,7 +151,7 @@ public class OrderResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllOrders_CustomerSelection_FetchJoinsCustomer() {
         Store store = createStore("STORE_O3");
         Customer customer = createCustomer("CUST_O3");
@@ -165,7 +167,7 @@ public class OrderResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllOrders_NoSelection_DoesNotFetchLinesNorCustomer() {
         Store store = createStore("STORE_O4");
         Customer customer = createCustomer("CUST_O4");
@@ -184,7 +186,7 @@ public class OrderResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testOrderById_Success() {
         Store store = createStore("STORE_O5");
         Customer customer = createCustomer("CUST_O5");
@@ -196,7 +198,7 @@ public class OrderResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testOrderById_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             orderResource.order(9999L, mockContext());
@@ -204,7 +206,7 @@ public class OrderResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testOrderById_LinesSelection_FetchJoinsLines() {
         Store store = createStore("STORE_O6");
         Customer customer = createCustomer("CUST_O6");
@@ -222,7 +224,7 @@ public class OrderResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testOrderByOrderId_Success() {
         Store store = createStore("STORE_O7");
         Customer customer = createCustomer("CUST_O7");
@@ -234,7 +236,7 @@ public class OrderResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testOrderByOrderId_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             orderResource.orderByOrderId("ORD_UNKNOWN", mockContext());
@@ -470,5 +472,58 @@ public class OrderResourceTest {
     void testDeleteOrder_NotFound() throws GraphQLException {
         boolean result = orderResource.deleteOrder(9999L);
         assertFalse(result, "Delete should return false for non-existent ID");
+    }
+
+    // --------------------------------------------------
+    // Store scope of a manager
+    // --------------------------------------------------
+
+    /**
+     * Creates a manager linked to a store.
+     *
+     * @param badgeId badge (user name) of the manager
+     * @param store store of the manager
+     */
+    private void createManager(String badgeId, Store store) {
+        Employee employee = new Employee();
+        employee.firstName = "Emp";
+        employee.lastName = badgeId;
+        employee.badgeId = badgeId;
+        employee.email = badgeId + "@test.com";
+        employee.password = BCrypt.hashpw("secret", BCrypt.gensalt());
+        employee.role = Employee.EmployeeRole.MANAGER;
+        employee.store = store;
+        employee.persist();
+    }
+
+    /**
+     * A manager only reads the orders of their store, by list, identifier or business identifier.
+     */
+    @Test
+    @TestSecurity(user = "scopedManager", roles = {"MANAGER"})
+    void managerOnlyReadsTheOrdersOfTheirStore() {
+        Store own = createStore("STORE_OS_OWN");
+        Store other = createStore("STORE_OS_OTHER");
+        createManager("scopedManager", own);
+        Customer customer = createCustomer("CUST_OS");
+        Order mine = persistOrder("ORD_OS_OWN", own, customer);
+        Order foreign = persistOrder("ORD_OS_OTHER", other, customer);
+
+        assertEquals(List.of(mine.id), orderResource.allOrders(mockContext()).stream().map(o -> o.id).toList());
+        assertEquals(mine.id, orderResource.order(mine.id, mockContext()).id);
+        assertEquals(mine.id, orderResource.orderByOrderId("ORD_OS_OWN", mockContext()).id);
+        assertThrows(NoSuchElementException.class, () -> orderResource.order(foreign.id, mockContext()));
+        assertThrows(NoSuchElementException.class, () -> orderResource.orderByOrderId("ORD_OS_OTHER", mockContext()));
+    }
+
+    /**
+     * A manager linked to no store reads no order.
+     */
+    @Test
+    @TestSecurity(user = "unlinkedManager", roles = {"MANAGER"})
+    void managerWithoutStoreReadsNoOrder() {
+        assertThrows(SecurityException.class, () -> orderResource.allOrders(mockContext()));
+        assertThrows(SecurityException.class, () -> orderResource.order(1L, mockContext()));
+        assertThrows(SecurityException.class, () -> orderResource.orderByOrderId("ORD", mockContext()));
     }
 }

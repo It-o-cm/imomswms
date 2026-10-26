@@ -166,7 +166,7 @@ public class LotResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllLots_Empty() {
         List<Lot> lots = lotResource.allLots(mockContext(Map.of()));
         assertNotNull(lots);
@@ -174,7 +174,7 @@ public class LotResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllLots_ReturnsAll() {
         Store store = createStore("STORE_L1");
         persistLot(store, "ORD_L1");
@@ -185,7 +185,7 @@ public class LotResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllLots_LinesSelection_FetchJoinsLines() {
         Store store = createStore("STORE_L2");
         Lot lot = persistLot(store, "ORD_L3");
@@ -203,7 +203,7 @@ public class LotResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllLots_LinesWithProductSelection_FetchJoinsProduct() {
         Store store = createStore("STORE_L3");
         Lot lot = persistLot(store, "ORD_L4");
@@ -220,7 +220,7 @@ public class LotResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllLots_NoSelection_LinesStayLazy() {
         Store store = createStore("STORE_L4");
         Lot lot = persistLot(store, "ORD_L5");
@@ -235,7 +235,7 @@ public class LotResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testLot_Success() {
         Store store = createStore("STORE_L5");
         Lot existing = persistLot(store, "ORD_L6");
@@ -246,7 +246,7 @@ public class LotResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testLot_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             lotResource.lot(9999L, mockContext(Map.of()));
@@ -254,7 +254,7 @@ public class LotResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testLotsByChunkId() {
         Store store = createStore("STORE_L6");
         Lot lotA = persistLot(store, "ORD_L7");
@@ -275,7 +275,7 @@ public class LotResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testLotsByChunkId_UnknownChunk_ReturnsEmpty() {
         List<Lot> lots = lotResource.lotsByChunkId(9999L, mockContext(Map.of()));
         assertNotNull(lots);
@@ -374,5 +374,46 @@ public class LotResourceTest {
         Lot reloaded = Lot.findById(existing.id);
         assertNotNull(reloaded);
         assertTrue(reloaded.lines.isEmpty(), "Line removal must be persisted");
+    }
+
+    // --------------------------------------------------
+    // Store scope of a manager
+    // --------------------------------------------------
+
+    /**
+     * A manager only reads the lots of their store, including among the lots of a chunk.
+     */
+    @Test
+    @TestSecurity(user = "scopedManager", roles = {"MANAGER"})
+    void managerOnlyReadsTheLotsOfTheirStore() {
+        Store own = createStore("STORE_LS_OWN");
+        Store other = createStore("STORE_LS_OTHER");
+        createEmployee("scopedManager", own);
+        Lot mine = persistLot(own, "ORD_LS_OWN");
+        Lot foreign = persistLot(other, "ORD_LS_OTHER");
+        // A lot of the other store attached to the chunk of the own store stays hidden.
+        Lot intruder = new Lot();
+        intruder.store = other;
+        intruder.customer = mine.customer;
+        intruder.fulfillment = mine.fulfillment;
+        intruder.chunk = mine.chunk;
+        intruder.persist();
+
+        assertEquals(List.of(mine.id), lotResource.allLots(mockContext(Map.of())).stream().map(l -> l.id).toList());
+        assertEquals(mine.id, lotResource.lot(mine.id, mockContext(Map.of())).id);
+        assertThrows(NoSuchElementException.class, () -> lotResource.lot(foreign.id, mockContext(Map.of())));
+        assertEquals(List.of(mine.id), lotResource.lotsByChunkId(mine.chunk.id, mockContext(Map.of())).stream().map(l -> l.id).toList());
+        assertTrue(lotResource.lotsByChunkId(foreign.chunk.id, mockContext(Map.of())).isEmpty());
+    }
+
+    /**
+     * A manager linked to no store reads no lot.
+     */
+    @Test
+    @TestSecurity(user = "unlinkedManager", roles = {"MANAGER"})
+    void managerWithoutStoreReadsNoLot() {
+        assertThrows(SecurityException.class, () -> lotResource.allLots(mockContext(Map.of())));
+        assertThrows(SecurityException.class, () -> lotResource.lot(1L, mockContext(Map.of())));
+        assertThrows(SecurityException.class, () -> lotResource.lotsByChunkId(1L, mockContext(Map.of())));
     }
 }

@@ -83,6 +83,12 @@ public class LoadedTote extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "buffer_id", foreignKey = @ForeignKey(name = "fk_loadedtote_buffer"))
     public Buffer buffer;
+    @ManyToOne(fetch=FetchType.LAZY)
+    public com.intermarche.backoffice.domain.store.BufferCabinet cabinet;
+    public Integer cellRow;
+    public Integer cellColumn;
+    public void clearCell(){cabinet=null;cellRow=null;cellColumn=null;}
+
 
     /**
      * The collection of {@link PickedItem}s currently contained within this tote.
@@ -94,7 +100,8 @@ public class LoadedTote extends BaseEntity {
      * <p>
      * <b>Cascading:</b> Changes to this collection (add/remove) are cascaded to the database.
      */
-    @OneToMany(mappedBy = "loadedTote", cascade = CascadeType.ALL, orphanRemoval = true)
+    // Les articles peuvent être transférés vers un autre bac ou remis en attente.
+    @OneToMany(mappedBy = "loadedTote", cascade = CascadeType.ALL)
     public Set<PickedItem> items = new HashSet<>();
 
     // --------------------------------------------------
@@ -199,6 +206,7 @@ public class LoadedTote extends BaseEntity {
         return Objects.hash(
                 tote != null ? tote.id : null,
                 buffer != null ? buffer.id : null,
+                cabinet != null ? cabinet.id : null,cellRow,cellColumn,
                 status,
                 storageType,
                 items

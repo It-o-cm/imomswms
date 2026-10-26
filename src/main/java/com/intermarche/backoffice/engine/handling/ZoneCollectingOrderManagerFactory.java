@@ -54,7 +54,7 @@ public class ZoneCollectingOrderManagerFactory extends BaseOrderHandlerBuilderFa
      * <p>
      * Defines constraints for building codes, area/aisle filters, and min/max volume/weight thresholds.
      */
-    private static final String COLLECTING_MANAGER_SCHEMA = """
+    public static final String COLLECTING_MANAGER_SCHEMA = """
             {
               "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "ZoneCollectingOrderManagerConfiguration",

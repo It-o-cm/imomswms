@@ -41,7 +41,7 @@ public class ProductGroupingFulfillerFactory extends BaseFulfillerFactory {
     /**
      * JSON Schema definition for validation.
      */
-    private static final String PRODUCT_GROUPING_SCHEMA = """
+    public static final String PRODUCT_GROUPING_SCHEMA = """
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "ProductGroupingConfiguration",

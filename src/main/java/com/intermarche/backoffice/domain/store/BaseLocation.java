@@ -5,7 +5,6 @@ import com.intermarche.backoffice.domain.oms.FulfillmentChunk;
 import com.intermarche.backoffice.domain.order.Product;
 import io.smallrye.graphql.api.Union;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import org.eclipse.microprofile.graphql.Interface;
 import org.eclipse.microprofile.graphql.Type;
 
@@ -30,9 +29,6 @@ import java.util.Objects;
                 @Index(name = "idx_loc_product", columnList = "product_id"),
                 @Index(name = "idx_loc_code", columnList = "location_code"),
                 @Index(name = "idx_loc_type", columnList = "type")
-        },
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_item_loc", columnNames = {"building_id", "product_id", "type"})
         }
 )
 @Union
@@ -40,9 +36,14 @@ public abstract class BaseLocation extends BaseEntity implements Location {
 
     /**
      * The Product located at this position.
+     * <p>
+     * May be null: an empty bay (e.g. created from the store plan editor before
+     * a product is assigned to it) has no product yet.
+     * <p>
+     * A product may be referenced by several locations: the same product can
+     * be placed in multiple bays of a building.
      */
     @ManyToOne
-    @NotNull
     public Product product;
 
     /**

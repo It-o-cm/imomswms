@@ -18,7 +18,7 @@ import com.intermarche.e2e.Authenticate;
  */
 public class ConfigurationImporterClient {
 
-    private static final String BASE_URL = "http://localhost:8080";
+    private static final String BASE_URL = "http://localhost:8040";
     private static final String IMPORT_URL = BASE_URL + "/configurations/import";
 
     public static void main(String[] args) {

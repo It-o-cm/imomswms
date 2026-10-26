@@ -326,7 +326,7 @@ class FulfillmentResourceTest {
     void allFulfillments_emptySelection_buildsPlainQuery() throws Exception {
         FindCall call = stubFulfillmentList(List.of(fulfillment(1L)));
 
-        List<Fulfillment> result = newResource(false, false).allFulfillments(emptyContext());
+        List<Fulfillment> result = newResource(true, false).allFulfillments(emptyContext());
 
         assertEquals(1, result.size());
         assertEquals("select distinct f from Fulfillment f ", call.jpql);
@@ -336,7 +336,7 @@ class FulfillmentResourceTest {
     void allFulfillments_wantsOrderChunksAndLines_buildsFullFetchQuery() throws Exception {
         FindCall call = stubFulfillmentList(List.of());
 
-        newResource(false, false).allFulfillments(context(true, true, true));
+        newResource(true, false).allFulfillments(context(true, true, true));
 
         assertEquals("select distinct f from Fulfillment f join fetch f.order o " +
                 "left join fetch f.chunks c left join fetch c.lines l left join fetch l.product ", call.jpql);
@@ -346,7 +346,7 @@ class FulfillmentResourceTest {
     void allFulfillments_wantsChunksWithoutLines_buildsChunkFetchOnly() throws Exception {
         FindCall call = stubFulfillmentList(List.of());
 
-        newResource(false, false).allFulfillments(context(true, false, false));
+        newResource(true, false).allFulfillments(context(true, false, false));
 
         assertEquals("select distinct f from Fulfillment f left join fetch f.chunks c ", call.jpql);
     }
@@ -356,7 +356,7 @@ class FulfillmentResourceTest {
         Fulfillment fulfillment = fulfillment(5L);
         stubOptimizedFind("f.id = ?1", fulfillment);
 
-        Fulfillment result = newResource(false, false).fulfillment(5L, emptyContext());
+        Fulfillment result = newResource(true, false).fulfillment(5L, emptyContext());
 
         assertSame(fulfillment, result);
     }
@@ -365,7 +365,7 @@ class FulfillmentResourceTest {
     void fulfillment_notFound_throwsNoSuchElement() {
         stubOptimizedFind("f.id = ?1", null);
 
-        FulfillmentResource resource = newResource(false, false);
+        FulfillmentResource resource = newResource(true, false);
         assertThrows(NoSuchElementException.class, () -> resource.fulfillment(5L, emptyContext()));
     }
 
@@ -382,7 +382,7 @@ class FulfillmentResourceTest {
                     return query;
                 });
 
-        Fulfillment result = newResource(false, false).fulfillmentByOrderId("ORD-1", emptyContext());
+        Fulfillment result = newResource(true, false).fulfillmentByOrderId("ORD-1", emptyContext());
 
         assertSame(fulfillment, result);
         assertEquals("select distinct f from Fulfillment f join f.order o where o.orderId = ?1", call.jpql);
@@ -400,7 +400,7 @@ class FulfillmentResourceTest {
                     return query;
                 });
 
-        newResource(false, false).fulfillmentByOrderId("ORD-1", context(false, true, false));
+        newResource(true, false).fulfillmentByOrderId("ORD-1", context(false, true, false));
 
         assertEquals("select distinct f from Fulfillment f join fetch f.order o where o.orderId = ?1", call.jpql);
     }
@@ -409,7 +409,7 @@ class FulfillmentResourceTest {
     void fulfillmentByOrderId_notFound_throwsNoSuchElement() {
         stubOptimizedFind("o.orderId = ?1", null);
 
-        FulfillmentResource resource = newResource(false, false);
+        FulfillmentResource resource = newResource(true, false);
         assertThrows(NoSuchElementException.class, () -> resource.fulfillmentByOrderId("ORD-X", emptyContext()));
     }
 

@@ -90,7 +90,7 @@ public class OrderRequestResource implements GraphQLTrait {
      *
      * @param id The unique technical ID of the order request.
      * @return The OrderRequest entity.
-     * @throws NoSuchElementException if the order request with the given ID does not exist.
+     * @throws NoSuchElementException if the order request with the given ID does not exist in the scope of the user.
      */
     @Query
     @Description("Get an order request by its ID")
@@ -98,6 +98,9 @@ public class OrderRequestResource implements GraphQLTrait {
     public OrderRequest orderRequest(@Name("id") Long id) {
         LOGGER.info("Entering method orderRequest with id: " + id);
         OrderRequest order = OrderRequest.findById(id);
+        Store scope = readScope();
+        // OrderRequest has no Store relation: the scope filter uses the store code
+        if (order != null && scope != null && !scope.code.equals(order.storeCode)) order = null;
         if (order == null) {
             LOGGER.error("OrderRequest with id " + id + " not found");
             throw new NoSuchElementException("OrderRequest with id " + id + " not found");
@@ -114,14 +117,16 @@ public class OrderRequestResource implements GraphQLTrait {
      * Accessible only by users with the 'MANAGER' role.
      *
      * @param orderNumber The business order number.
-     * @return A list of OrderRequest entities matching the number.
+     * @return A list of OrderRequest entities matching the number, restricted to the store of a manager.
      */
     @Query
     @Description("Get order requests by order number (can return history)")
     @RolesAllowed("MANAGER")
     public List<OrderRequest> ordersByNumber(@Name("orderNumber") String orderNumber) {
         LOGGER.info("Entering method ordersByNumber with orderNumber: " + orderNumber);
-        List<OrderRequest> result = OrderRequest.list("orderNumber", orderNumber);
+        Store scope = readScope();
+        List<OrderRequest> result = scope == null ? OrderRequest.list("orderNumber", orderNumber)
+                : OrderRequest.list("orderNumber = ?1 and storeCode = ?2", orderNumber, scope.code);
         LOGGER.info("Exiting method ordersByNumber. Found: " + result.size());
         return result;
     }

@@ -32,6 +32,7 @@ public class StoreShelfLocation extends ShelfLocation {
     @Column(name = "department", length = 50)
     public String department;
 
+
     /**
      * Checks if this location is at eye level for an average adult.
      *

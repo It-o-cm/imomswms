@@ -53,16 +53,17 @@ public class ToteResource implements GraphQLTrait {
     }
 
     /**
-     * Retrieves the list of all totes in the database.
+     * Retrieves the list of all totes the user may read: those of their store for a manager.
      *
-     * @return A list of all Tote entities.
+     * @return A list of the readable Tote entities.
      */
     @Query
     @Description("Get the list of all totes")
     @RolesAllowed({"ADMIN", "MANAGER"})
     public List<Tote> allTotes() {
         LOGGER.info("Entering method allTotes");
-        List<Tote> result = Tote.listAll();
+        Store scope = readScope();
+        List<Tote> result = scope == null ? Tote.listAll() : Tote.list("store.id", scope.id);
         LOGGER.info("Exiting method allTotes");
         return result;
     }
@@ -72,14 +73,14 @@ public class ToteResource implements GraphQLTrait {
      *
      * @param id The unique ID of the tote.
      * @return The Tote entity.
-     * @throws NoSuchElementException if the tote with the given ID does not exist.
+     * @throws NoSuchElementException if the tote with the given ID does not exist in the scope of the user.
      */
     @Query
     @Description("Get a tote by its ID")
     @RolesAllowed({"ADMIN", "MANAGER"})
     public Tote tote(@Name("id") Long id) {
         LOGGER.info("Entering method tote with id: " + id);
-        Tote tote = Tote.findById(id);
+        Tote tote = readable(Tote.findById(id));
         if (tote == null) {
             LOGGER.error("Tote with id " + id + " not found");
             throw new NoSuchElementException("Tote with id " + id + " not found");
@@ -95,14 +96,14 @@ public class ToteResource implements GraphQLTrait {
      *
      * @param code The unique Code of the tote.
      * @return The Tote entity.
-     * @throws NoSuchElementException if the tote with the given Code does not exist.
+     * @throws NoSuchElementException if the tote with the given Code does not exist in the scope of the user.
      */
     @Query
     @Description("Get a tote by its Code")
     @RolesAllowed({"ADMIN", "MANAGER"})
     public Tote toteByCode(@Name("code") String code) {
         LOGGER.info("Entering method toteByCode with code: " + code);
-        Tote tote = Tote.findByCode(code);
+        Tote tote = readable(Tote.findByCode(code));
         if (tote == null) {
             LOGGER.error("Tote with code " + code + " not found");
             throw new NoSuchElementException("Tote with code '" + code + "' not found");
@@ -115,16 +116,29 @@ public class ToteResource implements GraphQLTrait {
      * Retrieves all totes belonging to a specific store, identified by its unique code.
      *
      * @param storeCode The unique business code of the Store.
-     * @return A list of Tote entities associated with the store.
+     * @return A list of Tote entities associated with the store; empty for a store outside the scope of a manager.
      */
     @Query
     @Description("Get all totes for a specific store code")
     @RolesAllowed({"ADMIN", "MANAGER"})
     public List<Tote> totesByStoreCode(@Name("storeCode") String storeCode) {
         LOGGER.info("Entering method totesByStoreCode for store code: " + storeCode);
-        List<Tote> result = Tote.findByStoreCode(storeCode);
+        Store scope = readScope();
+        List<Tote> result = scope != null && !scope.code.equals(storeCode) ? List.of() : Tote.findByStoreCode(storeCode);
         LOGGER.info("Exiting method totesByStoreCode");
         return result;
+    }
+
+    /**
+     * Hides a tote of another store from a manager.
+     *
+     * @param tote the tote found, or null
+     * @return the tote if the user may read it, otherwise null
+     */
+    private Tote readable(Tote tote) {
+        Store scope = readScope();
+        if (tote == null || scope == null) return tote;
+        return scope.id.equals(tote.store.id) ? tote : null;
     }
 
     // --------------------------------------------------

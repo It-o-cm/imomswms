@@ -206,7 +206,7 @@ class LotResourceTest {
     void allLots_emptySelection_buildsPlainQuery() {
         ListCall call = stubLotList(List.of(lot(1L, store(STORE_ID))));
 
-        List<Lot> result = newResource(false, false).allLots(emptyContext());
+        List<Lot> result = newResource(true, false).allLots(emptyContext());
 
         assertEquals(1, result.size());
         assertEquals("select distinct l from Lot l ", call.jpql);
@@ -216,7 +216,7 @@ class LotResourceTest {
     void allLots_wantsChunk_fetchesChunk() {
         ListCall call = stubLotList(List.of());
 
-        newResource(false, false).allLots(context(true, false, false, false, false));
+        newResource(true, false).allLots(context(true, false, false, false, false));
 
         assertEquals("select distinct l from Lot l left join fetch l.chunk c ", call.jpql);
     }
@@ -225,7 +225,7 @@ class LotResourceTest {
     void allLots_wantsLocation_fetchesLocation() {
         ListCall call = stubLotList(List.of());
 
-        newResource(false, false).allLots(context(false, true, false, false, false));
+        newResource(true, false).allLots(context(false, true, false, false, false));
 
         assertEquals("select distinct l from Lot l left join fetch l.location loc ", call.jpql);
     }
@@ -234,7 +234,7 @@ class LotResourceTest {
     void allLots_wantsLinesWithNestedFields_fetchesLinesFulfillmentLineAndProduct() {
         ListCall call = stubLotList(List.of());
 
-        newResource(false, false).allLots(context(false, false, true, true, true));
+        newResource(true, false).allLots(context(false, false, true, true, true));
 
         assertEquals("select distinct l from Lot l left join fetch l.lines ll " +
                 "left join fetch ll.fulfillmentLine ffl left join fetch ll.product p ", call.jpql);
@@ -244,7 +244,7 @@ class LotResourceTest {
     void allLots_wantsLinesWithoutNestedFields_fetchesLinesOnly() {
         ListCall call = stubLotList(List.of());
 
-        newResource(false, false).allLots(context(false, false, true, false, false));
+        newResource(true, false).allLots(context(false, false, true, false, false));
 
         assertEquals("select distinct l from Lot l left join fetch l.lines ll ", call.jpql);
     }
@@ -253,7 +253,7 @@ class LotResourceTest {
     void allLots_wantsLinesWithOnlyFulfillmentLine_fetchesFulfillmentLineOnly() {
         ListCall call = stubLotList(List.of());
 
-        newResource(false, false).allLots(context(false, false, true, true, false));
+        newResource(true, false).allLots(context(false, false, true, true, false));
 
         assertEquals("select distinct l from Lot l left join fetch l.lines ll " +
                 "left join fetch ll.fulfillmentLine ffl ", call.jpql);
@@ -263,7 +263,7 @@ class LotResourceTest {
     void allLots_wantsLinesWithOnlyProduct_fetchesProductOnly() {
         ListCall call = stubLotList(List.of());
 
-        newResource(false, false).allLots(context(false, false, true, false, true));
+        newResource(true, false).allLots(context(false, false, true, false, true));
 
         assertEquals("select distinct l from Lot l left join fetch l.lines ll " +
                 "left join fetch ll.product p ", call.jpql);
@@ -286,7 +286,7 @@ class LotResourceTest {
                     return query;
                 });
 
-        Lot result = newResource(false, false).lot(5L, emptyContext());
+        Lot result = newResource(true, false).lot(5L, emptyContext());
 
         assertSame(lot, result);
         assertEquals("select distinct l from Lot l where l.id = ?1", call.jpql);
@@ -300,7 +300,7 @@ class LotResourceTest {
                         argThat(jpql -> jpql.contains("l.id = ?1")), any(Object[].class)))
                 .thenReturn(query);
 
-        LotResource resource = newResource(false, false);
+        LotResource resource = newResource(true, false);
         assertThrows(NoSuchElementException.class, () -> resource.lot(5L, emptyContext()));
     }
 
@@ -312,7 +312,7 @@ class LotResourceTest {
     void lotsByChunkId_withoutChunkSelection_joinsChunkForFiltering() {
         ListCall call = stubLotListVarargs(List.of(lot(1L, store(STORE_ID))));
 
-        List<Lot> result = newResource(false, false).lotsByChunkId(9L, emptyContext());
+        List<Lot> result = newResource(true, false).lotsByChunkId(9L, emptyContext());
 
         assertEquals(1, result.size());
         assertEquals("select distinct l from Lot l join l.chunk c where c.id = ?1", call.jpql);
@@ -323,7 +323,7 @@ class LotResourceTest {
     void lotsByChunkId_withChunkSelection_fetchesChunk() {
         ListCall call = stubLotListVarargs(List.of());
 
-        newResource(false, false).lotsByChunkId(9L, context(true, false, false, false, false));
+        newResource(true, false).lotsByChunkId(9L, context(true, false, false, false, false));
 
         assertEquals("select distinct l from Lot l left join fetch l.chunk c where c.id = ?1", call.jpql);
         assertArrayEquals(new Object[]{9L}, call.params);

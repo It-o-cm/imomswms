@@ -159,7 +159,7 @@ public class FulfillmentResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllFulfillments_Empty() throws GraphQLException {
         List<Fulfillment> fulfillments = fulfillmentResource.allFulfillments(mockContext(Map.of()));
         assertNotNull(fulfillments);
@@ -167,7 +167,7 @@ public class FulfillmentResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllFulfillments_ReturnsAll() throws GraphQLException {
         Store store = createStore("STORE_F1");
         persistFulfillment(persistOrder("ORD_F1", store), LocalDateTime.now().plusDays(1));
@@ -178,7 +178,7 @@ public class FulfillmentResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllFulfillments_ChunksSelection_FetchJoinsChunks() throws GraphQLException {
         Store store = createStore("STORE_F2");
         Fulfillment fulfillment = persistFulfillment(persistOrder("ORD_F3", store), LocalDateTime.now().plusDays(1));
@@ -194,7 +194,7 @@ public class FulfillmentResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllFulfillments_ChunksWithLinesSelection_FetchJoinsLines() throws GraphQLException {
         Store store = createStore("STORE_F3");
         Fulfillment fulfillment = persistFulfillment(persistOrder("ORD_F4", store), LocalDateTime.now().plusDays(1));
@@ -215,7 +215,7 @@ public class FulfillmentResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllFulfillments_NoSelection_ChunksStayLazy() throws GraphQLException {
         Store store = createStore("STORE_F4");
         persistFulfillment(persistOrder("ORD_F5", store), LocalDateTime.now().plusDays(1));
@@ -232,7 +232,7 @@ public class FulfillmentResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testFulfillment_Success() throws GraphQLException {
         Store store = createStore("STORE_F5");
         Fulfillment existing = persistFulfillment(persistOrder("ORD_F6", store), LocalDateTime.now().plusDays(1));
@@ -243,7 +243,7 @@ public class FulfillmentResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testFulfillment_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             fulfillmentResource.fulfillment(9999L, mockContext(Map.of()));
@@ -251,7 +251,7 @@ public class FulfillmentResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testFulfillmentByOrderId_Success() throws GraphQLException {
         Store store = createStore("STORE_F6");
         persistFulfillment(persistOrder("ORD_F7", store), LocalDateTime.now().plusDays(1));
@@ -262,7 +262,7 @@ public class FulfillmentResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testFulfillmentByOrderId_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             fulfillmentResource.fulfillmentByOrderId("ORD_UNKNOWN", mockContext(Map.of()));
@@ -610,5 +610,54 @@ public class FulfillmentResourceTest {
     void testDeleteFulfillment_NotFound() throws GraphQLException {
         boolean result = fulfillmentResource.deleteFulfillment(9999L);
         assertFalse(result, "Delete should return false for non-existent ID");
+    }
+
+    // --------------------------------------------------
+    // Store scope of a manager
+    // --------------------------------------------------
+
+    /**
+     * A manager only reads the fulfillments of their store, by list, identifier or order identifier.
+     */
+    @Test
+    @TestSecurity(user = "scopedManager", roles = {"MANAGER"})
+    void managerOnlyReadsTheFulfillmentsOfTheirStore() throws GraphQLException {
+        Store own = createStore("STORE_SCOPE_OWN");
+        Store other = createStore("STORE_SCOPE_OTHER");
+        createEmployee("scopedManager", own);
+        Fulfillment mine = persistFulfillment(persistOrder("ORD_SCOPE_OWN", own), LocalDateTime.now().plusDays(1));
+        Fulfillment foreign = persistFulfillment(persistOrder("ORD_SCOPE_OTHER", other), LocalDateTime.now().plusDays(1));
+
+        assertEquals(List.of(mine.id), fulfillmentResource.allFulfillments(mockContext(Map.of())).stream().map(f -> f.id).toList());
+        assertEquals(List.of(mine.id), fulfillmentResource.allFulfillments(mockContext(Map.of("order", Set.of()))).stream().map(f -> f.id).toList());
+        assertEquals(mine.id, fulfillmentResource.fulfillment(mine.id, mockContext(Map.of())).id);
+        assertEquals(mine.id, fulfillmentResource.fulfillment(mine.id, mockContext(Map.of("order", Set.of()))).id);
+        assertEquals(mine.id, fulfillmentResource.fulfillmentByOrderId("ORD_SCOPE_OWN", mockContext(Map.of())).id);
+        assertThrows(NoSuchElementException.class, () -> fulfillmentResource.fulfillment(foreign.id, mockContext(Map.of())));
+        assertThrows(NoSuchElementException.class, () -> fulfillmentResource.fulfillmentByOrderId("ORD_SCOPE_OTHER", mockContext(Map.of())));
+    }
+
+    /**
+     * An administrator reads the fulfillments of every store.
+     */
+    @Test
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
+    void administratorReadsTheFulfillmentsOfEveryStore() throws GraphQLException {
+        Store other = createStore("STORE_SCOPE_ADMIN");
+        Fulfillment foreign = persistFulfillment(persistOrder("ORD_SCOPE_ADMIN", other), LocalDateTime.now().plusDays(1));
+
+        assertEquals(foreign.id, fulfillmentResource.fulfillment(foreign.id, mockContext(Map.of())).id);
+        assertEquals(foreign.id, fulfillmentResource.fulfillmentByOrderId("ORD_SCOPE_ADMIN", mockContext(Map.of())).id);
+    }
+
+    /**
+     * A manager linked to no store reads no fulfillment.
+     */
+    @Test
+    @TestSecurity(user = "unlinkedManager", roles = {"MANAGER"})
+    void managerWithoutStoreReadsNoFulfillment() {
+        assertThrows(GraphQLException.class, () -> fulfillmentResource.allFulfillments(mockContext(Map.of())));
+        assertThrows(GraphQLException.class, () -> fulfillmentResource.fulfillment(1L, mockContext(Map.of())));
+        assertThrows(GraphQLException.class, () -> fulfillmentResource.fulfillmentByOrderId("ORD", mockContext(Map.of())));
     }
 }

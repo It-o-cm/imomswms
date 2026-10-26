@@ -1,7 +1,9 @@
 package com.intermarche.backoffice.imports.store;
 
 import com.intermarche.backoffice.domain.store.Aisle;
+import com.intermarche.backoffice.domain.store.AisleWaypoint;
 import com.intermarche.backoffice.domain.store.Building;
+import com.intermarche.backoffice.domain.store.PlanNode;
 import com.intermarche.backoffice.imports.ImporterCsvResource;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.annotation.security.RolesAllowed;
@@ -20,8 +22,18 @@ import java.util.*;
 /**
  * REST Endpoint for bulk importing or updating Aisles.
  * <p>
- * Expected CSV format (6 columns):
- * Code, BuildingCode, LengthMeters, AisleType, ConnectedToHead, ConnectedToTail
+ * Expected CSV format (6 mandatory columns, 5 optional):
+ * Code, BuildingCode, LengthMeters, AisleType, ConnectedToHead, ConnectedToTail,
+ * FlowType, ShapeType, HeadNode, TailNode, Waypoints
+ * <p>
+ * The optional geometry columns extend the aisle with its store plan layer:
+ * FlowType (LINEAR, DIAGONAL, CIRCULAR), ShapeType (STRAIGHT, CURVED), the codes
+ * of the head/tail {@link PlanNode} (import the plan nodes first), and the
+ * waypoints in the format {@code x1,y1;x2,y2;...}.
+ * <p>
+ * The CSV is authoritative for every column it carries: an absent or blank
+ * optional column clears the corresponding field on the entity, so that the
+ * checksum computed from the CSV always mirrors {@link Aisle#getChecksum()}.
  */
 @Path("/aisles/import")
 @ApplicationScoped
@@ -47,7 +59,7 @@ public class AisleCsvResource extends ImporterCsvResource {
 
     /**
      * Prepares the context for a chunk.
-     * Fetches existing Aisles and referenced Buildings.
+     * Fetches existing Aisles, referenced Buildings and referenced Plan Nodes.
      */
     @Override
     public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
@@ -70,6 +82,22 @@ public class AisleCsvResource extends ImporterCsvResource {
             List<Building> buildings = Building.list("buildingCode IN ?1", buildingCodes);
             for (Building b : buildings) {
                 context.put("BUILDING_" + b.buildingCode, b);
+            }
+        }
+
+        // 3. Fetch referenced Plan Nodes (geometry columns: HeadNode, TailNode)
+        Set<String> nodeCodes = new HashSet<>();
+        for (LineData d : parsedLines) {
+            String headNode = safeGetOrNull(d.parts, 8);
+            if (headNode != null) nodeCodes.add(headNode);
+            String tailNode = safeGetOrNull(d.parts, 9);
+            if (tailNode != null) nodeCodes.add(tailNode);
+        }
+
+        if (!nodeCodes.isEmpty()) {
+            List<PlanNode> nodes = PlanNode.list("code IN ?1", nodeCodes);
+            for (PlanNode n : nodes) {
+                context.put("NODE_" + n.code, n);
             }
         }
 
@@ -106,7 +134,7 @@ public class AisleCsvResource extends ImporterCsvResource {
             aisle = new Aisle();
             aisle.code = code;
             aisle.building = building; // Attach building immediately
-            populateAisle(parts, aisle);
+            populateAisle(parts, aisle, entityMap);
             aisle.persist();
             entityMap.put(code, aisle);
             counters[0]++; // Created
@@ -118,7 +146,7 @@ public class AisleCsvResource extends ImporterCsvResource {
             }
             counters[1]++; // Updated
             aisle.building = building; // Update building in case it changed
-            populateAisle(parts, aisle);
+            populateAisle(parts, aisle, entityMap);
         }
     }
 
@@ -135,9 +163,9 @@ public class AisleCsvResource extends ImporterCsvResource {
      * Prepares the full context for a single line in 1-by-1 fallback mode.
      * <p>
      * The generic implementation only puts the found entity under the line code,
-     * but the aisle logic also needs the referenced Building. This override rebuilds
-     * that context with a fresh lookup so that fallback processing behaves
-     * exactly like chunk processing.
+     * but the aisle logic also needs the referenced Building and the referenced
+     * Plan Nodes (geometry columns). This override rebuilds that context with a
+     * fresh lookup so that fallback processing behaves exactly like chunk processing.
      *
      * @param data The parsed CSV line data.
      * @return The context map for this single line.
@@ -156,6 +184,16 @@ public class AisleCsvResource extends ImporterCsvResource {
                 context.put("BUILDING_" + buildingCode, building);
             }
         }
+        // Geometry columns: HeadNode (8), TailNode (9)
+        for (int index : new int[]{8, 9}) {
+            String nodeCode = safeGetOrNull(data.parts, index);
+            if (nodeCode != null) {
+                PlanNode node = PlanNode.find("code", nodeCode).firstResult();
+                if (node != null) {
+                    context.put("NODE_" + nodeCode, node);
+                }
+            }
+        }
         return context;
     }
 
@@ -164,9 +202,18 @@ public class AisleCsvResource extends ImporterCsvResource {
     // --------------------------------------------------
 
     /**
-     * Populates the Aisle entity from CSV parts.
+     * Populates the Aisle entity from CSV parts, including the optional geometry
+     * columns (flow type, shape type, head/tail nodes, waypoints).
+     * <p>
+     * The CSV is authoritative: an absent or blank optional column clears the
+     * corresponding field, so the entity always mirrors the CSV line exactly.
+     *
+     * @param parts   The CSV columns.
+     * @param aisle   The aisle to populate.
+     * @param context The chunk context holding the referenced Plan Nodes under
+     *                the {@code NODE_<code>} keys.
      */
-     void populateAisle(String[] parts, Aisle aisle) {
+    void populateAisle(String[] parts, Aisle aisle, Map<String, Object> context) {
         // Col 2: LengthMeters
         aisle.lengthMeters = safeParseDouble(parts, 2);
 
@@ -178,6 +225,62 @@ public class AisleCsvResource extends ImporterCsvResource {
 
         // Col 5: ConnectedToTail
         aisle.connectedToTail = safeGetOrNull(parts, 5);
+
+        // Col 6: FlowType (optional)
+        aisle.flowType = safeGetOrNull(parts, 6);
+
+        // Col 7: ShapeType (optional)
+        aisle.shapeType = safeGetOrNull(parts, 7);
+
+        // Col 8: HeadNode (optional)
+        aisle.headNode = resolveNode(parts, 8, aisle.code, context);
+
+        // Col 9: TailNode (optional)
+        aisle.tailNode = resolveNode(parts, 9, aisle.code, context);
+
+        // Col 10: Waypoints (optional, "x1,y1;x2,y2;...")
+        applyWaypoints(parts, aisle);
+    }
+
+    /**
+     * Resolves a Plan Node referenced by a CSV column against the chunk context.
+     *
+     * @param parts     The CSV columns.
+     * @param index     The column index of the node code.
+     * @param aisleCode The aisle code (for error reporting).
+     * @param context   The chunk context holding the {@code NODE_<code>} entries.
+     * @return The resolved Plan Node, or null if the column is blank.
+     * @throws IllegalArgumentException if the node code is set but unknown.
+     */
+    private PlanNode resolveNode(String[] parts, int index, String aisleCode, Map<String, Object> context) {
+        String nodeCode = safeGetOrNull(parts, index);
+        if (nodeCode == null) return null;
+        PlanNode node = (PlanNode) context.get("NODE_" + nodeCode);
+        if (node == null) {
+            LOGGER.error("Plan node with code " + nodeCode + " not found for aisle " + aisleCode);
+            throw new IllegalArgumentException("Plan node with code '" + nodeCode + "' not found.");
+        }
+        return node;
+    }
+
+    /**
+     * Replaces the waypoints of the aisle from the CSV column
+     * ({@code x1,y1;x2,y2;...}). A blank column clears the waypoints.
+     *
+     * @param parts The CSV columns.
+     * @param aisle The aisle to update.
+     */
+    private void applyWaypoints(String[] parts, Aisle aisle) {
+        List<double[]> points = PlanZoneCsvResource.parsePoints(safeGetOrNull(parts, 10));
+        aisle.waypoints.clear();
+        for (int i = 0; i < points.size(); i++) {
+            AisleWaypoint waypoint = new AisleWaypoint();
+            waypoint.aisle = aisle;
+            waypoint.position = i;
+            waypoint.x = points.get(i)[0];
+            waypoint.y = points.get(i)[1];
+            aisle.waypoints.add(waypoint);
+        }
     }
 
     /**
@@ -186,14 +289,27 @@ public class AisleCsvResource extends ImporterCsvResource {
      * Mirrors {@link Aisle#getChecksum()}: the building is represented by its
      * natural key (buildingCode, Column 1), never by the surrogate id — the
      * resolved Building may be a lazy Hibernate proxy whose id field reads null.
+     * The head/tail nodes are represented by their codes (Columns 8 and 9), and
+     * the waypoints hash iterates the points in order, exactly like the entity
+     * iterates its ordered waypoints.
      */
-     int computeChecksum(String[] parts, String code) {
+    int computeChecksum(String[] parts, String code) {
+        int waypointsHash = 0;
+        List<double[]> points = PlanZoneCsvResource.parsePoints(safeGetOrNull(parts, 10));
+        for (int i = 0; i < points.size(); i++) {
+            waypointsHash = 31 * waypointsHash + Objects.hash(i, points.get(i)[0], points.get(i)[1]);
+        }
         return Objects.hash(
                 code,                       // code
                 safeParseDouble(parts, 2),  // lengthMeters
                 safeGetOrNull(parts, 3),    // aisleType
                 safeGetOrNull(parts, 4),    // connectedToHead
                 safeGetOrNull(parts, 5),    // connectedToTail
+                safeGetOrNull(parts, 6),    // flowType
+                safeGetOrNull(parts, 7),    // shapeType
+                safeGetOrNull(parts, 8),    // headNode code
+                safeGetOrNull(parts, 9),    // tailNode code
+                waypointsHash,              // waypoints (ordered)
                 safeGetOrNull(parts, 1)     // buildingCode
         );
     }

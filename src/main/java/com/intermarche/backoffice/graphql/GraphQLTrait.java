@@ -82,6 +82,31 @@ public interface GraphQLTrait {
     }
 
     /**
+     * Returns the store whose data the current user may read: none (every store) for administrators and
+     * integration services, the store of the employee for a manager.
+     *
+     * @return the store to restrict the results to, or {@code null} for global access
+     * @throws SecurityException if a manager is not linked to any store
+     */
+    default Store readScope() {
+        if (getIdentity().hasRole("ADMIN") || getIdentity().hasRole("SERVICE_CALLER")) return null;
+        return getStoreContext();
+    }
+
+    /**
+     * Checks that the current user may read the data of a store addressed explicitly (by code or by building).
+     *
+     * @param store the addressed store, or {@code null} if unknown
+     * @throws NoSuchElementException if the store does not exist
+     * @throws SecurityException if the store is outside the scope of the user
+     */
+    default void checkReadable(Store store) {
+        if (store == null) throw new NoSuchElementException("Store not found");
+        Store scope = readScope();
+        if (scope != null && !scope.id.equals(store.id)) throw new SecurityException("Data belongs to another store");
+    }
+
+    /**
      * Retrieves the security identity of the current authenticated user.
      *
      * @return The {@link SecurityIdentity} object representing the authenticated user,

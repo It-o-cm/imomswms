@@ -327,7 +327,7 @@ public class AisleResourceTest {
         record.connectedToTail = "T";
         record.buildingId = 5L;
 
-        assertEquals("AisleRecord [code=AISLE_REC, lengthMeters=10.0, aisleType=LINEAR, connectedToHead=H, connectedToTail=T, buildingId=5]",
+        assertEquals("AisleRecord [code=AISLE_REC, lengthMeters=10.0, aisleType=LINEAR, connectedToHead=H, connectedToTail=T, flowType=null, shapeType=null, headNodeCode=null, tailNodeCode=null, waypoints=null, buildingId=5]",
                 record.toString());
     }
 }

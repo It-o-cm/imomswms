@@ -18,7 +18,7 @@ import com.intermarche.e2e.Authenticate;
  * to obtain a JWT, then uses that token to submit the order.
  */
 public class SendOrder {
-    private static final String ORDER_URL = "http://localhost:8080/orders";
+    private static final String ORDER_URL = "http://localhost:8040/orders";
 
     private static final String JSON_PAYLOAD = """
         {

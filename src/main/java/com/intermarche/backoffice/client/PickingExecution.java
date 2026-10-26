@@ -70,31 +70,23 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
         this.handlingOrder = collectingOrder;
         this.employee = employee;
 
-        // 1. Collect all LotLine IDs from the order's structure
-        Set<Long> lotLineIds = collectingOrder.lots.stream()
-                .flatMap(lot -> lot.lines.stream())
-                .map(lotLine -> lotLine.id)
-                .collect(Collectors.toSet());
-
-        if (!lotLineIds.isEmpty()) {
-            // 2. Execute a SINGLE query to fetch all PickedItems that already exist for these LotLines
-            //    This prevents the N+1 select issue.
-            List<PickedItem> existingItems = PickedItem.list("lotLine.id in ?1", lotLineIds);
-
-            // 3. Build a Set of IDs that are already processed
-            Set<Long> existingLotLineIds = existingItems.stream()
-                    .map(pi -> pi.lotLine.id)
-                    .collect(Collectors.toSet());
-
-            // 4. Iterate through the order structure to create PickedItems for the missing LotLines
-            for (Lot lot : collectingOrder.lots) {
-                for (LotLine lotLine : lot.lines) {
-                    if (!existingLotLineIds.contains(lotLine.id)) {
-                        createAndAddPickedItem(lotLine);
-                    }
-                }
-            }
+        Set<Long> seen = new HashSet<>();
+        for (Lot lot : collectingOrder.lots) for (LotLine line : lot.lines) if(seen.add(line.id)) {
+            BigDecimal remaining=remainingToCollect(line);
+            if(remaining.signum()>0)createAndAddPickedItem(line,remaining);
         }
+    }
+
+    /** Ne pas recréer des quantités déjà prélevées/manquantes, ni voler une ligne en cours. */
+    public static BigDecimal remainingToCollect(LotLine line) {
+        List<PickedItem> items=PickedItem.list("lotLine",line);
+        if(items.stream().anyMatch(i->i.status==PickedItem.PickStatus.PENDING && i.quantity.signum()>0))
+            throw new IllegalArgumentException("Cette ligne est déjà en collecte. Reprenez son exécution existante : "+line.product.name);
+        BigDecimal collected=items.stream().filter(i->i.status==PickedItem.PickStatus.PICKED).map(i->i.quantity).reduce(BigDecimal.ZERO,BigDecimal::add);
+        BigDecimal missing=com.intermarche.backoffice.domain.executing.PickingShortage.<com.intermarche.backoffice.domain.executing.PickingShortage>list("lotLine=?1 and replacementProduct is null",line).stream().map(com.intermarche.backoffice.domain.executing.PickingShortage::effectiveQuantity).reduce(BigDecimal.ZERO,BigDecimal::add);
+        BigDecimal remaining=line.quantity.subtract(collected).subtract(missing);
+        if(remaining.signum()<0)throw new IllegalArgumentException("Les quantités déjà traitées dépassent le besoin de "+line.product.name);
+        return remaining;
     }
 
     // --------------------------------------------------
@@ -151,7 +143,7 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
         }
 
         // Ensure the loaded tote is empty before removing
-        if (loadedTote.items != null && !loadedTote.items.isEmpty()) {
+        if (loadedTote.items != null && loadedTote.items.stream().anyMatch(item -> item.status == PickedItem.PickStatus.PICKED && item.quantity.signum() > 0)) {
             throw new IllegalArgumentException("Cannot remove a tote that contains items");
         }
 
@@ -286,7 +278,7 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
 
         // 3. Check for an existing item in the work list for the same LotLine
         Optional<PickedItem> existingItemOpt = this.itemsToPick.stream()
-                .filter(item -> item.lotLine.equals(pickedItem.lotLine))
+                .filter(item -> item.status == PickedItem.PickStatus.PENDING && item.lotLine.equals(pickedItem.lotLine))
                 .findFirst();
 
         if (existingItemOpt.isPresent()) {
@@ -345,7 +337,7 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
 
         // Assign the buffer to all loaded totes
         for (LoadedTote tote : this.loadedTotes) {
-            tote.buffer = buffer;
+            tote.clearCell();tote.buffer = buffer;
         }
 
         // Update execution status to DONE
@@ -406,11 +398,11 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
      *
      * @param lotLine the source lot line.
      */
-    private void createAndAddPickedItem(LotLine lotLine) {
+    private void createAndAddPickedItem(LotLine lotLine,BigDecimal quantity) {
         PickedItem item = new PickedItem();
         item.lotLine = lotLine;
         item.product = lotLine.product;
-        item.quantity = lotLine.quantity;
+        item.quantity = quantity;
         item.status = PickedItem.PickStatus.PENDING;
         // Persist before adding to the HashSet: BaseEntity.hashCode() is based on id,
         // which changes on persist and would break the Set contract.

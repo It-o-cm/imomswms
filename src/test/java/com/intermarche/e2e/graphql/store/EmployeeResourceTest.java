@@ -51,7 +51,7 @@ public class EmployeeResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllEmployees() {
         Store store = DomainUtils.createAndPersistStore("STORE_E1", 48.0, 2.0);
         persistEmployee("BADGE_E01", store);
@@ -62,7 +62,7 @@ public class EmployeeResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testEmployeeById_Success() {
         Store store = DomainUtils.createAndPersistStore("STORE_E2", 48.0, 2.0);
         Employee existing = persistEmployee("BADGE_E02", store);
@@ -73,7 +73,7 @@ public class EmployeeResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testEmployeeById_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             employeeResource.employee(9999L);
@@ -81,7 +81,7 @@ public class EmployeeResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testEmployeeByBadgeId_Success() {
         Store store = DomainUtils.createAndPersistStore("STORE_E3", 48.0, 2.0);
         persistEmployee("BADGE_E03", store);
@@ -92,7 +92,7 @@ public class EmployeeResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testEmployeeByBadgeId_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             employeeResource.employeeByBadgeId("BADGE_99");
@@ -403,5 +403,30 @@ public class EmployeeResourceTest {
 
         assertEquals("EmployeeRecord [firstName=John, lastName=Doe, badgeId=BADGE_01, email=john@test.com, role=PICKER, storeId=7, active=true]",
                 record.toString());
+    }
+
+    // --------------------------------------------------
+    // Store scope of a manager
+    // --------------------------------------------------
+
+    /**
+     * A manager only reads the employees of their store.
+     */
+    @Test
+    @TestSecurity(user = "BADGE_ES_MGR", roles = {"MANAGER"})
+    void managerOnlyReadsTheEmployeesOfTheirStore() {
+        Store own = DomainUtils.createAndPersistStore("STORE_ES_OWN", 48.0, 2.0);
+        Store other = DomainUtils.createAndPersistStore("STORE_ES_OTHER", 48.0, 2.0);
+        Employee manager = persistEmployee("BADGE_ES_MGR", own);
+        Employee colleague = persistEmployee("BADGE_ES_OWN", own);
+        Employee foreign = persistEmployee("BADGE_ES_OTH", other);
+
+        List<Long> ids = employeeResource.allEmployees().stream().map(e -> e.id).toList();
+        assertTrue(ids.containsAll(List.of(manager.id, colleague.id)));
+        assertFalse(ids.contains(foreign.id));
+        assertEquals(colleague.id, employeeResource.employee(colleague.id).id);
+        assertEquals(colleague.id, employeeResource.employeeByBadgeId("BADGE_ES_OWN").id);
+        assertThrows(NoSuchElementException.class, () -> employeeResource.employee(foreign.id));
+        assertThrows(NoSuchElementException.class, () -> employeeResource.employeeByBadgeId("BADGE_ES_OTH"));
     }
 }

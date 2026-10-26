@@ -70,21 +70,22 @@ public class LotResource implements GraphQLTrait {
     }
 
     /**
-     * Retrieves a list of all lots in the database.
+     * Retrieves a list of all lots the user may read: those of their store for a manager.
      * <p>
      * Delegates to {@link #buildOptimizedQuery(Context, String, boolean)} to construct
      * a JPQL query with dynamic JOIN FETCH clauses.
      *
      * @param context The SmallRye GraphQL context.
-     * @return A {@link List} of all {@link Lot} entities.
+     * @return A {@link List} of the readable {@link Lot} entities.
      */
     @Query
     @Description("Get a list of all lots")
     @RolesAllowed("MANAGER")
     public List<Lot> allLots(Context context) {
         LOGGER.info("Entering method allLots");
-        String jpql = buildOptimizedQuery(context, null, false);
-        List<Lot> result = Lot.list(jpql);
+        Store scope = readScope();
+        List<Lot> result = scope == null ? Lot.list(buildOptimizedQuery(context, null, false))
+                : Lot.list(buildOptimizedQuery(context, "l.store.id = ?1", false), scope.id);
         LOGGER.info("Exiting method allLots");
         return result;
     }
@@ -95,15 +96,16 @@ public class LotResource implements GraphQLTrait {
      * @param id      The unique technical ID (Primary Key) of the Lot.
      * @param context The SmallRye GraphQL context.
      * @return The found {@link Lot} entity.
-     * @throws NoSuchElementException if no Lot exists with the given ID.
+     * @throws NoSuchElementException if no Lot exists with the given ID in the scope of the user.
      */
     @Query
     @Description("Get a lot by its technical ID")
     @RolesAllowed("MANAGER")
     public Lot lot(@Name("id") Long id, Context context) {
         LOGGER.info("Entering method lot with id: " + id);
-        String jpql = buildOptimizedQuery(context, "l.id = ?1", false);
-        Lot lot = Lot.find(jpql, id).firstResult();
+        Store scope = readScope();
+        Lot lot = scope == null ? Lot.find(buildOptimizedQuery(context, "l.id = ?1", false), id).firstResult()
+                : Lot.find(buildOptimizedQuery(context, "l.id = ?1 and l.store.id = ?2", false), id, scope.id).firstResult();
         if (lot == null) {
             LOGGER.error("Lot with id " + id + " not found");
             throw new NoSuchElementException("Lot with id " + id + " not found");
@@ -119,15 +121,16 @@ public class LotResource implements GraphQLTrait {
      *
      * @param chunkId The ID of the parent FulfillmentChunk.
      * @param context The SmallRye GraphQL context.
-     * @return A list of {@link Lot} entities.
+     * @return A list of {@link Lot} entities, restricted to the store of a manager.
      */
     @Query
     @Description("Get lots by the linked Fulfillment Chunk ID")
     @RolesAllowed("MANAGER")
     public List<Lot> lotsByChunkId(@Name("chunkId") Long chunkId, Context context) {
         LOGGER.info("Entering method lotsByChunkId with chunkId: " + chunkId);
-        String jpql = buildOptimizedQuery(context, "c.id = ?1", true);
-        List<Lot> lots = Lot.list(jpql, chunkId);
+        Store scope = readScope();
+        List<Lot> lots = scope == null ? Lot.list(buildOptimizedQuery(context, "c.id = ?1", true), chunkId)
+                : Lot.list(buildOptimizedQuery(context, "c.id = ?1 and l.store.id = ?2", true), chunkId, scope.id);
         LOGGER.info("Exiting method lotsByChunkId");
         return lots;
     }

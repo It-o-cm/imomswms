@@ -141,7 +141,7 @@ public class EventResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testEventsByStoreCode_Success() throws GraphQLException {
         Store store = createStore("STORE_EV4");
         persistEvent("EVT_5", store, "CODE_5");
@@ -160,7 +160,7 @@ public class EventResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testEventsByStoreCode_StoreSelection_FetchJoinsStore() throws GraphQLException {
         Store store = createStore("STORE_EV5");
         persistEvent("EVT_7", store, "CODE_7");

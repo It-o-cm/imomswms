@@ -42,7 +42,7 @@ public class ZoneGroupingFulfillerFactory extends BaseFulfillerFactory {
     /**
      * JSON Schema definition string.
      */
-    private static final String ZONE_CONFIG_SCHEMA = """
+    public static final String ZONE_CONFIG_SCHEMA = """
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ZoneGroupingConfiguration",

@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @ApplicationScoped
 public class StoreActivityEngine {
+    @Inject jakarta.persistence.EntityManager alertEntityManager;
 
     private static final Logger LOGGER = Logger.getLogger(StoreActivityEngine.class);
 
@@ -278,18 +279,27 @@ public class StoreActivityEngine {
      *
      * @param store The store for which to check handling order delays.
      */
-    private void checkAndEmitLateHandlingOrders(Store store) {
+    @jakarta.transaction.Transactional
+    public void checkAndEmitLateHandlingOrders(Store store) {
         try {
-            LocalDateTime now = LocalDateTime.now();
+            if(alertEntityManager!=null){
+                var managed=alertEntityManager.find(Store.class,store.id);
+                if(managed==null)return;
+                alertEntityManager.lock(managed,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+                store=managed;
+            }
+            LocalDateTime now = com.intermarche.backoffice.domain.util.DateTimeProvider.now();
 
             // 1. Find active orders (not finished) whose requested end date is in the past
             List<BaseHandlingOrder> lateOrders = BaseHandlingOrder.list(
                     "store = ?1 AND requestedEnd < ?2 AND requestedEnd IS NOT NULL AND status IN ?3",
                     store,
                     now,
-                    List.of(BaseHandlingOrder.HandlingOrderStatus.OPEN, BaseHandlingOrder.HandlingOrderStatus.PROCESSING)
+                    List.of(BaseHandlingOrder.HandlingOrderStatus.OPEN, BaseHandlingOrder.HandlingOrderStatus.SCHEDULED, BaseHandlingOrder.HandlingOrderStatus.PROCESSING, BaseHandlingOrder.HandlingOrderStatus.FAILED)
             );
             for (BaseHandlingOrder order : lateOrders) {
+                long executions=com.intermarche.backoffice.domain.handling.HandlingExecution.count("handlingOrder",order);
+                if(executions>0 && com.intermarche.backoffice.domain.handling.HandlingExecution.count("handlingOrder=?1 and status<>?2",order,com.intermarche.backoffice.domain.handling.HandlingExecution.ExecutionStatus.DONE)==0)continue;
                 // 2. Check if a "Delay" event has already been emitted for this specific orderId.
                 // Using the technical ID ensures global uniqueness and prevents false positives across stores.
                 boolean alreadyNotified = Event.count(

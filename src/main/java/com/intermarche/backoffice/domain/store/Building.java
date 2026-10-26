@@ -26,6 +26,9 @@ import java.util.Set;
 @DiscriminatorColumn(name = "type", discriminatorType = DiscriminatorType.STRING)
 @Table(name = "buildings")
 public abstract class Building extends BaseEntity {
+    /** Concrete business kind, including when GraphQL exposes the base Building type. */
+    public String getBuildingType(){return WarehouseBuilding.class.isAssignableFrom(org.hibernate.Hibernate.getClass(this))?"WarehouseBuilding":"StoreBuilding";}
+
 
     /**
      * Physical postal address of the building.
@@ -61,6 +64,58 @@ public abstract class Building extends BaseEntity {
      */
     @Column(name = "building_code", length = 50, nullable = false)
     public String buildingCode;
+
+    /**
+     * Background image of the building's store plan (PNG encoded in base64), or null if none.
+     * <p>
+     * Seeded by the demo data initializer; not part of the CSV import, so it is
+     * deliberately excluded from {@link #getChecksum()}.
+     */
+    @Column(name = "plan_image", columnDefinition = "text")
+    public String planImage;
+
+    /**
+     * World X coordinate (in meters) of the top-left corner of the plan background image.
+     * <p>
+     * Only meaningful when {@link #planImage} is set.
+     */
+    @Column(name = "plan_image_x")
+    public double planImageX;
+
+    /**
+     * World Y coordinate (in meters) of the top-left corner of the plan background image.
+     * <p>
+     * Only meaningful when {@link #planImage} is set.
+     */
+    @Column(name = "plan_image_y")
+    public double planImageY;
+
+    /**
+     * Scale factor applied to the plan background image (1 = natural size).
+     * <p>
+     * Only meaningful when {@link #planImage} is set. Not part of the CSV import,
+     * so it is deliberately excluded from {@link #getChecksum()}.
+     */
+    @Column(name = "plan_image_scale")
+    public double planImageScale = 1;
+
+    /**
+     * Rotation of the plan background image, in degrees (around its center).
+     * <p>
+     * Only meaningful when {@link #planImage} is set. Not part of the CSV import,
+     * so it is deliberately excluded from {@link #getChecksum()}.
+     */
+    @Column(name = "plan_image_rotation")
+    public double planImageRotation = 0;
+
+    /**
+     * Opacity of the plan background image (0 = transparent, 1 = opaque).
+     * <p>
+     * Only meaningful when {@link #planImage} is set. Not part of the CSV import,
+     * so it is deliberately excluded from {@link #getChecksum()}.
+     */
+    @Column(name = "plan_image_opacity")
+    public double planImageOpacity = 1;
 
     /**
      * The list of locations (Shelves or Bins) within this building.

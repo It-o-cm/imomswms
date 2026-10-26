@@ -43,7 +43,7 @@ public class PackingOrderManagerFactory extends BaseOrderHandlerBuilderFactory {
      * This schema enforces the presence and types of parameters like validity delay,
      * grouping window, and deadline delay.
      */
-    private static final String PACKING_MANAGER_SCHEMA = """
+    public static final String PACKING_MANAGER_SCHEMA = """
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "PackingOrderManagerConfiguration",
@@ -202,6 +202,7 @@ public class PackingOrderManagerFactory extends BaseOrderHandlerBuilderFactory {
                 List<Lot> lots = entry.getValue();
                 setStatusToLot(lots, Lot.LotStatus.PLANNED_TO_BE_PACKED);
                 PackingOrder handler = findOrCreatePackingOrderHandler(store, key);
+                if(handler.building==null)handler.building=lots.stream().filter(l->l.chunk!=null && l.chunk.building!=null).map(l->l.chunk.building).findFirst().orElse(null);
                 handler.lots.addAll(lots);
                 handler.persist();
             }

@@ -53,16 +53,17 @@ public class EmployeeResource implements GraphQLTrait {
     }
 
     /**
-     * Retrieves the list of all employees in the database.
+     * Retrieves the list of all employees the user may read: those of their store for a manager.
      *
-     * @return A list of all Employee entities.
+     * @return A list of the readable Employee entities.
      */
     @Query
     @Description("Get the list of all employees")
     @RolesAllowed("MANAGER")
     public List<Employee> allEmployees() {
         LOGGER.info("Entering method allEmployees");
-        List<Employee> result = Employee.listAll();
+        Store scope = readScope();
+        List<Employee> result = scope == null ? Employee.listAll() : Employee.list("store.id", scope.id);
         LOGGER.info("Exiting method allEmployees");
         return result;
     }
@@ -72,14 +73,14 @@ public class EmployeeResource implements GraphQLTrait {
      *
      * @param id The unique ID of the employee.
      * @return The Employee entity.
-     * @throws NoSuchElementException if the employee with the given ID does not exist.
+     * @throws NoSuchElementException if the employee with the given ID does not exist in the scope of the user.
      */
     @Query
     @Description("Get an employee by its ID")
     @RolesAllowed("MANAGER")
     public Employee employee(@Name("id") Long id) {
         LOGGER.info("Entering method employee with id: " + id);
-        Employee employee = Employee.findById(id);
+        Employee employee = readable(Employee.findById(id));
         if (employee == null) {
             LOGGER.error("Employee with id " + id + " not found");
             throw new NoSuchElementException("Employee with id " + id + " not found");
@@ -95,20 +96,32 @@ public class EmployeeResource implements GraphQLTrait {
      *
      * @param badgeId The unique Badge ID of the employee.
      * @return The Employee entity.
-     * @throws NoSuchElementException if the employee with the given Badge ID does not exist.
+     * @throws NoSuchElementException if the employee with the given Badge ID does not exist in the scope of the user.
      */
     @Query
     @Description("Get an employee by their Badge ID")
     @RolesAllowed("MANAGER")
     public Employee employeeByBadgeId(@Name("badgeId") String badgeId) {
         LOGGER.info("Entering method employeeByBadgeId with badgeId: " + badgeId);
-        Employee employee = Employee.findByBadgeId(badgeId);
+        Employee employee = readable(Employee.findByBadgeId(badgeId));
         if (employee == null) {
             LOGGER.error("Employee with badgeId " + badgeId + " not found");
             throw new NoSuchElementException("Employee with badgeId '" + badgeId + "' not found");
         }
         LOGGER.info("Exiting method employeeByBadgeId");
         return employee;
+    }
+
+    /**
+     * Hides an employee of another store from a manager.
+     *
+     * @param employee the employee found, or null
+     * @return the employee if the user may read it, otherwise null
+     */
+    private Employee readable(Employee employee) {
+        Store scope = readScope();
+        if (employee == null || scope == null) return employee;
+        return scope.id.equals(employee.store.id) ? employee : null;
     }
 
     // --------------------------------------------------

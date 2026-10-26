@@ -27,7 +27,7 @@ import com.intermarche.e2e.Authenticate;
  */
 public class SendRandomOrder {
 
-    private static final String ORDER_URL = "http://localhost:8080/orders";
+    private static final String ORDER_URL = "http://localhost:8040/orders";
     private static final String STORE_CODE = "0101";
     private static final String STORE_NAME = "Intermarché Test 1";
 

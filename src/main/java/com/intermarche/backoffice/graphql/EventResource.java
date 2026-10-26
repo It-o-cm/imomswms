@@ -111,13 +111,16 @@ public class EventResource implements GraphQLTrait {
      * @param storeCode The business identifier of the linked Store.
      * @param context   The SmallRye GraphQL context.
      * @return The found {@link List} of {@link Event} entities.
-     * @throws GraphQLException if execution fails.
+     * @throws GraphQLException if execution fails or if the store is outside the scope of the user.
      */
     @Query
     @Description("Get events by the linked Store code")
     @RolesAllowed("MANAGER")
     public List<Event> eventsByStoreCode(@Name("storeCode") String storeCode, Context context) throws GraphQLException {
         return this.execute(() -> {
+            Store store = Store.findByCode(storeCode);
+            if (store == null) return List.<Event>of();
+            checkReadable(store);
             String jpql = buildOptimizedQuery(context, "s.code = ?1", true);
             return Event.list(jpql, storeCode);
         }, EventResource.class, "eventsByStoreCode");

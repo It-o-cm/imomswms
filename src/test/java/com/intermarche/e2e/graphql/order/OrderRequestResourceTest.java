@@ -126,7 +126,7 @@ public class OrderRequestResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testOrderRequest_Success() {
         OrderRequest existing = persistOrderRequest("REQ_O5", "STORE_A");
 
@@ -136,7 +136,7 @@ public class OrderRequestResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testOrderRequest_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             orderRequestResource.orderRequest(9999L);
@@ -144,7 +144,7 @@ public class OrderRequestResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testOrdersByNumber_MultipleHistory() {
         persistOrderRequest("REQ_O6", "STORE_A");
         persistOrderRequest("REQ_O6", "STORE_A"); // history: same number twice
@@ -154,7 +154,7 @@ public class OrderRequestResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testOrdersByNumber_Empty() {
         List<OrderRequest> requests = orderRequestResource.ordersByNumber("REQ_UNKNOWN");
         assertNotNull(requests);
@@ -383,5 +383,37 @@ public class OrderRequestResourceTest {
 
         assertEquals("OrderRequestRecord [orderNumber=REQ_REC, storeCode=STORE_REC, specification={}]",
                 record.toString());
+    }
+
+    // --------------------------------------------------
+    // Store scope of a manager
+    // --------------------------------------------------
+
+    /**
+     * A manager only reads the order requests of their store, by identifier or by number.
+     */
+    @Test
+    @TestSecurity(user = "scopedManager", roles = {"MANAGER"})
+    void managerOnlyReadsTheOrderRequestsOfTheirStore() {
+        Store own = createStore("STORE_RS_OWN");
+        createEmployee("scopedManager", own);
+        OrderRequest mine = persistOrderRequest("REQ_RS", "STORE_RS_OWN");
+        OrderRequest foreign = persistOrderRequest("REQ_RS", "STORE_RS_OTHER");
+
+        assertEquals(mine.id, orderRequestResource.orderRequest(mine.id).id);
+        assertThrows(NoSuchElementException.class, () -> orderRequestResource.orderRequest(foreign.id));
+        assertEquals(List.of(mine.id), orderRequestResource.ordersByNumber("REQ_RS").stream().map(r -> r.id).toList());
+    }
+
+    /**
+     * An administrator reads the order requests of every store.
+     */
+    @Test
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
+    void administratorReadsTheOrderRequestsOfEveryStore() {
+        OrderRequest foreign = persistOrderRequest("REQ_RS_ADMIN", "STORE_RS_ELSEWHERE");
+
+        assertEquals(foreign.id, orderRequestResource.orderRequest(foreign.id).id);
+        assertEquals(1, orderRequestResource.ordersByNumber("REQ_RS_ADMIN").size());
     }
 }

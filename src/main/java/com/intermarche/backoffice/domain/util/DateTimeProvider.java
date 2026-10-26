@@ -36,6 +36,18 @@ public final class DateTimeProvider {
     }
 
     /**
+     * Returns the fixed date time currently set, or {@code null} if the provider
+     * is returning the real system time.
+     * <p>
+     * Useful to save and restore the fixed time around a temporary override.
+     *
+     * @return The fixed LocalDateTime, or null if none is set.
+     */
+    public static LocalDateTime getFixedDateTime() {
+        return fixedTime;
+    }
+
+    /**
      * Sets a fixed date and time to be returned by {@link #now()}.
      * <p>
      * This is useful for testing scenarios where you need to verify

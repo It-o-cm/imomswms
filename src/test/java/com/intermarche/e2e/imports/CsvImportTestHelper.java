@@ -5,8 +5,12 @@ import com.intermarche.backoffice.domain.Event;
 import com.intermarche.backoffice.domain.order.Product;
 import com.intermarche.backoffice.domain.order.ProductFamily;
 import com.intermarche.backoffice.domain.store.Aisle;
+import com.intermarche.backoffice.domain.store.AisleWaypoint;
 import com.intermarche.backoffice.domain.store.Buffer;
 import com.intermarche.backoffice.domain.store.Employee;
+import com.intermarche.backoffice.domain.store.PlanNode;
+import com.intermarche.backoffice.domain.store.PlanZone;
+import com.intermarche.backoffice.domain.store.PlanZoneVertex;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.store.StoreGroup;
 import com.intermarche.backoffice.domain.store.Tote;
@@ -85,7 +89,11 @@ public final class CsvImportTestHelper {
      * <ol>
      *   <li>{@link Event} and {@link WMSStoreHandle} (created by background consumers, FK to Store)</li>
      *   <li>{@link Tote} and {@link Employee} (FK to Store)</li>
+     *   <li>{@link AisleWaypoint} (FK to Aisle; bulk deletes do not cascade)</li>
      *   <li>{@link Aisle} and {@link Buffer} (FK to Building)</li>
+     *   <li>{@link PlanNode} (referenced by Aisle head/tail, FK to Building)</li>
+     *   <li>{@link PlanZoneVertex} (FK to PlanZone; bulk deletes do not cascade)</li>
+     *   <li>{@link PlanZone} (FK to Building)</li>
      *   <li>Locations (native delete, {@code item_locations} is a single-table hierarchy)</li>
      *   <li>Buildings (native delete, abstract entity + {@code store_id} FK column)</li>
      *   <li>{@link Configuration} and {@link StoreGroup} (ManyToMany join tables to Store)</li>
@@ -102,7 +110,11 @@ public final class CsvImportTestHelper {
             WMSStoreHandle.deleteAll();
             Tote.deleteAll();
             Employee.deleteAll();
+            AisleWaypoint.deleteAll();
             Aisle.deleteAll();
+            PlanNode.deleteAll();
+            PlanZoneVertex.deleteAll();
+            PlanZone.deleteAll();
             Buffer.deleteAll();
             Panache.getEntityManager().createNativeQuery("DELETE FROM item_locations").executeUpdate();
             Panache.getEntityManager().createNativeQuery("DELETE FROM buildings").executeUpdate();

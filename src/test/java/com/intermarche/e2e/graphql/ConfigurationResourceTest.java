@@ -53,7 +53,7 @@ public class ConfigurationResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testConfigurationsByStore_Success() {
         Store store = createStore("STORE_CF1");
         Configuration configA = persistConfiguration("CFG_A", "PRICING", 1);
@@ -68,7 +68,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testConfigurationsByStore_NoLink_ReturnsEmpty() {
         Store store = createStore("STORE_CF2");
         persistConfiguration("CFG_C", "PRICING", 1);
@@ -79,7 +79,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testConfigurationsByStore_StoreNotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             configurationResource.configurationsByStore(9999L);
@@ -87,7 +87,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testConfigurationsForStore_DirectLink() {
         Store store = createStore("STORE_CF3");
         Configuration config = persistConfiguration("CFG_D", "PRICING", 1);
@@ -101,7 +101,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testConfigurationsForStore_ViaStoreGroup() {
         Store store = createStore("STORE_CF4");
         StoreGroup group = DomainUtils.createAndPersistStoreGroup("GRP_CF1");
@@ -117,7 +117,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testConfigurationsForStore_StoreNotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             configurationResource.configurationsForStore(9999L, "PRICING");
@@ -125,7 +125,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testEffectiveConfigurationForStore_HighestPriority() {
         Store store = createStore("STORE_CF5");
         Configuration low = persistConfiguration("CFG_LOW", "PRICING", 1);
@@ -141,7 +141,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testEffectiveConfigurationForStore_Tie_Throws() {
         Store store = createStore("STORE_CF6");
         Configuration configA = persistConfiguration("CFG_TIE_A", "PRICING", 5);
@@ -157,7 +157,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testEffectiveConfigurationForStore_None_Throws() {
         Store store = createStore("STORE_CF7");
 
@@ -167,7 +167,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testEffectiveConfigurationForStore_StoreNotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             configurationResource.effectiveConfigurationForStore(9999L, "PRICING");
@@ -271,7 +271,7 @@ public class ConfigurationResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testUpdateConfiguration_ManagerRole_Allowed() throws GraphQLException {
         Configuration existing = persistConfiguration("CFG_MGR", "PRICING", 1);
 

@@ -30,8 +30,15 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class PickingPlanService {
 
+    @Inject SheetTotePreparation sheetTotes;
+    @Inject MixedPreparationService mixedPreparation;
+    @Inject PickingResolutionService resolutions;
+
     @Inject
     PickingRouteOptimizer routeOptimizer;
+
+    @Inject
+    StorePickingRoutePlanner storeRoutePlanner;
 
     // --------------------------------------------------
     // Public API
@@ -57,6 +64,8 @@ public class PickingPlanService {
         );
 
         return candidates.stream()
+                .filter(o -> o instanceof PreparingOrder)
+                .filter(o -> MixedPreparationService.supports(primary)==MixedPreparationService.supports(o))
                 .filter(o -> filterBySearch(o, search))
                 .map(this::mapToMergeDTO)
                 .collect(Collectors.toList());
@@ -83,11 +92,26 @@ public class PickingPlanService {
         for (BaseHandlingOrder order : orders) {
             HandlingExecution exec = HandlingExecution.find("handlingOrder", order).firstResult();
 
-            if (exec instanceof PickingExecution pe) {
+            if (MixedPreparationService.supports(order) && (exec==null || exec.status!=HandlingExecution.ExecutionStatus.DONE)) {
+                for(var source:mixedPreparation.sources((PreparingOrder)order)) {
+                    if(source.building()==null)throw new IllegalStateException("Bâtiment source manquant.");
+                    var ctx=contextsByBuilding.computeIfAbsent(source.building().id,k->new BuildingPlanContext(source.building()));
+                    var step=mapToStepDTO(source.line(),order,globalStepCounter++);
+                    step.pickedItemId=source.key();step.quantity=source.quantity();step.sourceAvailable=source.quantity();
+                    step.productId=source.product().id;step.productEan=source.product().ean;step.productName=source.product().name;step.temperatureZone=source.product().temperatureZone;step.sourceKind=source.item()==null?"SHELF":"TOTE";step.sourceLocation=source.item()==null?step.sourceLocation:source.label();step.sourceSnapshot=source.snapshot();step.sourceToteCode=source.item()==null?null:source.item().loadedTote.tote.code;
+                    if(order instanceof com.intermarche.backoffice.domain.wms.handling.GroupingOrder grouping && grouping.buffer!=null)step.destinationBufferId=grouping.buffer.id;
+                    step.chunkId=((PreparingOrder)order).lots.stream().filter(l->l.lines.contains(source.line())).map(l->l.chunk.id).findFirst().orElse(null);
+                    if(source.item()!=null){step.aisle="BACS";step.unit=source.item().loadedTote.tote.code;step.position=null;step.area="BACS";step.planNodeCode=source.item().loadedTote.buffer==null?null:source.item().loadedTote.buffer.planNodeCode;}
+                    ctx.allSteps.add(step);if(step.aisle!=null && source.item()==null)ctx.uniqueAisleCodes.add(step.aisle);
+                    ctx.totalWeight=ctx.totalWeight.add((source.line().product.referenceWeight==null?BigDecimal.ZERO:source.line().product.referenceWeight).multiply(source.quantity()));
+                    ctx.totalVolume=ctx.totalVolume.add((source.line().product.referenceVolume==null?BigDecimal.ZERO:source.line().product.referenceVolume).multiply(source.quantity()));
+                }
+            } else if (exec instanceof PickingExecution pe) {
                 // SCENARIO A: Execution exists -> Use remaining PickedItems
                 Map<Long, Building> lineToBuildingCache = buildLineToBuildingCache(pe.handlingOrder);
                 if (pe.itemsToPick != null) {
                     for (PickedItem item : pe.itemsToPick) {
+                        if(item.status!=PickedItem.PickStatus.PENDING || item.quantity.signum()<=0)continue;
                         Building building = null;
                         if (item.lotLine != null) {
                             building = lineToBuildingCache.get(item.lotLine.id);
@@ -113,13 +137,24 @@ public class PickingPlanService {
         BatchPickingPlanResponse response = new BatchPickingPlanResponse();
 
         for (BuildingPlanContext ctx : contextsByBuilding.values()) {
-            List<String> optimizedAisles = getOptimizedAisleSequence(ctx.building, startNode, ctx.uniqueAisleCodes);
-            int distance = calculateRouteDistance(ctx.building, startNode, optimizedAisles);
-            List<RouteGroupDTO> routeGroups = buildOptimizedRouteGroups(ctx.allSteps, optimizedAisles);
-
-            PickingPlanResponse buildingPlan = buildResponse(routeGroups, ctx, distance);
+            StorePickingRoutePlanner.Result planned = storeRoutePlanner == null ? null
+                    : storeRoutePlanner.plan(ctx.building, ctx.allSteps, startNode);
+            PickingPlanResponse buildingPlan;
+            if (planned != null) {
+                int distance = planned.geometry().distanceMeters == null ? 0 : (int)Math.round(planned.geometry().distanceMeters);
+                buildingPlan = buildResponse(planned.route(), ctx, distance);
+                buildingPlan.mapRoute = planned.geometry();
+            } else {
+                // Legacy stores without a geometric plan still use server-side routing.
+                List<String> optimizedAisles = getOptimizedAisleSequence(ctx.building, startNode, ctx.uniqueAisleCodes);
+                int distance = calculateRouteDistance(ctx.building, startNode, optimizedAisles);
+                List<RouteGroupDTO> routeGroups = buildOptimizedRouteGroups(ctx.allSteps, optimizedAisles);
+                int number = 1;
+                for (RouteGroupDTO group : routeGroups) for (RouteStepDTO step : group.steps) step.stepNumber = number++;
+                buildingPlan = buildResponse(routeGroups, ctx, distance);
+            }
             buildingPlan.buildingId = ctx.building.id;
-            buildingPlan.buildingCode = ctx.building.buildingCode;
+            buildingPlan.buildingCode = ctx.building.buildingCode;buildingPlan.buildingType=ctx.building.getBuildingType();
 
             response.buildingPlans.put(ctx.building.id, buildingPlan);
 
@@ -127,6 +162,10 @@ public class PickingPlanService {
             response.globalSummary.estimatedDistanceMeters += buildingPlan.summary.estimatedDistanceMeters;
         }
 
+        if(sheetTotes!=null)for(BaseHandlingOrder order:orders) {
+            var steps=contextsByBuilding.values().stream().flatMap(ctx->ctx.allSteps.stream()).filter(step->Objects.equals(step.sourceOrderId,order.id)).toList();
+            response.toteRequirements.put(order.id,sheetTotes.estimate(order.store,steps));
+        }
         return response;
     }
 
@@ -184,15 +223,17 @@ public class PickingPlanService {
      */
     private void addStepToContext(Map<Long, BuildingPlanContext> contexts, LotLine line, BaseHandlingOrder order, int stepNumber, Building building) {
         if (building == null) return;
+        BigDecimal remaining=PickingExecution.remainingToCollect(line);
+        if(remaining.signum()==0)return;
         BuildingPlanContext ctx = contexts.computeIfAbsent(building.id, k -> new BuildingPlanContext(building));
-        RouteStepDTO step = mapToStepDTO(line, order, stepNumber);
+        RouteStepDTO step = mapToStepDTO(line, order, stepNumber);step.quantity=remaining;
         ctx.allSteps.add(step);
         if (step.aisle != null) ctx.uniqueAisleCodes.add(step.aisle);
         if (line.product != null && line.quantity != null) {
             BigDecimal w = line.product.referenceWeight != null ? line.product.referenceWeight : BigDecimal.ZERO;
             BigDecimal v = line.product.referenceVolume != null ? line.product.referenceVolume : BigDecimal.ZERO;
-            ctx.totalWeight = ctx.totalWeight.add(w.multiply(line.quantity));
-            ctx.totalVolume = ctx.totalVolume.add(v.multiply(line.quantity));
+            ctx.totalWeight = ctx.totalWeight.add(w.multiply(remaining));
+            ctx.totalVolume = ctx.totalVolume.add(v.multiply(remaining));
         }
     }
 
@@ -267,6 +308,7 @@ public class PickingPlanService {
         response.capacity = new CapacityDTO();
         response.capacity.totalWeightKg = context.totalWeight;
         response.capacity.totalVolumeLiters = context.totalVolume;
+        if(sheetTotes!=null)response.totePreparation=sheetTotes.estimate(Building.findStoreByBuildingId(context.building.id),context.allSteps);
         return response;
     }
 
@@ -291,14 +333,18 @@ public class PickingPlanService {
         RouteStepDTO step = new RouteStepDTO();
         step.pickedItemId = line.id;
         step.stepNumber = stepNumber;
+        step.productId=line.product==null?null:line.product.id;step.productEan=line.product==null?null:line.product.ean;
         step.productName = (line.product != null) ? line.product.name : "Unknown";
         step.quantity = line.quantity;
-        step.unitLabel = "pcs";
+        step.productType=line.product==null || line.product.productType==null?"UNIT":line.product.productType.name();
+        step.unitLabel = switch(com.intermarche.backoffice.domain.order.ProductType.valueOf(step.productType)){case WEIGHT -> "kg";case VOLUME -> "L";default -> "pcs";};
         step.temperatureZone = (line.product != null) ? line.product.temperatureZone : null;
         step.sourceOrderId = order.id;
         step.sourceOrderCode = order.code;
 
-        if (line.fulfillmentLine != null && line.fulfillmentLine.location instanceof ShelfLocation shelfLoc) {
+        var rawLocation=line.location!=null?line.location:line.fulfillmentLine==null?null:line.fulfillmentLine.location;
+        if (rawLocation!=null && org.hibernate.Hibernate.unproxy(rawLocation) instanceof ShelfLocation shelfLoc) {
+            step.sourceLocation=shelfLoc.locationCode;
             step.aisle = shelfLoc.aisle;
             step.unit = shelfLoc.unit;
             step.position = shelfLoc.position;
@@ -314,15 +360,19 @@ public class PickingPlanService {
         RouteStepDTO step = new RouteStepDTO();
         step.pickedItemId = item.id;
         step.stepNumber = stepNumber;
+        step.productId=item.product==null?null:item.product.id;step.productEan=item.product==null?null:item.product.ean;
         step.productName = (item.product != null) ? item.product.name : "Unknown";
         step.quantity = item.quantity;
-        step.unitLabel = "pcs";
+        step.productType=item.product==null || item.product.productType==null?null:item.product.productType.name();
+        step.unitLabel=item.product.productType==com.intermarche.backoffice.domain.order.ProductType.WEIGHT?"kg":item.product.productType==com.intermarche.backoffice.domain.order.ProductType.VOLUME?"L":item.product.unitName==null?"pcs":item.product.unitName;
         step.temperatureZone = (item.product != null) ? item.product.temperatureZone : null;
         step.sourceOrderId = order.id;
         step.sourceOrderCode = order.code;
 
         // item.lotLine is never null here: the caller only maps items whose lotLine resolved a building
-        if (item.lotLine.fulfillmentLine != null && item.lotLine.fulfillmentLine.location instanceof ShelfLocation shelfLoc) {
+        var rawLocation=item.lotLine.location!=null?item.lotLine.location:item.lotLine.fulfillmentLine==null?null:item.lotLine.fulfillmentLine.location;
+        if (rawLocation!=null && org.hibernate.Hibernate.unproxy(rawLocation) instanceof ShelfLocation shelfLoc) {
+            step.sourceLocation=shelfLoc.locationCode;
             step.aisle = shelfLoc.aisle;
             step.unit = shelfLoc.unit;
             step.position = shelfLoc.position;
@@ -365,6 +415,7 @@ public class PickingPlanService {
     public static class BatchPickingPlanResponse {
         public Map<Long, PickingPlanResponse> buildingPlans = new LinkedHashMap<>();
         public PlanSummaryDTO globalSummary = new PlanSummaryDTO();
+        public Map<Long,List<SheetTotePreparation.Requirement>> toteRequirements = new LinkedHashMap<>();
     }
 
     /** Mergeable order DTO. */
@@ -379,10 +430,12 @@ public class PickingPlanService {
     /** Picking plan response for a single building. */
     public static class PickingPlanResponse {
         public Long buildingId;
-        public String buildingCode;
+        public String buildingCode,buildingType;
         public PlanSummaryDTO summary;
         public List<RouteGroupDTO> route;
         public CapacityDTO capacity;
+        public StorePickingRoutePlanner.Geometry mapRoute;
+        public List<SheetTotePreparation.Requirement> totePreparation = List.of();
     }
 
     /** Plan summary. */
@@ -406,11 +459,19 @@ public class PickingPlanService {
 
     /** Route step. */
     public static class RouteStepDTO {
-        public Long pickedItemId;
+        public StorePickingRoutePlanner.Point mapPoint;
+        public StorePickingRoutePlanner.Point shelfPoint;
+        public Long pickedItemId,productId;
+        public String productEan;
         public int stepNumber;
+        public String planNodeCode;
+        public String sourceKind,sourceLocation,sourceSnapshot,sourceToteCode;
+        public Long chunkId,destinationBufferId;
         public String productName;
         public BigDecimal quantity;
         public String unitLabel;
+        public String productType;
+        public BigDecimal sourceAvailable;
         public TemperatureZone temperatureZone;
         public String aisle;
         public String unit;

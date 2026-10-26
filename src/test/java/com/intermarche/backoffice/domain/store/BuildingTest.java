@@ -134,6 +134,32 @@ public class BuildingTest {
         assertEquals(storeBuilding.getChecksum(), warehouseBuilding.getChecksum());
     }
 
+    // --------------------------------------------------
+    // Plan image (fond de plan)
+    // --------------------------------------------------
+
+    @Test
+    void planImageFields_shouldDefaultToNullAndZero() {
+        StoreBuilding building = new StoreBuilding();
+
+        assertNull(building.planImage);
+        assertEquals(0.0, building.planImageX);
+        assertEquals(0.0, building.planImageY);
+    }
+
+    @Test
+    void getChecksum_shouldNotChangeWhenPlanImageChanges() {
+        StoreBuilding building = new StoreBuilding();
+        building.buildingCode = "BLD-01";
+        int checksum1 = building.getChecksum();
+
+        // planImage is seeded, not CSV-imported: it must stay out of the checksum
+        building.planImage = "aW1hZ2U=";
+        building.planImageX = -283.0;
+        building.planImageY = -238.0;
+        assertEquals(checksum1, building.getChecksum());
+    }
+
     private StoreShelfLocation createLocation(Long productId) {
         StoreShelfLocation loc = new StoreShelfLocation();
         com.intermarche.backoffice.domain.order.Product product = new com.intermarche.backoffice.domain.order.Product();

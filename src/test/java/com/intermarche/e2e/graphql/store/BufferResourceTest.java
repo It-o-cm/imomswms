@@ -1,6 +1,8 @@
 package com.intermarche.e2e.graphql.store;
 
 import com.intermarche.backoffice.domain.store.Buffer;
+import com.intermarche.backoffice.domain.store.Employee;
+import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.store.StoreBuilding;
 import com.intermarche.backoffice.graphql.store.BufferResource;
 import io.quarkus.test.TestTransaction;
@@ -11,6 +13,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import org.eclipse.microprofile.graphql.GraphQLException;
 import org.junit.jupiter.api.Test;
+import org.mindrot.jbcrypt.BCrypt;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -59,7 +62,7 @@ public class BufferResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllBuffers() {
         persistBuffer(persistBuilding("BLD_B1"));
 
@@ -69,7 +72,7 @@ public class BufferResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testBufferById_Success() {
         Buffer existing = persistBuffer(persistBuilding("BLD_B2"));
 
@@ -79,7 +82,7 @@ public class BufferResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testBufferById_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             bufferResource.buffer(9999L);
@@ -87,7 +90,7 @@ public class BufferResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testBufferByBuildingId_Success() {
         StoreBuilding building = persistBuilding("BLD_B3");
         Buffer existing = persistBuffer(building);
@@ -98,7 +101,7 @@ public class BufferResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testBufferByBuildingId_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             bufferResource.bufferByBuildingId(9999L);
@@ -340,5 +343,63 @@ public class BufferResourceTest {
 
         assertEquals("BufferRecord [buildingId=3, purpose=STAGING, ambientCapacity=10, chilledCapacity=5, frozenCapacity=2]",
                 record.toString());
+    }
+
+    // --------------------------------------------------
+    // Store scope of a manager
+    // --------------------------------------------------
+
+    /**
+     * Creates a store owning a building with a buffer.
+     *
+     * @param code store code
+     * @return the store
+     */
+    private Store storeWithBuffer(String code) {
+        Store store = com.intermarche.e2e.domain.util.DomainUtils.createAndPersistStore(code, 48.0, 2.0);
+        StoreBuilding building = persistBuilding(code + "-SHOP");
+        store.buildings.add(building);
+        persistBuffer(building);
+        return store;
+    }
+
+    /**
+     * Creates a manager linked to a store.
+     *
+     * @param badgeId badge (user name) of the manager
+     * @param store store of the manager
+     */
+    private void createManager(String badgeId, Store store) {
+        Employee employee = new Employee();
+        employee.firstName = "Emp";
+        employee.lastName = badgeId;
+        employee.badgeId = badgeId;
+        employee.email = badgeId.toLowerCase() + "@test.com";
+        employee.password = BCrypt.hashpw("secret", BCrypt.gensalt());
+        employee.role = Employee.EmployeeRole.MANAGER;
+        employee.store = store;
+        employee.persist();
+    }
+
+    /**
+     * A manager only reads the buffers of the buildings of their store.
+     */
+    @Test
+    @TestSecurity(user = "scopedManager", roles = {"MANAGER"})
+    void managerOnlyReadsTheBuffersOfTheBuildingsOfTheirStore() {
+        Store own = storeWithBuffer("STORE_BS_OWN");
+        Store other = storeWithBuffer("STORE_BS_OTHER");
+        createManager("scopedManager", own);
+        Buffer orphan = persistBuffer(persistBuilding("BLD_BS_ORPHAN"));
+        Buffer mine = Buffer.find("building", own.buildings.iterator().next()).firstResult();
+        Buffer foreign = Buffer.find("building", other.buildings.iterator().next()).firstResult();
+
+        assertEquals(List.of(mine.id), bufferResource.allBuffers().stream().map(b -> b.id).toList());
+        assertEquals(mine.id, bufferResource.buffer(mine.id).id);
+        assertEquals(mine.id, bufferResource.bufferByBuildingId(mine.building.id).id);
+        assertThrows(NoSuchElementException.class, () -> bufferResource.buffer(foreign.id));
+        assertThrows(NoSuchElementException.class, () -> bufferResource.bufferByBuildingId(foreign.building.id));
+        // A buffer whose building belongs to no store is not readable by a manager either.
+        assertThrows(NoSuchElementException.class, () -> bufferResource.buffer(orphan.id));
     }
 }

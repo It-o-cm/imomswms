@@ -54,7 +54,7 @@ public class ProductCollectingOrderManagerFactory extends BaseOrderHandlerBuilde
      * <p>
      * Defines constraints for building codes, product list, and min/max thresholds for Qty, Weight, and Volume.
      */
-    private static final String COLLECTING_MANAGER_SCHEMA = """
+    public static final String COLLECTING_MANAGER_SCHEMA = """
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "ProductCollectingOrderManagerConfiguration",

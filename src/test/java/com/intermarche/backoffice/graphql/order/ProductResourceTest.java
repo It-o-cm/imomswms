@@ -72,10 +72,12 @@ class ProductResourceTest {
         input.ean = "EAN-1";
         input.name = "Product 1";
         input.temperatureZone = "CHILLED";
+        input.characteristics="Texte libre de caractéristiques. ".repeat(30);
 
         Product result = newResource().createProduct(input);
 
         assertEquals("EAN-1", result.ean);
+        assertEquals(input.characteristics,result.characteristics);
         assertEquals(TemperatureZone.CHILLED, result.temperatureZone);
     }
 
@@ -104,6 +106,7 @@ class ProductResourceTest {
 
         ProductResource.ProductRecord input = new ProductResource.ProductRecord();
         input.temperatureZone = "FROZEN";
+        input.characteristics="Nouvelle description détaillée";
 
         Product result = newResource().updateProduct(5L, input);
 
@@ -118,6 +121,7 @@ class ProductResourceTest {
         product.ean = "EAN-1";
         product.name = "Product 1";
         product.temperatureZone = TemperatureZone.CHILLED;
+        product.characteristics="À conserver si ce champ est absent de la mise à jour";
         panacheMock.when(() -> PanacheEntityBase.findById(any())).thenReturn(product);
 
         ProductResource.ProductRecord input = new ProductResource.ProductRecord();
@@ -127,5 +131,6 @@ class ProductResourceTest {
 
         assertSame(product, result);
         assertEquals(TemperatureZone.CHILLED, product.temperatureZone);
+        assertEquals("À conserver si ce champ est absent de la mise à jour",product.characteristics);
     }
 }

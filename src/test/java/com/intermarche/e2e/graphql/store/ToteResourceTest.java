@@ -1,5 +1,6 @@
 package com.intermarche.e2e.graphql.store;
 
+import com.intermarche.backoffice.domain.store.Employee;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.store.Tote;
 import com.intermarche.backoffice.graphql.store.ToteResource;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import org.eclipse.microprofile.graphql.GraphQLException;
 import org.junit.jupiter.api.Test;
+import org.mindrot.jbcrypt.BCrypt;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -48,7 +50,7 @@ public class ToteResourceTest {
     // --------------------------------------------------
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testAllTotes() {
         Store store = DomainUtils.createAndPersistStore("STORE_T1", 48.0, 2.0);
         persistTote("TOTE_01", store);
@@ -59,7 +61,7 @@ public class ToteResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testToteById_Success() {
         Store store = DomainUtils.createAndPersistStore("STORE_T2", 48.0, 2.0);
         Tote existing = persistTote("TOTE_02", store);
@@ -70,7 +72,7 @@ public class ToteResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testToteById_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             toteResource.tote(9999L);
@@ -78,7 +80,7 @@ public class ToteResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testToteByCode_Success() {
         Store store = DomainUtils.createAndPersistStore("STORE_T3", 48.0, 2.0);
         persistTote("TOTE_03", store);
@@ -89,7 +91,7 @@ public class ToteResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testToteByCode_NotFound() {
         assertThrows(NoSuchElementException.class, () -> {
             toteResource.toteByCode("TOTE_99");
@@ -97,7 +99,7 @@ public class ToteResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testTotesByStoreCode_Success() {
         Store store = DomainUtils.createAndPersistStore("STORE_T4", 48.0, 2.0);
         persistTote("TOTE_04", store);
@@ -109,7 +111,7 @@ public class ToteResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testTotesByStoreCode_UnknownStore_ReturnsEmpty() {
         List<Tote> totes = toteResource.totesByStoreCode("STORE_UNKNOWN");
         assertNotNull(totes);
@@ -393,5 +395,50 @@ public class ToteResourceTest {
 
         assertEquals("ToteRecord [code=REC_01, volume=12.5, toteType=STANDARD, storeId=42]",
                 record.toString());
+    }
+
+    // --------------------------------------------------
+    // Store scope of a manager
+    // --------------------------------------------------
+
+    /**
+     * Creates a manager linked to a store.
+     *
+     * @param badgeId badge (user name) of the manager
+     * @param store store of the manager
+     */
+    private void createManager(String badgeId, Store store) {
+        Employee employee = new Employee();
+        employee.firstName = "Emp";
+        employee.lastName = badgeId;
+        employee.badgeId = badgeId;
+        employee.email = badgeId.toLowerCase() + "@test.com";
+        employee.password = BCrypt.hashpw("secret", BCrypt.gensalt());
+        employee.role = Employee.EmployeeRole.MANAGER;
+        employee.store = store;
+        employee.persist();
+    }
+
+    /**
+     * A manager only reads the totes of their store.
+     */
+    @Test
+    @TestSecurity(user = "scopedManager", roles = {"MANAGER"})
+    void managerOnlyReadsTheTotesOfTheirStore() {
+        Store own = DomainUtils.createAndPersistStore("STORE_TS_OWN", 48.0, 2.0);
+        Store other = DomainUtils.createAndPersistStore("STORE_TS_OTHER", 48.0, 2.0);
+        createManager("scopedManager", own);
+        Tote mine = persistTote("TOTE_TS_OWN", own);
+        Tote foreign = persistTote("TOTE_TS_OTH", other);
+
+        List<Long> ids = toteResource.allTotes().stream().map(t -> t.id).toList();
+        assertTrue(ids.contains(mine.id));
+        assertFalse(ids.contains(foreign.id));
+        assertEquals(mine.id, toteResource.tote(mine.id).id);
+        assertEquals(mine.id, toteResource.toteByCode("TOTE_TS_OWN").id);
+        assertThrows(NoSuchElementException.class, () -> toteResource.tote(foreign.id));
+        assertThrows(NoSuchElementException.class, () -> toteResource.toteByCode("TOTE_TS_OTH"));
+        assertEquals(List.of(mine.id), toteResource.totesByStoreCode("STORE_TS_OWN").stream().map(t -> t.id).toList());
+        assertTrue(toteResource.totesByStoreCode("STORE_TS_OTHER").isEmpty());
     }
 }

@@ -60,21 +60,22 @@ public class OrderResource implements GraphQLTrait {
     // --------------------------------------------------
 
     /**
-     * Retrieves a list of all orders in the database.
+     * Retrieves a list of all orders the user may read: those of their store for a manager.
      * <p>
      * Delegates to {@link #buildOptimizedQuery(Context, String)} to construct
      * a JPQL query with dynamic JOIN FETCH clauses based on the requested fields.
      *
      * @param context The SmallRye GraphQL context.
-     * @return A {@link List} of all {@link Order} entities. Returns an empty list if no orders exist.
+     * @return A {@link List} of the readable {@link Order} entities. Returns an empty list if no orders exist.
      */
     @Query
     @Description("Get a list of all orders")
     @RolesAllowed("MANAGER")
     public List<Order> allOrders(Context context) {
         LOGGER.info("Entering method allOrders");
-        String jpql = buildOptimizedQuery(context, null);
-        List<Order> result = Order.list(jpql);
+        Store scope = readScope();
+        List<Order> result = scope == null ? Order.list(buildOptimizedQuery(context, null))
+                : Order.list(buildOptimizedQuery(context, "o.store.id = ?1"), scope.id);
         LOGGER.info("Exiting method allOrders");
         return result;
     }
@@ -88,15 +89,16 @@ public class OrderResource implements GraphQLTrait {
      * @param id      The unique technical ID (Primary Key) of the Order to retrieve.
      * @param context The SmallRye GraphQL context.
      * @return The found {@link Order} entity.
-     * @throws NoSuchElementException if no Order exists with the given technical ID.
+     * @throws NoSuchElementException if no Order exists with the given technical ID in the scope of the user.
      */
     @Query
     @Description("Get an order by its technical ID")
     @RolesAllowed("MANAGER")
     public Order order(@Name("id") Long id, Context context) {
         LOGGER.info("Entering method order with id: " + id);
-        String jpql = buildOptimizedQuery(context, "o.id = ?1");
-        Order order = Order.find(jpql, id).firstResult();
+        Store scope = readScope();
+        Order order = scope == null ? Order.find(buildOptimizedQuery(context, "o.id = ?1"), id).firstResult()
+                : Order.find(buildOptimizedQuery(context, "o.id = ?1 and o.store.id = ?2"), id, scope.id).firstResult();
         if (order == null) {
             LOGGER.error("Order with id " + id + " not found");
             throw new NoSuchElementException("Order with id " + id + " not found");
@@ -114,15 +116,16 @@ public class OrderResource implements GraphQLTrait {
      * @param orderId The unique business identifier of the Order.
      * @param context The SmallRye GraphQL context.
      * @return The found {@link Order} entity.
-     * @throws NoSuchElementException if no Order exists with the given business ID.
+     * @throws NoSuchElementException if no Order exists with the given business ID in the scope of the user.
      */
     @Query
     @Description("Get an order by its business Order ID")
     @RolesAllowed("MANAGER")
     public Order orderByOrderId(@Name("orderId") String orderId, Context context) {
         LOGGER.info("Entering method orderByOrderId with orderId: " + orderId);
-        String jpql = buildOptimizedQuery(context, "o.orderId = ?1");
-        Order order = Order.find(jpql, orderId).firstResult();
+        Store scope = readScope();
+        Order order = scope == null ? Order.find(buildOptimizedQuery(context, "o.orderId = ?1"), orderId).firstResult()
+                : Order.find(buildOptimizedQuery(context, "o.orderId = ?1 and o.store.id = ?2"), orderId, scope.id).firstResult();
         if (order == null) {
             LOGGER.error("Order with orderId " + orderId + " not found");
             throw new NoSuchElementException("Order with orderId " + orderId + " not found");

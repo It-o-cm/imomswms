@@ -2,6 +2,7 @@ package com.intermarche.backoffice.graphql.store;
 
 import com.intermarche.backoffice.domain.store.Buffer;
 import com.intermarche.backoffice.domain.store.Building;
+import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.graphql.AlreadyExistsException;
 import com.intermarche.backoffice.graphql.GraphQLTrait;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -33,6 +34,19 @@ public class BufferResource implements GraphQLTrait {
 
     private static final Logger LOGGER = Logger.getLogger(BufferResource.class);
 
+    @Inject com.intermarche.backoffice.engine.executing.BufferOccupancyService occupancyService;
+
+    @Query @Transactional @RolesAllowed({"ADMIN","MANAGER","SERVICE_CALLER"})
+    public List<com.intermarche.backoffice.engine.executing.BufferOccupancyService.BufferOccupancy> bufferOccupancy(@Name("storeCode") String storeCode) {
+        var store=com.intermarche.backoffice.domain.store.Store.findByCode(storeCode);
+        if(store==null)throw new NoSuchElementException("Magasin introuvable");
+        if(!identity.hasRole("ADMIN") && !identity.hasRole("SERVICE_CALLER")){
+            var context=getStoreContext();
+            if(context==null || !context.id.equals(store.id))throw new SecurityException("Buffer hors du magasin autorisé");
+        }
+        return occupancyService.occupancy(store);
+    }
+
     // --------------------------------------------------
     // Queries (Retrieve) -> MANAGER only
     // --------------------------------------------------
@@ -54,16 +68,18 @@ public class BufferResource implements GraphQLTrait {
     }
 
     /**
-     * Retrieves the list of all buffers in the database.
+     * Retrieves the list of all buffers the user may read: those of the buildings of their store for a manager.
      *
-     * @return A list of all Buffer entities.
+     * @return A list of the readable Buffer entities.
      */
     @Query
     @Description("Get the list of all buffers")
     @RolesAllowed("MANAGER")
     public List<Buffer> allBuffers() {
         LOGGER.info("Entering method allBuffers");
-        List<Buffer> result = Buffer.listAll();
+        Store scope = readScope();
+        List<Buffer> result = scope == null ? Buffer.listAll()
+                : Buffer.list("building.id in (select b.id from Store s join s.buildings b where s.id = ?1)", scope.id);
         LOGGER.info("Exiting method allBuffers");
         return result;
     }
@@ -73,14 +89,14 @@ public class BufferResource implements GraphQLTrait {
      *
      * @param id The unique ID of the buffer.
      * @return The Buffer entity.
-     * @throws NoSuchElementException if the buffer with the given ID does not exist.
+     * @throws NoSuchElementException if the buffer with the given ID does not exist in the scope of the user.
      */
     @Query
     @Description("Get a buffer by its ID")
     @RolesAllowed("MANAGER")
     public Buffer buffer(@Name("id") Long id) {
         LOGGER.info("Entering method buffer with id: " + id);
-        Buffer buffer = Buffer.findById(id);
+        Buffer buffer = readable(Buffer.findById(id));
         if (buffer == null) {
             LOGGER.error("Buffer with id " + id + " not found");
             throw new NoSuchElementException("Buffer with id " + id + " not found");
@@ -96,7 +112,7 @@ public class BufferResource implements GraphQLTrait {
      *
      * @param buildingId The ID of the Building.
      * @return The Buffer entity.
-     * @throws NoSuchElementException if no buffer is found for the building.
+     * @throws NoSuchElementException if no buffer is found for the building in the scope of the user.
      */
     @Query
     @Description("Get the buffer associated with a specific Building ID")
@@ -104,13 +120,26 @@ public class BufferResource implements GraphQLTrait {
     public Buffer bufferByBuildingId(@Name("buildingId") Long buildingId) {
         LOGGER.info("Entering method bufferByBuildingId with buildingId: " + buildingId);
         // Query using the relation
-        Buffer buffer = Buffer.find("building.id", buildingId).firstResult();
+        Buffer buffer = readable(Buffer.find("building.id", buildingId).firstResult());
         if (buffer == null) {
             LOGGER.error("Buffer for building id " + buildingId + " not found");
             throw new NoSuchElementException("Buffer for building id '" + buildingId + "' not found");
         }
         LOGGER.info("Exiting method bufferByBuildingId");
         return buffer;
+    }
+
+    /**
+     * Hides a buffer of another store from a manager.
+     *
+     * @param buffer the buffer found, or null
+     * @return the buffer if the user may read it, otherwise null
+     */
+    private Buffer readable(Buffer buffer) {
+        Store scope = readScope();
+        if (buffer == null || scope == null) return buffer;
+        Store owner = Building.findStoreByBuildingId(buffer.building.id);
+        return owner != null && scope.id.equals(owner.id) ? buffer : null;
     }
 
     // --------------------------------------------------

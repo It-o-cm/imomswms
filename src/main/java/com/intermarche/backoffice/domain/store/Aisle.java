@@ -5,7 +5,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.hibernate.annotations.BatchSize;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -66,6 +69,55 @@ public class Aisle extends BaseEntity {
     public String aisleType;
 
     // --------------------------------------------------
+    // Geometry (store plan layer)
+    // --------------------------------------------------
+
+    /**
+     * The flow type of the aisle on the store plan (LINEAR, DIAGONAL, CIRCULAR).
+     * <p>
+     * Drives the visual rendering of the aisle (color, dash pattern).
+     */
+    @Column(name = "flow_type", length = 20)
+    public String flowType;
+
+    /**
+     * The shape type of the aisle on the store plan (STRAIGHT, CURVED).
+     * <p>
+     * A CURVED aisle is rendered as a cubic Bézier curve using its first two
+     * waypoints as control points.
+     */
+    @Column(name = "shape_type", length = 20)
+    public String shapeType;
+
+    /**
+     * The topological node at the START of this aisle (Head), if any.
+     * <p>
+     * Complements {@link #connectedToHead}: the latter references another aisle
+     * code for the logical graph, while this field references the positioned
+     * node for the geometric plan.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "head_node_id")
+    public PlanNode headNode;
+
+    /**
+     * The topological node at the END of this aisle (Tail), if any.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tail_node_id")
+    public PlanNode tailNode;
+
+    /**
+     * The ordered waypoints (intermediate points) of the aisle on the store plan.
+     * <p>
+     * Managed by the parent Aisle. Cascades delete operations.
+     */
+    @OneToMany(mappedBy = "aisle", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
+    @BatchSize(size = 50)
+    public List<AisleWaypoint> waypoints = new ArrayList<>();
+
+    // --------------------------------------------------
     // Topology / Connections (The "Extremities")
     // --------------------------------------------------
 
@@ -116,6 +168,16 @@ public class Aisle extends BaseEntity {
         return find("building = ?1 and code = ?2", building, code).firstResult();
     }
 
+    /**
+     * Lists all aisles of a building, ordered by code.
+     *
+     * @param building The building context.
+     * @return The list of aisles (never null).
+     */
+    public static List<Aisle> listByBuilding(Building building) {
+        return find("building = ?1 order by code", building).list();
+    }
+
     // --------------------------------------------------
     // Checksum
     // --------------------------------------------------
@@ -125,12 +187,24 @@ public class Aisle extends BaseEntity {
         // Uses the building's natural key (buildingCode), not the surrogate id:
         // building is a lazy @ManyToOne, and reading .id via field access on a
         // Hibernate proxy returns null, which would corrupt the checksum.
+        // headNode/tailNode are resolved by their natural key (code) for the same reason.
+        int waypointsHash = 0;
+        if (waypoints != null) {
+            for (AisleWaypoint w : waypoints) {
+                waypointsHash = 31 * waypointsHash + w.getChecksum();
+            }
+        }
         return Objects.hash(
                 code,
                 lengthMeters,
                 aisleType,
                 connectedToHead,
                 connectedToTail,
+                flowType,
+                shapeType,
+                headNode != null ? headNode.code : null,
+                tailNode != null ? tailNode.code : null,
+                waypointsHash,
                 building != null ? building.buildingCode : null
         );
     }

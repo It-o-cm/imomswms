@@ -85,6 +85,22 @@ public class DateTimeProviderTest {
     }
 
     /**
+     * Tests that {@link DateTimeProvider#getFixedDateTime()} returns null when no
+     * fixed time is set, and the exact fixed time once set.
+     */
+    @Test
+    void getFixedDateTime_shouldReturnFixedTimeOrNull() {
+        assertNull(DateTimeProvider.getFixedDateTime(), "Should be null when no fixed time is set");
+
+        LocalDateTime fixedTime = LocalDateTime.of(2024, 2, 29, 12, 0, 0);
+        DateTimeProvider.setFixedDateTime(fixedTime);
+        assertEquals(fixedTime, DateTimeProvider.getFixedDateTime());
+
+        DateTimeProvider.clear();
+        assertNull(DateTimeProvider.getFixedDateTime(), "Should be null after clear()");
+    }
+
+    /**
      * Ensures that the private constructor throws an {@link UnsupportedOperationException}
      * to prevent instantiation of this utility class.
      *

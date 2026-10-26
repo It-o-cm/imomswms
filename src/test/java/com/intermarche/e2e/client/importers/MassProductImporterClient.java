@@ -20,7 +20,7 @@ import com.intermarche.e2e.Authenticate;
  */
 public class MassProductImporterClient {
 
-    private static final String BASE_URL = "http://localhost:8080";
+    private static final String BASE_URL = "http://localhost:8040";
     private static final String IMPORT_URL = BASE_URL + "/products/import";
 
     private static final int NB_PRODUCTS = 80000;

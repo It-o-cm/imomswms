@@ -8,7 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Authenticate {
-    private static final String AUTH_URL = "http://localhost:8080/auth/login";
+    private static final String AUTH_URL = "http://localhost:8040/auth/login";
     public static String authenticate(String username, String password) {
         // On utilise String.format pour insérer les variables Java dans la chaîne JSON
         String loginPayload = String.format("""

@@ -39,7 +39,7 @@ public class GroupingOrderManagerFactory extends BaseOrderHandlerBuilderFactory 
     // --------------------------------------------------
     // JSON Schema for Configuration Validation
     // --------------------------------------------------
-    private static final String GROUPING_MANAGER_SCHEMA = """
+    public static final String GROUPING_MANAGER_SCHEMA = """
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "GroupingOrderManagerConfiguration",

@@ -51,6 +51,10 @@ public class Product extends BaseEntity {
     @Column(length = 255)
     public String description;
 
+    /** Free-form product facts used for semantic comparison; independent of the short description. */
+    @Column(columnDefinition = "TEXT")
+    public String characteristics;
+
     /**
      * The brand of the product.
      * Optional field to specify the manufacturer or brand name.
@@ -179,7 +183,7 @@ public class Product extends BaseEntity {
      */
     @Override
     public int getChecksum() {
-        return Objects.hash(ean, name, description, brand, referenceWeight, referenceVolume, productType, unitName, temperatureZone, active);
+        return Objects.hash(ean, name, description, characteristics, brand, referenceWeight, referenceVolume, productType, unitName, temperatureZone, active);
     }
 
 }

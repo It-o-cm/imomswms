@@ -41,7 +41,7 @@ public class DefaultFulfillerFactory extends BaseFulfillerFactory {
     /**
      * JSON Schema definition for validating the configuration of this fulfiller.
      */
-    static final String DEFAULT_FULFILLER_SCHEMA = """
+    public static final String DEFAULT_FULFILLER_SCHEMA = """
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "DefaultFulfillerConfiguration",

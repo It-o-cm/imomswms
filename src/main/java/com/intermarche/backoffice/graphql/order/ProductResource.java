@@ -161,6 +161,7 @@ public class ProductResource implements GraphQLTrait {
             product.name = input.name;
             // Set optional fields only if provided
             product.description = input.description;
+            product.characteristics = input.characteristics;
             product.brand = input.brand;
             product.referenceWeight = input.referenceWeight;
             product.referenceVolume = input.referenceVolume;
@@ -233,6 +234,7 @@ public class ProductResource implements GraphQLTrait {
             if (input.ean != null) product.ean = input.ean;
             if (input.name != null) product.name = input.name;
             if (input.description != null) product.description = input.description;
+            if (input.characteristics != null) product.characteristics = input.characteristics;
             if (input.brand != null) product.brand = input.brand;
             if (input.referenceWeight != null) product.referenceWeight = input.referenceWeight;
             if (input.referenceVolume != null) product.referenceVolume = input.referenceVolume;
@@ -277,6 +279,7 @@ public class ProductResource implements GraphQLTrait {
         public String ean;
         public String name;
         public String description;
+        public String characteristics;
         public String brand;
         public BigDecimal referenceWeight;
         public BigDecimal referenceVolume;

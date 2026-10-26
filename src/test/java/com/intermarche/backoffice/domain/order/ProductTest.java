@@ -143,4 +143,10 @@ class ProductTest {
     void getChecksum_sameFields_sameValue() {
         assertEquals(createProduct(ProductType.UNIT).getChecksum(), createProduct(ProductType.UNIT).getChecksum());
     }
+    @Test
+    void checksumDetectsAChangeToFreeTextCharacteristics() {
+        Product product=createProduct(ProductType.UNIT);int previous=product.getChecksum();
+        product.characteristics="Lait demi-écrémé, bouteille de 1 litre.";
+        assertNotEquals(previous,product.getChecksum());
+    }
 }

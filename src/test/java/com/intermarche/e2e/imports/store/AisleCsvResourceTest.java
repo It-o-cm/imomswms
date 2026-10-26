@@ -3,6 +3,8 @@ package com.intermarche.e2e.imports.store;
 import com.intermarche.backoffice.domain.Adresse;
 import com.intermarche.backoffice.domain.store.Aisle;
 import com.intermarche.backoffice.domain.store.Building;
+import com.intermarche.backoffice.domain.store.PlanNode;
+import com.intermarche.backoffice.domain.store.PlanNodeType;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.store.StoreBuilding;
 import com.intermarche.backoffice.imports.store.AisleCsvResource;
@@ -71,6 +73,30 @@ public class AisleCsvResourceTest {
             Building b = new StoreBuilding();
             b.buildingCode = buildingCode;
             s.buildings.add(b);
+            return null;
+        });
+    }
+
+    /**
+     * Creates a Plan Node fixture attached to the given building.
+     *
+     * @param buildingCode The building code.
+     * @param code         The node code.
+     * @param type         The node type.
+     * @param x            The X coordinate.
+     * @param y            The Y coordinate.
+     */
+    private void createNode(String buildingCode, String code, PlanNodeType type, double x, double y) {
+        CsvImportTestHelper.withTransaction(tm, () -> {
+            Building building = Building.find("buildingCode", buildingCode).firstResult();
+            PlanNode node = new PlanNode();
+            node.code = code;
+            node.label = code;
+            node.nodeType = type;
+            node.x = x;
+            node.y = y;
+            node.building = building;
+            node.persist();
             return null;
         });
     }
@@ -266,6 +292,156 @@ public class AisleCsvResourceTest {
                 .statusCode(200)
                 .body(containsString("\"createdCount\":0"))
                 .body(containsString("not enough columns"));
+    }
+
+    /**
+     * Tests the import of an aisle with the optional geometry columns
+     * (flow type, shape type, head/tail nodes, waypoints).
+     */
+    @Test
+    @TestSecurity(user = "admin", roles = "ADMIN")
+    void testImportAisle_WithGeometry() {
+        createBuilding("S_AI", "BLD_AI");
+        createNode("BLD_AI", "N_HEAD", PlanNodeType.ENTRANCE, -83, 242);
+        createNode("BLD_AI", "N_TAIL", PlanNodeType.DEADEND, -83, 82);
+        String csvContent = "code|buildingCode|lengthMeters|aisleType|connectedToHead|connectedToTail|flowType|shapeType|headNode|tailNode|waypoints\n" +
+                "AI_GEO|BLD_AI|25|LINEAR|||LINEAR|CURVED|N_HEAD|N_TAIL|-100,200;-90,150";
+
+        given()
+                .body(csvContent)
+                .contentType(ContentType.TEXT)
+                .when()
+                .post("/aisles/import")
+                .then()
+                .statusCode(200)
+                .body(containsString("\"createdCount\":1"))
+                .body(containsString("\"updatedCount\":0"))
+                .body(Matchers.not(containsString("\"errors\"")));
+
+        Aisle aisle = Aisle.find("code", "AI_GEO").firstResult();
+        assertNotNull(aisle);
+        assertEquals("LINEAR", aisle.flowType);
+        assertEquals("CURVED", aisle.shapeType);
+        assertNotNull(aisle.headNode);
+        assertEquals("N_HEAD", aisle.headNode.code);
+        assertNotNull(aisle.tailNode);
+        assertEquals("N_TAIL", aisle.tailNode.code);
+        assertEquals(2, aisle.waypoints.size());
+        assertEquals(0, aisle.waypoints.get(0).position);
+        assertEquals(-100.0, aisle.waypoints.get(0).x, 0.0001);
+        assertEquals(200.0, aisle.waypoints.get(0).y, 0.0001);
+        assertEquals(1, aisle.waypoints.get(1).position);
+        assertEquals(-90.0, aisle.waypoints.get(1).x, 0.0001);
+        assertEquals(150.0, aisle.waypoints.get(1).y, 0.0001);
+    }
+
+    /**
+     * Tests the error handling when a geometry column references an unknown plan node.
+     */
+    @Test
+    @TestSecurity(user = "admin", roles = "ADMIN")
+    void testImportAisle_UnknownNode_Error() {
+        createBuilding("S_AI", "BLD_AI");
+        String csvContent = "code|buildingCode|lengthMeters|aisleType|connectedToHead|connectedToTail|flowType|shapeType|headNode|tailNode|waypoints\n" +
+                "AI_BAD|BLD_AI|25|LINEAR|||LINEAR|STRAIGHT|N_UNKNOWN|N_TAIL|";
+
+        given()
+                .body(csvContent)
+                .contentType(ContentType.TEXT)
+                .when()
+                .post("/aisles/import")
+                .then()
+                .statusCode(200)
+                .body(containsString("\"createdCount\":0"))
+                .body(containsString("\"errors\""))
+                .body(containsString("Plan node with code 'N_UNKNOWN' not found"));
+
+        assertNull(Aisle.find("code", "AI_BAD").firstResult());
+    }
+
+    /**
+     * Tests that re-importing an identical CSV with geometry columns does not
+     * trigger any update.
+     * <p>
+     * Validates the checksum consistency between the entity (nodes resolved by
+     * their code, ordered waypoints) and the importer for the geometry layer.
+     */
+    @Test
+    @TestSecurity(user = "admin", roles = "ADMIN")
+    void testReimportIdenticalGeometryCsv_NoUpdate() {
+        createBuilding("S_AI", "BLD_AI");
+        createNode("BLD_AI", "N_HEAD", PlanNodeType.ENTRANCE, -83, 242);
+        createNode("BLD_AI", "N_TAIL", PlanNodeType.DEADEND, -83, 82);
+        String csvContent = "code|buildingCode|lengthMeters|aisleType|connectedToHead|connectedToTail|flowType|shapeType|headNode|tailNode|waypoints\n" +
+                "AI_GEO|BLD_AI|25|LINEAR|||LINEAR|CURVED|N_HEAD|N_TAIL|-100,200;-90,150";
+
+        given()
+                .body(csvContent)
+                .contentType(ContentType.TEXT)
+                .when()
+                .post("/aisles/import")
+                .then()
+                .statusCode(200)
+                .body(containsString("\"createdCount\":1"));
+
+        given()
+                .body(csvContent)
+                .contentType(ContentType.TEXT)
+                .when()
+                .post("/aisles/import")
+                .then()
+                .statusCode(200)
+                .body(containsString("\"createdCount\":0"))
+                .body(containsString("\"updatedCount\":0"))
+                .body(Matchers.not(containsString("\"errors\"")));
+    }
+
+    /**
+     * Tests that re-importing a CSV without the geometry columns clears the
+     * geometry layer of the aisle.
+     * <p>
+     * The CSV is authoritative: an absent optional column clears the
+     * corresponding field on the entity.
+     */
+    @Test
+    @TestSecurity(user = "admin", roles = "ADMIN")
+    void testReimportWithoutGeometryColumns_ClearsGeometry() {
+        createBuilding("S_AI", "BLD_AI");
+        createNode("BLD_AI", "N_HEAD", PlanNodeType.ENTRANCE, -83, 242);
+        createNode("BLD_AI", "N_TAIL", PlanNodeType.DEADEND, -83, 82);
+        String geometryCsv = "code|buildingCode|lengthMeters|aisleType|connectedToHead|connectedToTail|flowType|shapeType|headNode|tailNode|waypoints\n" +
+                "AI_GEO|BLD_AI|25|LINEAR|||LINEAR|CURVED|N_HEAD|N_TAIL|-100,200;-90,150";
+
+        given()
+                .body(geometryCsv)
+                .contentType(ContentType.TEXT)
+                .when()
+                .post("/aisles/import")
+                .then()
+                .statusCode(200)
+                .body(containsString("\"createdCount\":1"));
+
+        String plainCsv = "code|buildingCode|lengthMeters|aisleType|connectedToHead|connectedToTail\n" +
+                "AI_GEO|BLD_AI|25|LINEAR||";
+
+        given()
+                .body(plainCsv)
+                .contentType(ContentType.TEXT)
+                .when()
+                .post("/aisles/import")
+                .then()
+                .statusCode(200)
+                .body(containsString("\"createdCount\":0"))
+                .body(containsString("\"updatedCount\":1"))
+                .body(Matchers.not(containsString("\"errors\"")));
+
+        Aisle aisle = Aisle.find("code", "AI_GEO").firstResult();
+        assertNotNull(aisle);
+        assertNull(aisle.flowType);
+        assertNull(aisle.shapeType);
+        assertNull(aisle.headNode);
+        assertNull(aisle.tailNode);
+        assertTrue(aisle.waypoints.isEmpty());
     }
 
     /**

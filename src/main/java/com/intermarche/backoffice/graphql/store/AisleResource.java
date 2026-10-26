@@ -1,7 +1,9 @@
 package com.intermarche.backoffice.graphql.store;
 
 import com.intermarche.backoffice.domain.store.Aisle;
+import com.intermarche.backoffice.domain.store.AisleWaypoint;
 import com.intermarche.backoffice.domain.store.Building;
+import com.intermarche.backoffice.domain.store.PlanNode;
 import com.intermarche.backoffice.graphql.AlreadyExistsException;
 import com.intermarche.backoffice.graphql.GraphQLTrait;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -111,6 +113,29 @@ public class AisleResource implements GraphQLTrait {
         return aisle;
     }
 
+    /**
+     * Retrieves the list of aisles of a building, including their geometric
+     * layer (flow type, shape type, head/tail nodes and waypoints).
+     *
+     * @param buildingCode The unique code of the building.
+     * @return The list of Aisle entities of the building, ordered by code.
+     * @throws NoSuchElementException if the building does not exist.
+     */
+    @Query
+    @Description("Get the aisles of a building")
+    @RolesAllowed("MANAGER")
+    public List<Aisle> aislesByBuilding(@Name("buildingCode") String buildingCode) {
+        LOGGER.info("Entering method aislesByBuilding with buildingCode: " + buildingCode);
+        Building building = Building.findByCode(buildingCode);
+        if (building == null) {
+            LOGGER.error("Building with code " + buildingCode + " not found");
+            throw new NoSuchElementException("Building with code '" + buildingCode + "' not found");
+        }
+        List<Aisle> result = Aisle.listByBuilding(building);
+        LOGGER.info("Exiting method aislesByBuilding");
+        return result;
+    }
+
     // --------------------------------------------------
     // Mutations (Create, Update, Delete) -> ADMIN only
     // --------------------------------------------------
@@ -159,10 +184,17 @@ public class AisleResource implements GraphQLTrait {
             aisle.connectedToHead = input.connectedToHead;
             aisle.connectedToTail = input.connectedToTail;
 
+            // Geometric layer
+            aisle.flowType = input.flowType;
+            aisle.shapeType = input.shapeType;
+            aisle.headNode = resolveNode(building, input.headNodeCode);
+            aisle.tailNode = resolveNode(building, input.tailNodeCode);
+
             // Link Building
             aisle.building = building;
 
             aisle.persist();
+            applyWaypoints(aisle, input.waypoints);
 
             LOGGER.info("Exiting method createAisle. Created ID: " + aisle.id);
             return aisle;
@@ -214,6 +246,12 @@ public class AisleResource implements GraphQLTrait {
             if (input.connectedToHead != null) aisle.connectedToHead = input.connectedToHead;
             if (input.connectedToTail != null) aisle.connectedToTail = input.connectedToTail;
 
+            // Geometric layer
+            if (input.flowType != null) aisle.flowType = input.flowType;
+            if (input.shapeType != null) aisle.shapeType = input.shapeType;
+            if (input.headNodeCode != null) aisle.headNode = resolveNode(aisle.building, input.headNodeCode);
+            if (input.tailNodeCode != null) aisle.tailNode = resolveNode(aisle.building, input.tailNodeCode);
+
             // Relationship mapping
             if (input.buildingId != null) {
                 Building building = Building.findById(input.buildingId);
@@ -221,6 +259,11 @@ public class AisleResource implements GraphQLTrait {
                     throw new NoSuchElementException("Building with id " + input.buildingId + " not found");
                 }
                 aisle.building = building;
+            }
+
+            // Waypoints replacement (only when provided)
+            if (input.waypoints != null) {
+                applyWaypoints(aisle, input.waypoints);
             }
 
             LOGGER.info("Exiting method updateAisle");
@@ -246,6 +289,51 @@ public class AisleResource implements GraphQLTrait {
             LOGGER.info("Exiting method deleteAisle. Result: " + result);
             return result;
         }, AisleResource.class, "deleteAisle");
+    }
+
+    // --------------------------------------------------
+    // Helpers
+    // --------------------------------------------------
+
+    /**
+     * Resolves a plan node by its code within a building.
+     *
+     * @param building The building context.
+     * @param code     The node code (may be null).
+     * @return The PlanNode entity, or null if the code is null.
+     * @throws NoSuchElementException if the code is provided but no node matches.
+     */
+    private PlanNode resolveNode(Building building, String code) {
+        if (code == null) return null;
+        PlanNode node = PlanNode.findByCode(building, code);
+        if (node == null) {
+            throw new NoSuchElementException("PlanNode with code '" + code + "' not found in building '" + building.buildingCode + "'");
+        }
+        return node;
+    }
+
+    /**
+     * Replaces the waypoints of an aisle with the given input points.
+     * <p>
+     * The existing waypoints are removed (orphan removal) and new ones are created
+     * from the input. The position index is taken from the input when provided,
+     * otherwise it defaults to the list index.
+     *
+     * @param aisle     The managed aisle.
+     * @param waypoints The input waypoints (may be null or empty).
+     */
+    private void applyWaypoints(Aisle aisle, List<WaypointInput> waypoints) {
+        aisle.waypoints.clear();
+        if (waypoints == null) return;
+        for (int i = 0; i < waypoints.size(); i++) {
+            WaypointInput w = waypoints.get(i);
+            AisleWaypoint waypoint = new AisleWaypoint();
+            waypoint.aisle = aisle;
+            waypoint.position = w.position != null ? w.position : i;
+            waypoint.x = w.x;
+            waypoint.y = w.y;
+            aisle.waypoints.add(waypoint);
+        }
     }
 
     // --------------------------------------------------
@@ -288,6 +376,32 @@ public class AisleResource implements GraphQLTrait {
         public String connectedToTail;
 
         /**
+         * The flow type of the aisle on the store plan (LINEAR, DIAGONAL, CIRCULAR).
+         */
+        public String flowType;
+
+        /**
+         * The shape type of the aisle on the store plan (STRAIGHT, CURVED).
+         */
+        public String shapeType;
+
+        /**
+         * The code of the plan node at the START of this aisle (Head), if any.
+         */
+        public String headNodeCode;
+
+        /**
+         * The code of the plan node at the END of this aisle (Tail), if any.
+         */
+        public String tailNodeCode;
+
+        /**
+         * The ordered waypoints of the aisle on the store plan.
+         * When provided on update, replaces the existing waypoints.
+         */
+        public List<WaypointInput> waypoints;
+
+        /**
          * The ID of the Building containing this aisle.
          */
         public Long buildingId;
@@ -309,7 +423,39 @@ public class AisleResource implements GraphQLTrait {
                     ", aisleType=" + aisleType +
                     ", connectedToHead=" + connectedToHead +
                     ", connectedToTail=" + connectedToTail +
+                    ", flowType=" + flowType + ", shapeType=" + shapeType +
+                    ", headNodeCode=" + headNodeCode + ", tailNodeCode=" + tailNodeCode +
+                    ", waypoints=" + (waypoints != null ? waypoints.size() : null) +
                     ", buildingId=" + buildingId + "]";
+        }
+    }
+
+    /**
+     * Input type for a single aisle waypoint.
+     */
+    @Input
+    static public class WaypointInput {
+
+        /**
+         * The ordinal position of the waypoint along the aisle path (0-based).
+         * Defaults to the list index when null.
+         */
+        public Integer position;
+
+        /**
+         * The X coordinate of the waypoint, in meters.
+         */
+        public Double x;
+
+        /**
+         * The Y coordinate of the waypoint, in meters.
+         */
+        public Double y;
+
+        /**
+         * Default constructor.
+         */
+        public WaypointInput() {
         }
     }
 }

@@ -44,6 +44,9 @@ class ConfigurationResourceTest {
     private ConfigurationResource newResource() {
         ConfigurationResource resource = new ConfigurationResource();
         resource.identity = mock(SecurityIdentity.class);
+        when(resource.identity.hasRole("ADMIN")).thenReturn(true);
+        resource.ruleSchemas=mock(com.intermarche.backoffice.rules.RuleSchemaRegistry.class);
+        when(resource.ruleSchemas.normalize(any(),any())).thenAnswer(i -> i.getArgument(1));
         return resource;
     }
 

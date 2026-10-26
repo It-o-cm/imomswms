@@ -608,7 +608,7 @@ class StoreActivityEngineTest {
             engine.process(store);
 
             eventMock.verify(() -> Event.publishInCurrentTx(anyString(), anyString(), any(), any(), any(), anyString()), never());
-            panacheMock.verify(() -> PanacheEntityBase.count(anyString(), any(Object[].class)), times(1));
+            panacheMock.verify(() -> PanacheEntityBase.count(anyString(), any(Object[].class)), times(3));
         }
     }
 

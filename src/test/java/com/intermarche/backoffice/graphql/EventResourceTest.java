@@ -326,6 +326,7 @@ class EventResourceTest {
 
     @Test
     void eventsByStoreCode_forcesStoreJoinAndAppliesWhereClause() throws Exception {
+        stubStoreFindByCode(store("S1"));
         ListCall call = stubEventList(List.of(new Event()));
 
         List<Event> result = newResource(true).eventsByStoreCode("S1", contextWithSelection(false));
@@ -338,12 +339,71 @@ class EventResourceTest {
 
     @Test
     void eventsByStoreCode_withStoreSelection_fetchesStore() throws Exception {
+        stubStoreFindByCode(store("S1"));
         ListCall call = stubEventList(List.of());
 
         newResource(true).eventsByStoreCode("S1", contextWithSelection(true));
 
         assertTrue(call.jpql.contains("join fetch e.store s "));
         assertTrue(call.jpql.contains("where s.code = ?1"));
+    }
+
+    /**
+     * An unknown store code gives no event, without querying the events.
+     */
+    @Test
+    void eventsByStoreCode_unknownStore_returnsEmptyWithoutQueryingEvents() throws Exception {
+        stubStoreFindByCode(null);
+        ListCall call = stubEventList(List.of(new Event()));
+
+        assertTrue(newResource(false).eventsByStoreCode("UNKNOWN", contextWithSelection(false)).isEmpty());
+        assertNull(call.jpql);
+    }
+
+    /**
+     * A manager reads the events of their own store.
+     */
+    @Test
+    void eventsByStoreCode_managerOfThatStore_readsItsEvents() throws Exception {
+        Store own = store("S1");
+        Employee employee = new Employee();
+        employee.store = own;
+        stubBadgeLookup(employee);
+        stubStoreFindByCode(own);
+        ListCall call = stubEventList(List.of(new Event()));
+
+        assertEquals(1, newResource(false).eventsByStoreCode("S1", contextWithSelection(false)).size());
+        assertArrayEquals(new Object[]{"S1"}, call.params);
+    }
+
+    /**
+     * A manager cannot read the events of another store: nothing is queried.
+     */
+    @Test
+    void eventsByStoreCode_managerOfAnotherStore_isRefused() {
+        Store own = store("S1");
+        Employee employee = new Employee();
+        employee.store = own;
+        stubBadgeLookup(employee);
+        Store other = new Store();
+        other.id = STORE_ID + 1;
+        other.code = "S2";
+        stubStoreFindByCode(other);
+        ListCall call = stubEventList(List.of(new Event()));
+
+        assertThrows(GraphQLException.class, () -> newResource(false).eventsByStoreCode("S2", contextWithSelection(false)));
+        assertNull(call.jpql);
+    }
+
+    /**
+     * A manager linked to no store is refused.
+     */
+    @Test
+    void eventsByStoreCode_managerWithoutStore_isRefused() {
+        stubBadgeLookup(null);
+        stubStoreFindByCode(store("S1"));
+
+        assertThrows(GraphQLException.class, () -> newResource(false).eventsByStoreCode("S1", contextWithSelection(false)));
     }
 
     // --------------------------------------------------

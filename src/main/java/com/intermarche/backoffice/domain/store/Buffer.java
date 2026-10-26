@@ -29,6 +29,8 @@ import java.util.Objects;
 )
 @Cacheable
 public class Buffer extends BaseEntity {
+    /** Optional access point in the building topology. */
+    public String planNodeCode;
 
     // --------------------------------------------------
     // Inner Enum
