@@ -333,6 +333,100 @@ class OrderRecorderTest {
         }
     }
 
+    /**
+     * Coordinates sent with the address become the position of the customer, marked as provided by the order.
+     *
+     * @throws Exception when the JSON cannot be read
+     */
+    @Test
+    void resolveOrCreateCustomer_positionSent_isKeptAsProvided() throws Exception {
+        JsonNode node = json("""
+                {"customerId": "C4", "address": {"streetLine1": "3 Place Bellecour", "postalCode": "69002", "city": "Lyon",
+                 "latitude": 45.7579, "longitude": 4.833}}
+                """);
+        try (MockedStatic<Customer> customerMock = mockStatic(Customer.class)) {
+            customerMock.when(() -> Customer.findByCustomerId("C4")).thenReturn(null);
+            Customer result = recorder.resolveOrCreateCustomer(node);
+            assertEquals(45.7579, result.addressPosition.latitude);
+            assertEquals(4.833, result.addressPosition.longitude);
+            assertEquals(Customer.POSITION_PROVIDED, result.addressPositionSource);
+        }
+    }
+
+    /**
+     * Without coordinates, a known position is kept while the address is unchanged.
+     *
+     * @throws Exception when the JSON cannot be read
+     */
+    @Test
+    void resolveOrCreateCustomer_noPositionSameAddress_keepsLookedUpPosition() throws Exception {
+        Customer existing = customerAt("1 rue de Test", Customer.POSITION_GEOCODED);
+        JsonNode node = json("""
+                {"customerId": "C5", "address": {"streetLine1": "1 rue de Test", "postalCode": "69001", "city": "Lyon"}}
+                """);
+        try (MockedStatic<Customer> customerMock = mockStatic(Customer.class)) {
+            customerMock.when(() -> Customer.findByCustomerId("C5")).thenReturn(existing);
+            Customer result = recorder.resolveOrCreateCustomer(node);
+            assertEquals(45.0, result.addressPosition.latitude);
+            assertEquals(Customer.POSITION_GEOCODED, result.addressPositionSource);
+        }
+    }
+
+    /**
+     * Without coordinates, a new address forgets the position of the former one, to be looked up again.
+     *
+     * @throws Exception when the JSON cannot be read
+     */
+    @Test
+    void resolveOrCreateCustomer_noPositionNewAddress_forgetsPosition() throws Exception {
+        Customer existing = customerAt("1 rue de Test", Customer.POSITION_GEOCODED);
+        JsonNode node = json("""
+                {"customerId": "C5", "address": {"streetLine1": "9 rue Neuve", "postalCode": "69001", "city": "Lyon"}}
+                """);
+        try (MockedStatic<Customer> customerMock = mockStatic(Customer.class)) {
+            customerMock.when(() -> Customer.findByCustomerId("C5")).thenReturn(existing);
+            Customer result = recorder.resolveOrCreateCustomer(node);
+            assertNull(result.addressPosition);
+            assertNull(result.addressPositionSource);
+        }
+    }
+
+    /**
+     * Builds an existing customer whose address has a position.
+     *
+     * @param street the street line of the address
+     * @param source the source of the position
+     * @return the customer
+     */
+    private static Customer customerAt(String street, String source) {
+        Customer existing = new Customer();
+        existing.customerId = "C5";
+        existing.address = new Adresse();
+        existing.address.streetLine1 = street;
+        existing.address.postalCode = "69001";
+        existing.address.city = "Lyon";
+        existing.addressPosition = new com.intermarche.backoffice.domain.GPSPosition(45.0, 4.8);
+        existing.addressPositionSource = source;
+        return existing;
+    }
+
+    /**
+     * A position is read only when both coordinates are numbers within their ranges.
+     *
+     * @throws Exception when the JSON cannot be read
+     */
+    @Test
+    void mapPosition_requiresTwoNumbersWithinRange() throws Exception {
+        assertEquals(-90.0, OrderRecorder.mapPosition(json("{\"latitude\": -90, \"longitude\": 180}")).latitude);
+        assertNull(OrderRecorder.mapPosition(json("{\"longitude\": 4.8}")));
+        assertNull(OrderRecorder.mapPosition(json("{\"latitude\": 45.7}")));
+        assertNull(OrderRecorder.mapPosition(json("{\"latitude\": \"45.7\", \"longitude\": 4.8}")));
+        assertNull(OrderRecorder.mapPosition(json("{\"latitude\": -90.1, \"longitude\": 4.8}")));
+        assertNull(OrderRecorder.mapPosition(json("{\"latitude\": 90.1, \"longitude\": 4.8}")));
+        assertNull(OrderRecorder.mapPosition(json("{\"latitude\": 45.7, \"longitude\": -180.1}")));
+        assertNull(OrderRecorder.mapPosition(json("{\"latitude\": 45.7, \"longitude\": 180.1}")));
+    }
+
     // --------------------------------------------------
     // createFulfillmentLine
     // --------------------------------------------------

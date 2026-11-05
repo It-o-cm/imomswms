@@ -118,7 +118,7 @@ public abstract class BaseLocation extends BaseEntity implements Location {
         }
         // 1. Extraire les IDs des localisations de manière sûre (ignore les nulls au cas où)
         List<Long> locationIds = locations.stream()
-                .map(loc -> loc.id)
+                .map(com.intermarche.backoffice.domain.fieldops.FieldEntityIds::id)
                 .filter(Objects::nonNull)
                 .toList();
         if (locationIds.isEmpty()) {

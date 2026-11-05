@@ -43,8 +43,8 @@ public class ProductCsvResource extends ImporterCsvResource {
      * <p>
      * Delegates the stream reading and chunking to the abstract base class.
      * <p>
-     * Expected CSV format (10 columns):
-     * EAN, Name, Description, Brand, ReferenceWeight, ReferenceVolume, ProductType, UnitName, TemperatureZone, Active
+     * Expected CSV format (10 required columns, optional characteristics column):
+     * EAN, Name, Description, Brand, ReferenceWeight, ReferenceVolume, ProductType, UnitName, TemperatureZone, Active[, Characteristics]
      *
      * @param inputStream The input stream containing CSV data.
      * @return A Response containing a JSON summary of created/updated counts and errors.
@@ -107,7 +107,7 @@ public class ProductCsvResource extends ImporterCsvResource {
             Panache.getEntityManager().persist(product);
         } else {
             // Update existing if data changed (Checksum Optimization)
-            int incomingChecksum = computeIncomingChecksum(data);
+            int incomingChecksum = computeIncomingChecksum(data,product.characteristics);
             if (product.checksum != incomingChecksum) {
                 product = Product.findById(product.id);
                 feedProduct(data, product);
@@ -143,6 +143,7 @@ public class ProductCsvResource extends ImporterCsvResource {
         String[] parts = data.parts;
         product.name = parts[1].trim();
         product.description = safeGet(parts, 2);
+        if(parts.length>10)product.characteristics=safeGet(parts,10);
         product.brand = safeGet(parts, 3);
         product.referenceWeight = safeParseBigDecimal(parts, 4);
         product.referenceVolume = safeParseBigDecimal(parts, 5);
@@ -161,12 +162,13 @@ public class ProductCsvResource extends ImporterCsvResource {
      * @param data The parsed CSV line data.
      * @return The integer hash of incoming data.
      */
-    private int computeIncomingChecksum(LineData data) {
+    private int computeIncomingChecksum(LineData data,String retainedCharacteristics) {
         String[] parts = data.parts;
         return Objects.hash(
                 data.code,                    // ean
                 parts[1].trim(),             // name
                 safeGet(parts, 2),           // description
+                parts.length>10?safeGet(parts,10):retainedCharacteristics, // optional characteristics; legacy CSV preserves them
                 safeGet(parts, 3),           // brand
                 safeParseBigDecimal(parts, 4),// referenceWeight
                 safeParseBigDecimal(parts, 5),// referenceVolume

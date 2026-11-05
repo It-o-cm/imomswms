@@ -20,6 +20,8 @@
 
     <dependencyManagement>
         <dependencies>
+        <!-- H2 2.4.240 retains closed sessions in CHECK expressions (upstream #4302). -->
+        <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><version>2.5.252</version></dependency>
             <dependency>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>${quarkus.platform.artifact-id}</artifactId>
@@ -31,10 +33,15 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency><groupId>com.google.zxing</groupId><artifactId>core</artifactId><version>3.5.4</version></dependency>
         <dependency><groupId>com.microsoft.onnxruntime</groupId><artifactId>onnxruntime</artifactId><version>1.24.3</version></dependency>
         <dependency><groupId>ai.djl.huggingface</groupId><artifactId>tokenizers</artifactId><version>0.36.0</version></dependency>
 
         <!-- ==================== Database ==================== -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-flyway</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-h2</artifactId>
@@ -212,9 +219,12 @@
                         <goals>
                             <goal>build</goal>
                             <goal>generate-code</goal>
-                            <goal>generate-code-tests</goal>
                             <goal>native-image-agent</goal>
                         </goals>
+                    </execution>
+                    <execution>
+                        <id>test-code-generation</id>
+                        <goals><goal>generate-code-tests</goal></goals>
                     </execution>
                 </executions>
             </plugin>
@@ -228,6 +238,18 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
+                <executions>
+                    <!-- Class includes (rather than tags) keep Quarkus profile discovery
+                         out of the static-mock JVM. No test is disabled. -->
+                    <execution><id>default-test</id><configuration>
+                        <includes><include>**/backoffice/**/*Test.java</include><include>**/e2e/engine/catalog/Gs1ParserTest.java</include><include>**/e2e/engine/printing/LabelRendererTest.java</include><include>**/e2e/domain/store/LocationTest.java</include></includes>
+                        <excludes><exclude>**/database/SchemaReferenceExportTest.java</exclude><exclude>**/engine/supervision/ActivitySupervisionPartialTest.java</exclude><exclude>**/engine/semantic/ProductSemanticIndexTest.java</exclude><exclude>**/database/VersionedSchemaStartupTest.java</exclude></excludes>
+                    </configuration></execution>
+                    <execution><id>quarkus-tests</id><phase>test</phase><goals><goal>test</goal></goals><configuration>
+                        <includes><include>**/e2e/**/*Test.java</include><include>**/database/SchemaReferenceExportTest.java</include><include>**/engine/supervision/ActivitySupervisionPartialTest.java</include><include>**/engine/semantic/ProductSemanticIndexTest.java</include><include>**/database/VersionedSchemaStartupTest.java</include></includes>
+                        <excludes><exclude>**/e2e/engine/catalog/Gs1ParserTest.java</exclude><exclude>**/e2e/engine/printing/LabelRendererTest.java</exclude><exclude>**/e2e/domain/store/LocationTest.java</exclude></excludes>
+                    </configuration></execution>
+                </executions>
                 <configuration>
                     <argLine>@{argLine} --add-opens java.base/java.lang=ALL-UNNAMED</argLine>
                     <systemPropertyVariables>
@@ -303,6 +325,18 @@
     </build>
 
     <profiles>
+        <!-- Only launch.sh opts in: regular Maven test builds keep their test generation. -->
+        <profile>
+            <id>launch-no-tests</id>
+            <build><plugins><plugin>
+                <groupId>${quarkus.platform.group-id}</groupId>
+                <artifactId>quarkus-maven-plugin</artifactId>
+                <executions><execution>
+                    <id>test-code-generation</id>
+                    <phase>none</phase>
+                </execution></executions>
+            </plugin></plugins></build>
+        </profile>
         <profile>
             <id>native</id>
             <activation>

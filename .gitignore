@@ -46,3 +46,6 @@ nb-configuration.xml
 
 # Local embedding model weights (installed by scripts/install-embedding-model.py)
 /models/
+
+# Local databases and private SQL backups
+/data/

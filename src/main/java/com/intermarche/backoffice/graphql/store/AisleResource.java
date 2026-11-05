@@ -3,6 +3,7 @@ package com.intermarche.backoffice.graphql.store;
 import com.intermarche.backoffice.domain.store.Aisle;
 import com.intermarche.backoffice.domain.store.AisleWaypoint;
 import com.intermarche.backoffice.domain.store.Building;
+import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.store.PlanNode;
 import com.intermarche.backoffice.graphql.AlreadyExistsException;
 import com.intermarche.backoffice.graphql.GraphQLTrait;
@@ -55,6 +56,8 @@ public class AisleResource implements GraphQLTrait {
 
     /**
      * Retrieves the list of all aisles in the database.
+     * <p>
+     * Restricted to the store of the caller, except for administrators.
      *
      * @return A list of all Aisle entities.
      */
@@ -63,7 +66,8 @@ public class AisleResource implements GraphQLTrait {
     @RolesAllowed("MANAGER")
     public List<Aisle> allAisles() {
         LOGGER.info("Entering method allAisles");
-        List<Aisle> result = Aisle.listAll();
+        Store scope = readScope();
+        List<Aisle> result = scope == null ? Aisle.listAll() : Aisle.list("building.id in (select b.id from Store s join s.buildings b where s = ?1)", scope);
         LOGGER.info("Exiting method allAisles");
         return result;
     }
@@ -74,6 +78,7 @@ public class AisleResource implements GraphQLTrait {
      * @param id The unique ID of the aisle.
      * @return The Aisle entity.
      * @throws NoSuchElementException if the aisle with the given ID does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get an aisle by its ID")
@@ -86,6 +91,7 @@ public class AisleResource implements GraphQLTrait {
             throw new NoSuchElementException("Aisle with id " + id + " not found");
         }
         LOGGER.info("Exiting method aisle");
+        checkReadable(Building.findStoreByBuildingId(aisle.building.id));
         return aisle;
     }
 
@@ -97,6 +103,7 @@ public class AisleResource implements GraphQLTrait {
      * @param code The unique Code of the aisle.
      * @return The Aisle entity.
      * @throws NoSuchElementException if the aisle with the given Code does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get an aisle by its Code")
@@ -110,6 +117,7 @@ public class AisleResource implements GraphQLTrait {
             throw new NoSuchElementException("Aisle with code '" + code + "' not found");
         }
         LOGGER.info("Exiting method aisleByCode");
+        checkReadable(Building.findStoreByBuildingId(aisle.building.id));
         return aisle;
     }
 
@@ -120,6 +128,7 @@ public class AisleResource implements GraphQLTrait {
      * @param buildingCode The unique code of the building.
      * @return The list of Aisle entities of the building, ordered by code.
      * @throws NoSuchElementException if the building does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get the aisles of a building")
@@ -131,6 +140,7 @@ public class AisleResource implements GraphQLTrait {
             LOGGER.error("Building with code " + buildingCode + " not found");
             throw new NoSuchElementException("Building with code '" + buildingCode + "' not found");
         }
+        checkReadable(Building.findStoreByBuildingId(building.id));
         List<Aisle> result = Aisle.listByBuilding(building);
         LOGGER.info("Exiting method aislesByBuilding");
         return result;

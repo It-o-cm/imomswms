@@ -39,6 +39,8 @@ public class StoreActivityPollingConsumer {
      */
     private static final long LEASE_DURATION_SECONDS = 300;
 
+    @Inject BusinessStartup startup;
+
     @Inject
     StoreActivityEngine storeActivityEngine;
 
@@ -56,6 +58,7 @@ public class StoreActivityPollingConsumer {
     @Scheduled(every = "5s")
     @RunOnVirtualThread
     public void pollAndProcess() {
+        if(!startup.ready())return;
         createMissingStoreHandles();
         pollAndProcessActivities();
     }

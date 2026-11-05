@@ -29,7 +29,7 @@ import java.util.Objects;
                 @Index(name = "idx_handling_store", columnList = "store_id"),
                 @Index(name = "idx_handling_status", columnList = "status"),
                 @Index(name = "idx_handling_start", columnList = "requested_start"),
-                @Index(name = "idx_handling_code", columnList = "code", unique = true)
+                @Index(name = "idx_handling_store_code", columnList = "store_id,code", unique = true)
         }
 )
 public abstract class BaseHandlingOrder extends BaseEntity {
@@ -85,7 +85,7 @@ public abstract class BaseHandlingOrder extends BaseEntity {
      * This code is generated upon creation and is designed for easy communication
      * between operators and tracking in high-volume environments.
      */
-    @Column(name = "code", unique = true, length = 15)
+    @Column(name = "code", length = 15)
     public String code;
 
     /**

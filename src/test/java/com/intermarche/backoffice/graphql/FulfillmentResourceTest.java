@@ -60,6 +60,9 @@ class FulfillmentResourceTest {
     private MockedStatic<Arc> arcMock;
     private Session session;
 
+    /**
+     * Prepares the fixtures of each test.
+     */
     @BeforeEach
     void setUp() {
         panacheMock = mockStatic(PanacheEntityBase.class);
@@ -67,6 +70,9 @@ class FulfillmentResourceTest {
         session = PanacheTestSupport.mockArcSession(arcMock);
     }
 
+    /**
+     * Releases the static mocks opened for the test.
+     */
     @AfterEach
     void tearDown() {
         panacheMock.close();
@@ -77,6 +83,13 @@ class FulfillmentResourceTest {
     // Helpers
     // --------------------------------------------------
 
+    /**
+     * Builds resource.
+     *
+     * @param admin the admin
+     * @param serviceCaller the service caller
+     * @return the built value
+     */
     private FulfillmentResource newResource(boolean admin, boolean serviceCaller) {
         Principal principal = mock(Principal.class);
         when(principal.getName()).thenReturn(BADGE_ID);
@@ -120,16 +133,33 @@ class FulfillmentResourceTest {
         return context;
     }
 
+    /**
+     * Builds a empty context fixture.
+     *
+     * @return the empty context
+     */
     private Context emptyContext() {
         return context(false, false, false);
     }
 
+    /**
+     * Builds a store fixture.
+     *
+     * @param id the id
+     * @return the store
+     */
     private Store store(Long id) {
         Store store = new Store();
         store.id = id;
         return store;
     }
 
+    /**
+     * Builds a employee fixture.
+     *
+     * @param store the store
+     * @return the employee
+     */
     private Employee employee(Store store) {
         Employee employee = new Employee();
         employee.store = store;
@@ -154,6 +184,12 @@ class FulfillmentResourceTest {
         Object[] params = new Object[0];
     }
 
+    /**
+     * Extracts params.
+     *
+     * @param args the args
+     * @return the extract params
+     */
     private static Object[] extractParams(Object[] args) {
         return args.length > 1 && args[1] instanceof Object[]
                 ? (Object[]) args[1]
@@ -202,6 +238,12 @@ class FulfillmentResourceTest {
                 .thenReturn(query);
     }
 
+    /**
+     * Builds a order fixture.
+     *
+     * @param orderId the order id
+     * @return the order
+     */
     private Order order(String orderId) {
         Order order = new Order();
         order.id = 42L;
@@ -209,6 +251,12 @@ class FulfillmentResourceTest {
         return order;
     }
 
+    /**
+     * Builds a product fixture.
+     *
+     * @param id the id
+     * @return the product
+     */
     private Product product(Long id) {
         Product product = new Product();
         product.id = id;
@@ -216,12 +264,24 @@ class FulfillmentResourceTest {
         return product;
     }
 
+    /**
+     * Builds a fulfillment fixture.
+     *
+     * @param id the id
+     * @return the fulfillment
+     */
     private Fulfillment fulfillment(Long id) {
         Fulfillment fulfillment = new Fulfillment();
         fulfillment.id = id;
         return fulfillment;
     }
 
+    /**
+     * Builds a line fixture.
+     *
+     * @param id the id
+     * @return the line
+     */
     private FulfillmentLine line(Long id) {
         FulfillmentLine line = new FulfillmentLine();
         line.id = id;
@@ -232,6 +292,9 @@ class FulfillmentResourceTest {
     // getIdentity
     // --------------------------------------------------
 
+    /**
+     * Checks get identity: returns injected identity.
+     */
     @Test
     void getIdentity_returnsInjectedIdentity() {
         FulfillmentResource resource = new FulfillmentResource();
@@ -245,6 +308,9 @@ class FulfillmentResourceTest {
     // fulfillmentsByDeliveryDate
     // --------------------------------------------------
 
+    /**
+     * Checks fulfillments by delivery date: with store context, filters by store.
+     */
     @Test
     void fulfillmentsByDeliveryDate_withStoreContext_filtersByStore() throws Exception {
         stubBadgeLookup(employee(store(STORE_ID)));
@@ -259,6 +325,9 @@ class FulfillmentResourceTest {
         assertArrayEquals(new Object[]{START, END, STORE_ID}, call.params);
     }
 
+    /**
+     * Checks fulfillments by delivery date: global admin, no store filter.
+     */
     @Test
     void fulfillmentsByDeliveryDate_globalAdmin_noStoreFilter() throws Exception {
         stubBadgeLookup(null);
@@ -271,6 +340,9 @@ class FulfillmentResourceTest {
         assertArrayEquals(new Object[]{START, END}, call.params);
     }
 
+    /**
+     * Checks fulfillments by delivery date: wants chunks order and lines, uses fetch joins.
+     */
     @Test
     void fulfillmentsByDeliveryDate_wantsChunksOrderAndLines_usesFetchJoins() throws Exception {
         stubBadgeLookup(null);
@@ -284,6 +356,9 @@ class FulfillmentResourceTest {
         assertArrayEquals(new Object[]{START, END}, call.params);
     }
 
+    /**
+     * Checks fulfillments by delivery date: store context wants chunks without lines, fetches chunks only.
+     */
     @Test
     void fulfillmentsByDeliveryDate_storeContextWantsChunksWithoutLines_fetchesChunksOnly() throws Exception {
         stubBadgeLookup(employee(store(STORE_ID)));
@@ -296,6 +371,9 @@ class FulfillmentResourceTest {
         assertArrayEquals(new Object[]{START, END, STORE_ID}, call.params);
     }
 
+    /**
+     * Checks fulfillments by delivery date: wants order without chunks, fetches order only.
+     */
     @Test
     void fulfillmentsByDeliveryDate_wantsOrderWithoutChunks_fetchesOrderOnly() throws Exception {
         stubBadgeLookup(employee(store(STORE_ID)));
@@ -307,6 +385,9 @@ class FulfillmentResourceTest {
                 "WHERE c.deliveryDate >= ?1 AND c.deliveryDate <= ?2 AND o.store.id = ?3", call.jpql);
     }
 
+    /**
+     * Checks fulfillments by delivery date: no store and no privileges, throws security exception wrapped.
+     */
     @Test
     void fulfillmentsByDeliveryDate_noStoreAndNoPrivileges_throwsSecurityExceptionWrapped() {
         stubBadgeLookup(null);
@@ -322,6 +403,9 @@ class FulfillmentResourceTest {
     // allFulfillments / fulfillment / fulfillmentByOrderId
     // --------------------------------------------------
 
+    /**
+     * Checks all fulfillments: empty selection, builds plain query.
+     */
     @Test
     void allFulfillments_emptySelection_buildsPlainQuery() throws Exception {
         FindCall call = stubFulfillmentList(List.of(fulfillment(1L)));
@@ -332,6 +416,9 @@ class FulfillmentResourceTest {
         assertEquals("select distinct f from Fulfillment f ", call.jpql);
     }
 
+    /**
+     * Checks all fulfillments: wants order chunks and lines, builds full fetch query.
+     */
     @Test
     void allFulfillments_wantsOrderChunksAndLines_buildsFullFetchQuery() throws Exception {
         FindCall call = stubFulfillmentList(List.of());
@@ -342,6 +429,9 @@ class FulfillmentResourceTest {
                 "left join fetch f.chunks c left join fetch c.lines l left join fetch l.product ", call.jpql);
     }
 
+    /**
+     * Checks all fulfillments: wants chunks without lines, builds chunk fetch only.
+     */
     @Test
     void allFulfillments_wantsChunksWithoutLines_buildsChunkFetchOnly() throws Exception {
         FindCall call = stubFulfillmentList(List.of());
@@ -351,6 +441,9 @@ class FulfillmentResourceTest {
         assertEquals("select distinct f from Fulfillment f left join fetch f.chunks c ", call.jpql);
     }
 
+    /**
+     * Checks fulfillment: found, returns fulfillment.
+     */
     @Test
     void fulfillment_found_returnsFulfillment() throws Exception {
         Fulfillment fulfillment = fulfillment(5L);
@@ -361,6 +454,9 @@ class FulfillmentResourceTest {
         assertSame(fulfillment, result);
     }
 
+    /**
+     * Checks fulfillment: not found, throws no such element.
+     */
     @Test
     void fulfillment_notFound_throwsNoSuchElement() {
         stubOptimizedFind("f.id = ?1", null);
@@ -369,6 +465,9 @@ class FulfillmentResourceTest {
         assertThrows(NoSuchElementException.class, () -> resource.fulfillment(5L, emptyContext()));
     }
 
+    /**
+     * Checks fulfillment by order id: found, joins order without fetch.
+     */
     @Test
     void fulfillmentByOrderId_found_joinsOrderWithoutFetch() throws Exception {
         Fulfillment fulfillment = fulfillment(6L);
@@ -388,6 +487,9 @@ class FulfillmentResourceTest {
         assertEquals("select distinct f from Fulfillment f join f.order o where o.orderId = ?1", call.jpql);
     }
 
+    /**
+     * Checks fulfillment by order id: wants order, fetches order.
+     */
     @Test
     void fulfillmentByOrderId_wantsOrder_fetchesOrder() throws Exception {
         FindCall call = new FindCall();
@@ -405,6 +507,9 @@ class FulfillmentResourceTest {
         assertEquals("select distinct f from Fulfillment f join fetch f.order o where o.orderId = ?1", call.jpql);
     }
 
+    /**
+     * Checks fulfillment by order id: not found, throws no such element.
+     */
     @Test
     void fulfillmentByOrderId_notFound_throwsNoSuchElement() {
         stubOptimizedFind("o.orderId = ?1", null);
@@ -417,6 +522,11 @@ class FulfillmentResourceTest {
     // createFulfillment
     // --------------------------------------------------
 
+    /**
+     * Stubs order lookup.
+     *
+     * @param order the order
+     */
     private void stubOrderLookup(Order order) {
         PanacheQuery<Order> query = mock(PanacheQuery.class);
         when(query.firstResult()).thenReturn(order);
@@ -424,6 +534,11 @@ class FulfillmentResourceTest {
                 .thenReturn(query);
     }
 
+    /**
+     * Stubs existing fulfillment lookup.
+     *
+     * @param existing the existing
+     */
     private void stubExistingFulfillmentLookup(Fulfillment existing) {
         PanacheQuery<Fulfillment> query = mock(PanacheQuery.class);
         when(query.firstResult()).thenReturn(existing);
@@ -431,6 +546,9 @@ class FulfillmentResourceTest {
                 .thenReturn(query);
     }
 
+    /**
+     * Checks create fulfillment: order not found, throws no such element.
+     */
     @Test
     void createFulfillment_orderNotFound_throwsNoSuchElement() {
         stubOrderLookup(null);
@@ -442,6 +560,9 @@ class FulfillmentResourceTest {
         assertThrows(NoSuchElementException.class, () -> resource.createFulfillment(input));
     }
 
+    /**
+     * Checks create fulfillment: already exists, throws graph qlexception.
+     */
     @Test
     void createFulfillment_alreadyExists_throwsGraphQLException() {
         Order order = order("ORD-1");
@@ -456,6 +577,9 @@ class FulfillmentResourceTest {
         assertTrue(exception.getMessage().contains("already exists"));
     }
 
+    /**
+     * Checks create fulfillment: with reservation chunks and lines, creates graph.
+     */
     @Test
     void createFulfillment_withReservationChunksAndLines_createsGraph() throws Exception {
         Order order = order("ORD-1");
@@ -501,6 +625,9 @@ class FulfillmentResourceTest {
         verify(session).persist(result);
     }
 
+    /**
+     * Checks create fulfillment: product not found, throws no such element.
+     */
     @Test
     void createFulfillment_productNotFound_throwsNoSuchElement() {
         Order order = order("ORD-1");
@@ -523,6 +650,9 @@ class FulfillmentResourceTest {
         assertThrows(NoSuchElementException.class, () -> resource.createFulfillment(input));
     }
 
+    /**
+     * Checks create fulfillment: empty chunks, skips chunk processing.
+     */
     @Test
     void createFulfillment_emptyChunks_skipsChunkProcessing() throws Exception {
         Order order = order("ORD-1");
@@ -540,6 +670,9 @@ class FulfillmentResourceTest {
         verify(session).persist(result);
     }
 
+    /**
+     * Checks create fulfillment: chunk with null lines, creates chunk without lines.
+     */
     @Test
     void createFulfillment_chunkWithNullLines_createsChunkWithoutLines() throws Exception {
         Order order = order("ORD-1");
@@ -563,6 +696,9 @@ class FulfillmentResourceTest {
         assertTrue(chunk.lines.isEmpty());
     }
 
+    /**
+     * Checks create fulfillment: chunk with empty lines, creates chunk without lines.
+     */
     @Test
     void createFulfillment_chunkWithEmptyLines_createsChunkWithoutLines() throws Exception {
         Order order = order("ORD-1");
@@ -586,6 +722,9 @@ class FulfillmentResourceTest {
         assertTrue(chunk.lines.isEmpty());
     }
 
+    /**
+     * Checks create fulfillment: null chunks and reservation, creates bare fulfillment.
+     */
     @Test
     void createFulfillment_nullChunksAndReservation_createsBareFulfillment() throws Exception {
         Order order = order("ORD-1");
@@ -607,6 +746,9 @@ class FulfillmentResourceTest {
     // updateFulfillment
     // --------------------------------------------------
 
+    /**
+     * Checks update fulfillment: not found, throws no such element.
+     */
     @Test
     void updateFulfillment_notFound_throwsNoSuchElement() {
         panacheMock.when(() -> PanacheEntityBase.findById(any())).thenReturn(null);
@@ -616,6 +758,9 @@ class FulfillmentResourceTest {
         assertThrows(NoSuchElementException.class, () -> resource.updateFulfillment(1L, input));
     }
 
+    /**
+     * Checks update fulfillment: applies reservation record.
+     */
     @Test
     void updateFulfillment_appliesReservationRecord() throws Exception {
         Fulfillment fulfillment = fulfillment(1L);
@@ -636,6 +781,9 @@ class FulfillmentResourceTest {
         assertEquals(leasing, fulfillment.reservationRecord.leasing);
     }
 
+    /**
+     * Checks update fulfillment: partial reservation record, updates only provided fields.
+     */
     @Test
     void updateFulfillment_partialReservationRecord_updatesOnlyProvidedFields() throws Exception {
         Fulfillment fulfillment = fulfillment(1L);
@@ -657,6 +805,9 @@ class FulfillmentResourceTest {
         assertEquals(newLeasing, fulfillment.reservationRecord.leasing);
     }
 
+    /**
+     * Checks update fulfillment: status only reservation, updates status keeps leasing.
+     */
     @Test
     void updateFulfillment_statusOnlyReservation_updatesStatusKeepsLeasing() throws Exception {
         Fulfillment fulfillment = fulfillment(1L);
@@ -676,6 +827,9 @@ class FulfillmentResourceTest {
         assertEquals(originalLeasing, fulfillment.reservationRecord.leasing);
     }
 
+    /**
+     * Checks update fulfillment: null reservation record, leaves fulfillment untouched.
+     */
     @Test
     void updateFulfillment_nullReservationRecord_leavesFulfillmentUntouched() throws Exception {
         Fulfillment fulfillment = fulfillment(1L);
@@ -694,12 +848,76 @@ class FulfillmentResourceTest {
     // updateFulfillmentChunk
     // --------------------------------------------------
 
+    /**
+     * Builds a resource for a manager of store {@code STORE_ID}, whose chunks, buildings and locations all belong to
+     * that store.
+     *
+     * @return the resource
+     */
+    private FulfillmentResource ownedChunkResource() {
+        Store own = store(STORE_ID);
+        stubBadgeLookup(employee(own));
+        FulfillmentResource resource = spy(newResource(false, false));
+        doReturn(own).when(resource).chunkStore(any());
+        doReturn(own).when(resource).buildingStore(any());
+        doReturn(own).when(resource).locationStore(any());
+        return resource;
+    }
+
+    /**
+     * Checks that a chunk of another store is reported as missing, and that a building or location of another store
+     * is refused.
+     */
+    @Test
+    void updateFulfillmentChunk_crossStoreChunkBuildingOrLocation_isRefused() throws Exception {
+        FulfillmentChunk chunk = chunk(1L);
+        Building building = new StoreBuilding();
+        building.id = 3L;
+        panacheMock.when(() -> PanacheEntityBase.findById(any()))
+                .thenAnswer(invocation -> chunk.id.equals(invocation.getArgument(0)) ? chunk : building);
+        FulfillmentResource.FulfillmentChunkRecord input = new FulfillmentResource.FulfillmentChunkRecord();
+
+        FulfillmentResource foreignChunk = ownedChunkResource();
+        doReturn(store(STORE_ID + 1)).when(foreignChunk).chunkStore(any());
+        assertThrows(NoSuchElementException.class, () -> foreignChunk.updateFulfillmentChunk(1L, input));
+
+        FulfillmentResource orphanChunk = ownedChunkResource();
+        doReturn(null).when(orphanChunk).chunkStore(any());
+        assertThrows(NoSuchElementException.class, () -> orphanChunk.updateFulfillmentChunk(1L, input));
+
+        input.buildingId = 3L;
+        FulfillmentResource foreignBuilding = ownedChunkResource();
+        doReturn(store(STORE_ID + 1)).when(foreignBuilding).buildingStore(any());
+        GraphQLException refused = assertThrows(GraphQLException.class, () -> foreignBuilding.updateFulfillmentChunk(1L, input));
+        assertInstanceOf(SecurityException.class, refused.getCause());
+    }
+
+    /**
+     * Checks that the store comparison refuses a missing owner, a missing target and another store.
+     */
+    @Test
+    void sameStore_coversEveryLeg() {
+        assertThrows(SecurityException.class, () -> FulfillmentResource.sameStore(null, store(STORE_ID), "Building"));
+        assertThrows(SecurityException.class, () -> FulfillmentResource.sameStore(store(STORE_ID), null, "Building"));
+        assertThrows(SecurityException.class, () -> FulfillmentResource.sameStore(store(STORE_ID), store(STORE_ID + 1), "Building"));
+        assertDoesNotThrow(() -> FulfillmentResource.sameStore(store(STORE_ID), store(STORE_ID), "Building"));
+    }
+
+    /**
+     * Builds a chunk fixture.
+     *
+     * @param id the id
+     * @return the chunk
+     */
     private FulfillmentChunk chunk(Long id) {
         FulfillmentChunk chunk = new FulfillmentChunk();
         chunk.id = id;
         return chunk;
     }
 
+    /**
+     * Checks update fulfillment chunk: not found, throws no such element.
+     */
     @Test
     void updateFulfillmentChunk_notFound_throwsNoSuchElement() {
         panacheMock.when(() -> PanacheEntityBase.findById(any())).thenReturn(null);
@@ -709,6 +927,9 @@ class FulfillmentResourceTest {
         assertThrows(NoSuchElementException.class, () -> resource.updateFulfillmentChunk(1L, input));
     }
 
+    /**
+     * Checks update fulfillment chunk: updates fields and building.
+     */
     @Test
     void updateFulfillmentChunk_updatesFieldsAndBuilding() throws Exception {
         FulfillmentChunk chunk = chunk(1L);
@@ -727,7 +948,7 @@ class FulfillmentResourceTest {
         input.deliveryDate = END;
         input.buildingId = 3L;
 
-        FulfillmentChunk result = newResource(false, false).updateFulfillmentChunk(1L, input);
+        FulfillmentChunk result = ownedChunkResource().updateFulfillmentChunk(1L, input);
 
         assertSame(chunk, result);
         assertEquals(FulfillmentChunk.READY, chunk.type);
@@ -736,6 +957,9 @@ class FulfillmentResourceTest {
         assertSame(building, chunk.building);
     }
 
+    /**
+     * Checks update fulfillment chunk: null building id, clears building.
+     */
     @Test
     void updateFulfillmentChunk_nullBuildingId_clearsBuilding() throws Exception {
         FulfillmentChunk chunk = chunk(1L);
@@ -744,11 +968,14 @@ class FulfillmentResourceTest {
 
         FulfillmentResource.FulfillmentChunkRecord input = new FulfillmentResource.FulfillmentChunkRecord();
 
-        newResource(false, false).updateFulfillmentChunk(1L, input);
+        ownedChunkResource().updateFulfillmentChunk(1L, input);
 
         assertNull(chunk.building);
     }
 
+    /**
+     * Checks update fulfillment chunk: removes lines missing from input and updates kept ones.
+     */
     @Test
     void updateFulfillmentChunk_removesLinesMissingFromInputAndUpdatesKeptOnes() throws Exception {
         FulfillmentChunk chunk = chunk(1L);
@@ -782,7 +1009,7 @@ class FulfillmentResourceTest {
         try (MockedStatic<FulfillmentChunk> chunkMock = mockStatic(FulfillmentChunk.class)) {
             chunkMock.when(() -> FulfillmentChunk.findCommonSpecification(any())).thenReturn(locSpec);
 
-            FulfillmentChunk result = newResource(false, false).updateFulfillmentChunk(1L, input);
+            FulfillmentChunk result = ownedChunkResource().updateFulfillmentChunk(1L, input);
 
             assertSame(chunk, result);
             assertEquals(1, chunk.lines.size());
@@ -795,6 +1022,9 @@ class FulfillmentResourceTest {
         }
     }
 
+    /**
+     * Checks update fulfillment chunk: line without product id, keeps existing product.
+     */
     @Test
     void updateFulfillmentChunk_lineWithoutProductId_keepsExistingProduct() throws Exception {
         FulfillmentChunk chunk = chunk(1L);
@@ -825,7 +1055,7 @@ class FulfillmentResourceTest {
         try (MockedStatic<FulfillmentChunk> chunkMock = mockStatic(FulfillmentChunk.class)) {
             chunkMock.when(() -> FulfillmentChunk.findCommonSpecification(any())).thenReturn(locSpec);
 
-            newResource(false, false).updateFulfillmentChunk(1L, input);
+            ownedChunkResource().updateFulfillmentChunk(1L, input);
 
             assertSame(existingProduct, existing.product);
             assertEquals(9, existing.lineNumber);
@@ -833,6 +1063,9 @@ class FulfillmentResourceTest {
         }
     }
 
+    /**
+     * Checks update fulfillment chunk: line id not found, throws no such element.
+     */
     @Test
     void updateFulfillmentChunk_lineIdNotFound_throwsNoSuchElement() {
         FulfillmentChunk chunk = chunk(1L);
@@ -851,11 +1084,14 @@ class FulfillmentResourceTest {
         try (MockedStatic<FulfillmentChunk> chunkMock = mockStatic(FulfillmentChunk.class)) {
             chunkMock.when(() -> FulfillmentChunk.findCommonSpecification(any())).thenReturn(locSpec);
 
-            FulfillmentResource resource = newResource(false, false);
+            FulfillmentResource resource = ownedChunkResource();
             assertThrows(NoSuchElementException.class, () -> resource.updateFulfillmentChunk(1L, input));
         }
     }
 
+    /**
+     * Checks update fulfillment chunk: new line with location id, resolves location by id.
+     */
     @Test
     void updateFulfillmentChunk_newLineWithLocationId_resolvesLocationById() throws Exception {
         FulfillmentChunk chunk = chunk(1L);
@@ -883,7 +1119,7 @@ class FulfillmentResourceTest {
         try (MockedStatic<FulfillmentChunk> chunkMock = mockStatic(FulfillmentChunk.class)) {
             chunkMock.when(() -> FulfillmentChunk.findCommonSpecification(any())).thenReturn(locSpec);
 
-            newResource(false, false).updateFulfillmentChunk(1L, input);
+            ownedChunkResource().updateFulfillmentChunk(1L, input);
 
             assertEquals(1, chunk.lines.size());
             FulfillmentLine line = chunk.lines.iterator().next();
@@ -894,6 +1130,9 @@ class FulfillmentResourceTest {
         }
     }
 
+    /**
+     * Checks update fulfillment chunk: new line without location id, resolves closest location.
+     */
     @Test
     void updateFulfillmentChunk_newLineWithoutLocationId_resolvesClosestLocation() throws Exception {
         FulfillmentChunk chunk = chunk(1L);
@@ -925,7 +1164,7 @@ class FulfillmentResourceTest {
             shelfMock.when(() -> ShelfLocation.findClosestForProduct(any(), any(), any(), any(), any()))
                     .thenReturn(List.of(closest));
 
-            newResource(false, false).updateFulfillmentChunk(1L, input);
+            ownedChunkResource().updateFulfillmentChunk(1L, input);
 
             assertEquals(1, chunk.lines.size());
             FulfillmentLine line = chunk.lines.iterator().next();
@@ -939,6 +1178,9 @@ class FulfillmentResourceTest {
     // deleteFulfillment
     // --------------------------------------------------
 
+    /**
+     * Checks delete fulfillment: existing, returns true.
+     */
     @Test
     void deleteFulfillment_existing_returnsTrue() throws Exception {
         panacheMock.when(() -> PanacheEntityBase.deleteById(any())).thenReturn(true);
@@ -946,6 +1188,9 @@ class FulfillmentResourceTest {
         assertTrue(newResource(false, false).deleteFulfillment(1L));
     }
 
+    /**
+     * Checks delete fulfillment: missing, returns false.
+     */
     @Test
     void deleteFulfillment_missing_returnsFalse() throws Exception {
         panacheMock.when(() -> PanacheEntityBase.deleteById(any())).thenReturn(false);

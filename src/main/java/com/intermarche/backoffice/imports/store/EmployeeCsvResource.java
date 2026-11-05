@@ -251,10 +251,15 @@ public class EmployeeCsvResource extends ImporterCsvResource {
             // Heuristic: Check if it's already a BCrypt hash
             if (!passwordInput.startsWith("$2")) {
                 // Plain text -> Hash it
+                com.intermarche.backoffice.auth.AuthenticationService.checkPasswordPolicy(passwordInput);
                 employee.password = org.mindrot.jbcrypt.BCrypt.hashpw(passwordInput, org.mindrot.jbcrypt.BCrypt.gensalt());
             } else {
                 // Already hashed -> Keep it
                 employee.password = passwordInput;
+            }
+            if (employee.id != null) {
+                // Sessions of an existing employee opened with the former password end now
+                employee.credentialsChangedAt = java.time.Instant.now().getEpochSecond();
             }
         }
 

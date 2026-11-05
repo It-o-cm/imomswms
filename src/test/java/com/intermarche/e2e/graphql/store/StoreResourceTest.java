@@ -37,6 +37,22 @@ public class StoreResourceTest {
         DomainUtils.createAndPersistStore("STORE_01", 48.0, 2.0);
     }
 
+    /**
+     * Makes "testUser" a manager of STORE_01: managers only read their store.
+     */
+    void managerOfStore01() {
+        Store store = Store.findByCode("STORE_01");
+        var manager = new com.intermarche.backoffice.domain.store.Employee();
+        manager.firstName = "Manager";
+        manager.lastName = "Test";
+        manager.badgeId = "testUser";
+        manager.email = "testUser@test.invalid";
+        manager.password = org.mindrot.jbcrypt.BCrypt.hashpw("secret", org.mindrot.jbcrypt.BCrypt.gensalt(4));
+        manager.role = com.intermarche.backoffice.domain.store.Employee.EmployeeRole.MANAGER;
+        manager.store = store;
+        manager.persist();
+    }
+
     // --------------------------------------------------
     // Query Tests (Requires MANAGER role)
     // --------------------------------------------------
@@ -45,6 +61,7 @@ public class StoreResourceTest {
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testAllStores() {
         setUp();
+        managerOfStore01();
         List<Store> stores = storeResource.allStores();
         assertNotNull(stores);
         assertFalse(stores.isEmpty(), "Should return at least one store");
@@ -54,6 +71,7 @@ public class StoreResourceTest {
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testStoreById_Success() {
         setUp();
+        managerOfStore01();
         // Find the existing store from setup
         Store existing = Store.findByCode("STORE_01");
         assertNotNull(existing);
@@ -67,6 +85,7 @@ public class StoreResourceTest {
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testStoreById_NotFound() {
         setUp();
+        managerOfStore01();
         assertThrows(NoSuchElementException.class, () -> {
             storeResource.store(9999L);
         });
@@ -76,6 +95,7 @@ public class StoreResourceTest {
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testStoreByCode_Success() {
         setUp();
+        managerOfStore01();
         Store found = storeResource.storeByCode("STORE_01");
         assertNotNull(found);
         assertEquals("STORE_01", found.code);
@@ -85,6 +105,7 @@ public class StoreResourceTest {
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testStoreByCode_NotFound() {
         setUp();
+        managerOfStore01();
         assertThrows(NoSuchElementException.class, () -> {
             storeResource.storeByCode("STORE_99");
         });

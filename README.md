@@ -14,6 +14,8 @@ You can run your application in dev mode that enables live coding using:
 
 > **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8040/q/dev/>.
 
+On first start, the application generates its own RSA key pair for the login tokens in `data/jwt/` (ignored by git, like the database); deleting it ends every open session. Secrets are read from `.env`, never from the sources: set `MAILER_PASSWORD` (a Gmail application password) to send the password reset mails.
+
 ## Packaging and running the application
 
 The application can be packaged using:

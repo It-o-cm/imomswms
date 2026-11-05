@@ -41,6 +41,47 @@ public class DomainUtils {
     }
 
     /**
+     * Returns the store of a manager, creating the manager and a store of its own when the badge is unknown: managers
+     * only read the topology of their store.
+     *
+     * @param badgeId the badge of the manager
+     * @return the store of the manager
+     */
+    public static Store managerStore(String badgeId) {
+        com.intermarche.backoffice.domain.store.Employee existing = com.intermarche.backoffice.domain.store.Employee.findByBadgeId(badgeId);
+        if (existing != null && existing.store != null) return existing.store;
+        Store store = createAndPersistStore("MGR_" + badgeId, 48.0, 2.0);
+        var manager = new com.intermarche.backoffice.domain.store.Employee();
+        manager.firstName = "Manager";
+        manager.lastName = badgeId;
+        manager.badgeId = badgeId;
+        manager.email = badgeId + "@test.invalid";
+        manager.password = org.mindrot.jbcrypt.BCrypt.hashpw("secret", org.mindrot.jbcrypt.BCrypt.gensalt(4));
+        manager.role = com.intermarche.backoffice.domain.store.Employee.EmployeeRole.MANAGER;
+        manager.store = store;
+        manager.persist();
+        return store;
+    }
+
+    /**
+     * Grants an integration account access to a store: an integration account reads and writes the single store of
+     * its active grants.
+     *
+     * @param store     the store
+     * @param principal the name of the integration account
+     * @return the persisted grant
+     */
+    public static com.intermarche.backoffice.domain.commerce.CommerceStoreGrant grantStore(Store store, String principal) {
+        var grant = new com.intermarche.backoffice.domain.commerce.CommerceStoreGrant();
+        grant.store = store;
+        grant.principal = principal;
+        grant.sourceSystem = "TEST";
+        grant.grantedBy = "test";
+        grant.persist();
+        return grant;
+    }
+
+    /**
      * Creates and persists a StoreGroup entity with the given code.
      * <p>
      * The 'name' is set to the code by default.

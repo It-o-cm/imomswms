@@ -40,7 +40,7 @@ public class BufferResource implements GraphQLTrait {
     public List<com.intermarche.backoffice.engine.executing.BufferOccupancyService.BufferOccupancy> bufferOccupancy(@Name("storeCode") String storeCode) {
         var store=com.intermarche.backoffice.domain.store.Store.findByCode(storeCode);
         if(store==null)throw new NoSuchElementException("Magasin introuvable");
-        if(!identity.hasRole("ADMIN") && !identity.hasRole("SERVICE_CALLER")){
+        if(!identity.hasRole("ADMIN")){
             var context=getStoreContext();
             if(context==null || !context.id.equals(store.id))throw new SecurityException("Buffer hors du magasin autorisé");
         }

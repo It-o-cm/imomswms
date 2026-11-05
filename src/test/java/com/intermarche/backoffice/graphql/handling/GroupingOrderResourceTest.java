@@ -46,12 +46,18 @@ class GroupingOrderResourceTest {
     private MockedStatic<PanacheEntityBase> panacheMock;
     private LotResourceService lotResourceService;
 
+    /**
+     * Prepares the fixtures of each test.
+     */
     @BeforeEach
     void setUp() {
         panacheMock = mockStatic(PanacheEntityBase.class);
         lotResourceService = mock(LotResourceService.class);
     }
 
+    /**
+     * Releases the static mocks opened for the test.
+     */
     @AfterEach
     void tearDown() {
         panacheMock.close();
@@ -61,6 +67,13 @@ class GroupingOrderResourceTest {
     // Helpers
     // --------------------------------------------------
 
+    /**
+     * Builds resource.
+     *
+     * @param admin the admin
+     * @param serviceCaller the service caller
+     * @return the built value
+     */
     private GroupingOrderResource newResource(boolean admin, boolean serviceCaller) {
         Principal principal = mock(Principal.class);
         when(principal.getName()).thenReturn(BADGE_ID);
@@ -75,10 +88,22 @@ class GroupingOrderResourceTest {
         return resource;
     }
 
+    /**
+     * Builds a empty context fixture.
+     *
+     * @return the empty context
+     */
     private Context emptyContext() {
         return contextWithSelection(false, false);
     }
 
+    /**
+     * Builds a context with selection fixture.
+     *
+     * @param customer the customer
+     * @param building the building
+     * @return the context with selection
+     */
     private Context contextWithSelection(boolean customer, boolean building) {
         DataFetchingFieldSelectionSet selectionSet = mock(DataFetchingFieldSelectionSet.class);
         when(selectionSet.contains("customer")).thenReturn(customer);
@@ -90,18 +115,36 @@ class GroupingOrderResourceTest {
         return context;
     }
 
+    /**
+     * Builds a store fixture.
+     *
+     * @param id the id
+     * @return the store
+     */
     private Store store(Long id) {
         Store store = new Store();
         store.id = id;
         return store;
     }
 
+    /**
+     * Builds a employee fixture.
+     *
+     * @param store the store
+     * @return the employee
+     */
     private Employee employee(Store store) {
         Employee employee = new Employee();
         employee.store = store;
         return employee;
     }
 
+    /**
+     * Builds a order fixture.
+     *
+     * @param store the store
+     * @return the order
+     */
     private GroupingOrder order(Store store) {
         GroupingOrder order = new GroupingOrder();
         order.id = ORDER_ID;
@@ -176,6 +219,11 @@ class GroupingOrderResourceTest {
                 });
     }
 
+    /**
+     * Builds input.
+     *
+     * @return the built value
+     */
     private GroupingOrderResource.GroupingOrderRecord newInput() {
         return new GroupingOrderResource.GroupingOrderRecord();
     }
@@ -184,6 +232,9 @@ class GroupingOrderResourceTest {
     // allGroupingOrders
     // --------------------------------------------------
 
+    /**
+     * Checks all: with store context, filters by store id.
+     */
     @Test
     void all_withStoreContext_filtersByStoreId() throws Exception {
         Store store = store(STORE_ID);
@@ -197,6 +248,9 @@ class GroupingOrderResourceTest {
         assertArrayEquals(new Object[]{STORE_ID}, call.params);
     }
 
+    /**
+     * Checks all: without store context, queries without filter.
+     */
     @Test
     void all_withoutStoreContext_queriesWithoutFilter() throws Exception {
         stubBadgeLookup(null);
@@ -208,6 +262,9 @@ class GroupingOrderResourceTest {
         panacheMock.verify(() -> PanacheEntityBase.list(argThat(jpql -> !jpql.contains("where"))));
     }
 
+    /**
+     * Checks all: employee without store but admin, queries without filter.
+     */
     @Test
     void all_employeeWithoutStoreButAdmin_queriesWithoutFilter() throws Exception {
         stubBadgeLookup(employee(null));
@@ -219,17 +276,42 @@ class GroupingOrderResourceTest {
         panacheMock.verify(() -> PanacheEntityBase.list(argThat(jpql -> !jpql.contains("where"))));
     }
 
+    /**
+     * Checks all: service caller without grant, is refused.
+     */
     @Test
-    void all_serviceCallerWithoutStore_queriesWithoutFilter() throws Exception {
+    void all_serviceCallerWithoutGrant_isRefused() throws Exception {
         stubBadgeLookup(null);
         stubOrderList(List.of());
 
-        List<GroupingOrder> result = newResource(false, true).allGroupingOrders(emptyContext());
+        GroupingOrderResource resource = newResource(false, true);
 
-        assertNotNull(result);
-        panacheMock.verify(() -> PanacheEntityBase.list(argThat(jpql -> !jpql.contains("where"))));
+        GraphQLException ex = assertThrows(GraphQLException.class, () -> resource.allGroupingOrders(emptyContext()));
+        assertInstanceOf(SecurityException.class, ex.getCause());
     }
 
+    /**
+     * Checks all: service caller with grant, filters by the granted store.
+     */
+    @Test
+    void all_serviceCallerWithGrant_filtersByTheGrantedStore() throws Exception {
+        stubBadgeLookup(null);
+        ListCall call = stubOrderList(List.of());
+        com.intermarche.backoffice.domain.commerce.CommerceStoreGrant grant = new com.intermarche.backoffice.domain.commerce.CommerceStoreGrant();
+        grant.store = store(STORE_ID);
+        grant.active = true;
+        panacheMock.when(() -> PanacheEntityBase.list(eq("principal = ?1 and active = true"), any(Object[].class)))
+                .thenReturn(List.of(grant));
+
+        newResource(false, true).allGroupingOrders(emptyContext());
+
+        assertTrue(call.jpql.contains("where o.store.id = ?1"));
+        assertArrayEquals(new Object[]{STORE_ID}, call.params);
+    }
+
+    /**
+     * Checks all: no store and no global role, throws graph qlexception.
+     */
     @Test
     void all_noStoreAndNoGlobalRole_throwsGraphQLException() throws Exception {
         stubBadgeLookup(null);
@@ -241,6 +323,9 @@ class GroupingOrderResourceTest {
         assertInstanceOf(SecurityException.class, ex.getCause());
     }
 
+    /**
+     * Checks all: with customer and building selection, appends fetch joins.
+     */
     @Test
     void all_withCustomerAndBuildingSelection_appendsFetchJoins() throws Exception {
         stubBadgeLookup(null);
@@ -253,6 +338,9 @@ class GroupingOrderResourceTest {
         assertTrue(call.jpql.contains("left join fetch o.buffer b left outer join fetch b.building bl "));
     }
 
+    /**
+     * Checks all: with customer only selection, appends customer join only.
+     */
     @Test
     void all_withCustomerOnlySelection_appendsCustomerJoinOnly() throws Exception {
         stubBadgeLookup(null);
@@ -264,6 +352,9 @@ class GroupingOrderResourceTest {
         assertFalse(call.jpql.contains("o.buffer"));
     }
 
+    /**
+     * Checks all: with building only selection, appends buffer join only.
+     */
     @Test
     void all_withBuildingOnlySelection_appendsBufferJoinOnly() throws Exception {
         stubBadgeLookup(null);
@@ -279,6 +370,9 @@ class GroupingOrderResourceTest {
     // groupingOrdersByDateRange
     // --------------------------------------------------
 
+    /**
+     * Checks by date range: with store context, appends store filter.
+     */
     @Test
     void byDateRange_withStoreContext_appendsStoreFilter() throws Exception {
         Store store = store(STORE_ID);
@@ -297,6 +391,9 @@ class GroupingOrderResourceTest {
         assertArrayEquals(new Object[]{start, end, STORE_ID}, call.params);
     }
 
+    /**
+     * Checks by date range: without store context, no store filter.
+     */
     @Test
     void byDateRange_withoutStoreContext_noStoreFilter() throws Exception {
         stubBadgeLookup(null);
@@ -318,6 +415,9 @@ class GroupingOrderResourceTest {
     // groupingOrder (by id)
     // --------------------------------------------------
 
+    /**
+     * Checks by id: with store context, found, returns order.
+     */
     @Test
     void byId_withStoreContext_found_returnsOrder() throws Exception {
         Store store = store(STORE_ID);
@@ -333,6 +433,9 @@ class GroupingOrderResourceTest {
                 any(Object[].class)));
     }
 
+    /**
+     * Checks by id: with store context, not found, throws no such element.
+     */
     @Test
     void byId_withStoreContext_notFound_throwsNoSuchElement() throws Exception {
         Store store = store(STORE_ID);
@@ -344,6 +447,9 @@ class GroupingOrderResourceTest {
         assertThrows(NoSuchElementException.class, () -> resource.groupingOrder(ORDER_ID, emptyContext()));
     }
 
+    /**
+     * Checks by id: without store context, found, returns order.
+     */
     @Test
     void byId_withoutStoreContext_found_returnsOrder() throws Exception {
         stubBadgeLookup(null);
@@ -358,6 +464,9 @@ class GroupingOrderResourceTest {
                 any(Object[].class)));
     }
 
+    /**
+     * Checks by id: without store context, not found, throws no such element.
+     */
     @Test
     void byId_withoutStoreContext_notFound_throwsNoSuchElement() throws Exception {
         stubBadgeLookup(null);
@@ -372,6 +481,9 @@ class GroupingOrderResourceTest {
     // updateGroupingOrder
     // --------------------------------------------------
 
+    /**
+     * Checks update: order not found, throws no such element.
+     */
     @Test
     void update_orderNotFound_throwsNoSuchElement() throws Exception {
         Store store = store(STORE_ID);
@@ -384,6 +496,9 @@ class GroupingOrderResourceTest {
                 () -> resource.updateGroupingOrder(ORDER_ID, newInput()));
     }
 
+    /**
+     * Checks update: order from different store, throws graph qlexception.
+     */
     @Test
     void update_orderFromDifferentStore_throwsGraphQLException() throws Exception {
         Store store = store(STORE_ID);
@@ -397,6 +512,9 @@ class GroupingOrderResourceTest {
         assertInstanceOf(SecurityException.class, ex.getCause());
     }
 
+    /**
+     * Checks update: all fields with assignee from same store, applies changes.
+     */
     @Test
     void update_allFieldsWithAssigneeFromSameStore_appliesChanges() throws Exception {
         Store store = store(STORE_ID);
@@ -422,6 +540,9 @@ class GroupingOrderResourceTest {
         verify(lotResourceService).synchronizeLots(order, input.lots);
     }
 
+    /**
+     * Checks update: assignee from different store, throws graph qlexception.
+     */
     @Test
     void update_assigneeFromDifferentStore_throwsGraphQLException() throws Exception {
         Store store = store(STORE_ID);
@@ -439,6 +560,9 @@ class GroupingOrderResourceTest {
         assertInstanceOf(SecurityException.class, ex.getCause());
     }
 
+    /**
+     * Checks update: assignee not found, throws no such element.
+     */
     @Test
     void update_assigneeNotFound_throwsNoSuchElement() throws Exception {
         Store store = store(STORE_ID);
@@ -454,6 +578,9 @@ class GroupingOrderResourceTest {
                 () -> resource.updateGroupingOrder(ORDER_ID, input));
     }
 
+    /**
+     * Checks update: null assignee id, clears assignee.
+     */
     @Test
     void update_nullAssigneeId_clearsAssignee() throws Exception {
         Store store = store(STORE_ID);
@@ -472,6 +599,9 @@ class GroupingOrderResourceTest {
         verify(lotResourceService).synchronizeLots(order, input.lots);
     }
 
+    /**
+     * Checks update: admin without store context, skips store checks.
+     */
     @Test
     void update_adminWithoutStoreContext_skipsStoreChecks() throws Exception {
         stubBadgeLookup(null);

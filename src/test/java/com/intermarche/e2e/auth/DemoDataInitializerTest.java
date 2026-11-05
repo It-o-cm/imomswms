@@ -72,8 +72,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * with the current day, that entities are linked properly, and that seeding is
  * idempotent and can be disabled via configuration.
  */
+@io.quarkus.test.junit.TestProfile(DemoDataInitializerTest.Isolated.class)
 @QuarkusTest
 public class DemoDataInitializerTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_DemoDataInitializerTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     @Inject
     DemoDataInitializer initializer;
@@ -211,30 +214,32 @@ public class DemoDataInitializerTest {
         assertEquals(0, AisleWaypoint.count());
         assertEquals(5, PlanZone.count("building.buildingCode", "LYO-042-SHOP"));
         assertEquals(60, PlanZoneVertex.count());
-        assertEquals(58, Product.count());
-        assertEquals(58, StoreShelfLocation.count());
+        assertEquals(116, Product.count());
+        assertEquals(116, StoreShelfLocation.count());
         // Includes the supervision scenario: one deactivated buffer and three pickers (DemoSupervisionScenarioTest),
         // and the activity scenario: one dock buffer, one picker and seven totes (DemoActivityScenarioTest).
         assertEquals(7, Buffer.count());
-        assertEquals(9, Employee.count());
-        assertEquals(40, Tote.count());
-        assertEquals(22, Tote.count("toteType", Tote.ToteType.STANDARD));
-        assertEquals(18, Tote.count("toteType", Tote.ToteType.INSULATED));
+        assertEquals(12, Employee.count());
+        // Includes the display scenarios of the supports (three totes on carts, a carton and a pallet).
+        assertEquals(79, Tote.count());
+        assertEquals(60, Tote.count("toteType", Tote.ToteType.STANDARD));
+        assertEquals(19, Tote.count("toteType", Tote.ToteType.INSULATED));
         assertEquals(4, ProductFamily.count());
-        assertEquals(5, Customer.count());
-        // Orders: 12 base orders and 19 activity orders, one line each, one of them not routed (no lot).
-        assertEquals(31, Order.count());
-        assertEquals(82, OrderLine.count());
+        assertEquals(11, Customer.count());
+        // 12 base + 19 activity + 16 operational demo orders (T58, the order cancelled after picking, the four orders of the carrier tour, the Drive arrival and seven carrier departures waiting for a tour); dedicated tests verify their states.
+        // The five display orders of the supports (three totes on carts, a carton, a pallet) add one line each.
+        assertEquals(52, Order.count());
+        assertEquals(103, OrderLine.count());
         assertEquals(12, OrderRequest.count());
-        assertEquals(31, Fulfillment.count());
-        assertEquals(31, FulfillmentChunk.count());
-        assertEquals(82, FulfillmentLine.count());
-        assertEquals(30, Lot.count());
-        assertEquals(81, LotLine.count());
-        assertEquals(39, BaseHandlingOrder.count());
+        assertEquals(52, Fulfillment.count());
+        assertEquals(52, FulfillmentChunk.count());
+        assertEquals(103, FulfillmentLine.count());
+        assertEquals(51, Lot.count());
+        assertEquals(102, LotLine.count());
+        assertEquals(62, BaseHandlingOrder.count());
         assertEquals(4, GroupingOrder.count());
         assertEquals(2, PackingOrder.count());
-        assertEquals(7, ProductCollectingOrder.count());
+        assertEquals(28, ProductCollectingOrder.count());
         assertEquals(2, ZoneCollectingOrder.count());
         assertEquals(3, Configuration.count());
         assertEquals(6, Event.count());
@@ -310,7 +315,7 @@ public class DemoDataInitializerTest {
 
             // Handling orders are scheduled today
             List<BaseHandlingOrder> handlingOrders = BaseHandlingOrder.listAll();
-            assertEquals(39, handlingOrders.size());
+            assertEquals(62, handlingOrders.size());
             for (BaseHandlingOrder handlingOrder : handlingOrders) {
                 assertEquals(handlingOrder.code.startsWith("OPT-ANN-")?fixedNow.toLocalDate().plusDays(1):fixedNow.toLocalDate(), handlingOrder.requestedStart.toLocalDate());
                 assertNotNull(handlingOrder.requestedEnd);
@@ -340,7 +345,7 @@ public class DemoDataInitializerTest {
 
         StoreBuilding building = StoreBuilding.find("buildingCode", "LYO-042-SHOP").firstResult();
         assertEquals("LYO-042-SHOP", building.buildingCode);
-        assertEquals(58, building.locations.stream().map(l->org.hibernate.Hibernate.unproxy(l,com.intermarche.backoffice.domain.store.ShelfLocation.class)).filter(StoreShelfLocation.class::isInstance).count());
+        assertEquals(116, building.locations.stream().map(l->org.hibernate.Hibernate.unproxy(l,com.intermarche.backoffice.domain.store.ShelfLocation.class)).filter(StoreShelfLocation.class::isInstance).count());
 
         Employee employee = Employee.findByBadgeId("100234");
         assertNotNull(employee);
@@ -716,7 +721,7 @@ public class DemoDataInitializerTest {
                 TemperatureZone.HOUSEHOLD, Set.of("DRO1", "DRO2", "DRO3"));
 
         List<StoreShelfLocation> locations = StoreShelfLocation.<StoreShelfLocation>listAll();
-        assertEquals(58, locations.size());
+        assertEquals(116, locations.size());
 
         // Chaque produit est placé dans exactement une localisation
         for (Product product : Product.<Product>listAll()) {
@@ -834,7 +839,7 @@ public class DemoDataInitializerTest {
         initializer.seedDemoData();
 
         // The activity scenario (ACT- orders, DemoActivityScenarioTest) adds its own fulfillments, one of them not routed.
-        List<Fulfillment> fulfillments = Fulfillment.<Fulfillment>listAll().stream().filter(f -> !f.order.orderId.startsWith("ACT-")).toList();
+        List<Fulfillment> fulfillments = Fulfillment.<Fulfillment>listAll().stream().filter(f -> f.order.orderId.startsWith("CMD-")).toList();
         assertEquals(12, fulfillments.size());
         assertEquals(19, Fulfillment.count("order.orderId like 'ACT-%'"));
         for (Fulfillment fulfillment : fulfillments) {
@@ -882,7 +887,7 @@ public class DemoDataInitializerTest {
         initializer.seedDemoData();
 
         // The activity scenario (DemoActivityScenarioTest) deliberately adds pending and collected lots to supervise.
-        List<Lot> lots = Lot.<Lot>listAll().stream().filter(l -> !l.fulfillment.order.orderId.startsWith("ACT-")).toList();
+        List<Lot> lots = Lot.<Lot>listAll().stream().filter(l -> l.fulfillment.order.orderId.startsWith("CMD-")).toList();
         assertEquals(12, lots.size());
         for (Lot lot : lots) {
             assertNotNull(lot.store);
@@ -931,10 +936,10 @@ public class DemoDataInitializerTest {
         initializer.seedDemoData();
 
         List<BaseHandlingOrder> all = BaseHandlingOrder.listAll();
-        assertEquals(39, all.size());
+        assertEquals(62, all.size());
         // The activity scenario (ACT- orders, DemoActivityScenarioTest) has its own unassigned orders and pending lots.
         assertEquals(10, all.stream().filter(o -> o.code.startsWith("ACT-")).count());
-        List<BaseHandlingOrder> orders = all.stream().filter(o -> !o.code.startsWith("ACT-")).toList();
+        List<BaseHandlingOrder> orders = all.stream().filter(o -> !o.code.startsWith("ACT-") && !o.code.startsWith("DEM-")).toList();
 
         Set<String> codes = new HashSet<>();
         Set<String> prefixes = new HashSet<>();
@@ -954,12 +959,13 @@ public class DemoDataInitializerTest {
             }
             prefixes.add(order.getPrefix());
         }
-        assertEquals(Set.of("GRP", "PAK", "PRO", "ZON", "REA"), prefixes);
+        // RET: the return work created when a demo order is cancelled after picking.
+        assertEquals(Set.of("GRP", "PAK", "PRO", "ZON", "REA", "RET"), prefixes);
 
         // Two orders of each type, plus the complex product collecting demo and the supervision grouping
         assertEquals(3, GroupingOrder.count("code not like 'ACT-%'"));
         assertEquals(2, PackingOrder.count());
-        assertEquals(3, ProductCollectingOrder.count("code not like 'ACT-%'"));
+        assertEquals(3, ProductCollectingOrder.count("code not like 'ACT-%' and code not like 'DEM-%'"));
         assertEquals(2, ZoneCollectingOrder.count());
 
         // Grouping orders target the demo buffer and carry a customer
@@ -983,7 +989,7 @@ public class DemoDataInitializerTest {
         }
 
         // Product collecting orders carry EANs
-        for (ProductCollectingOrder collecting : ProductCollectingOrder.<ProductCollectingOrder>list("code not like 'ACT-%'")) {
+        for (ProductCollectingOrder collecting : ProductCollectingOrder.<ProductCollectingOrder>list("code not like 'ACT-%' and code not like 'DEM-%'")) {
             assertNotNull(collecting.building);
             assertFalse(collecting.eans.isEmpty());
             assertFalse(collecting.lots.isEmpty());
@@ -1250,17 +1256,13 @@ public class DemoDataInitializerTest {
     @Test @TestTransaction
     void existingDemoWithoutStockIsEnrichedOnNextSeed() {
         initializer.seedDemoData();
-        StockCommitment.deleteAll();
-        com.intermarche.backoffice.domain.replenishment.ReplenishmentDefinition.<com.intermarche.backoffice.domain.replenishment.ReplenishmentDefinition>listAll().forEach(d -> d.lines.forEach(l -> l.forecast = null));
-        com.intermarche.backoffice.domain.replenishment.ReplenishmentDefinition.flush();
-        var replenishments=com.intermarche.backoffice.domain.wms.handling.ReplenishmentOrder.<com.intermarche.backoffice.domain.wms.handling.ReplenishmentOrder>listAll();
-        replenishments.forEach(o -> com.intermarche.backoffice.domain.handling.HandlingExecution.delete("handlingOrder",o));
-        replenishments.forEach(o -> {o.supplies.clear();o.predecessor=null;});
-        replenishments.forEach(o -> o.persistAndFlush());
-        com.intermarche.backoffice.domain.wms.handling.ReplenishmentOrder.deleteAll();
-        ExpectedSupply.deleteAll();
-        StockMovement.deleteAll();
-        StockAccount.deleteAll();
+        // An older catalogue can lack stock for a new substitution reference. Do not
+        // erase traceable operational goods to construct this fixture.
+        StockAccount missing=StockAccount.<StockAccount>find("product.description like 'DEMO-ALTERNATIVE-%'").firstResult();assertNotNull(missing);
+        assertEquals(0,ExpectedSupply.count("account",missing));assertEquals(0,StockCommitment.count("account",missing));
+        StockMovement.delete("account",missing);
+        com.intermarche.backoffice.domain.stock.StockSegment.delete("account",missing);
+        StockAccount.delete("id",missing.id);StockAccount.getEntityManager().clear();
         long products=Product.count();long locations=StoreShelfLocation.count();
         initializer.seedDemoData();
         assertEquals(products,StockAccount.count());

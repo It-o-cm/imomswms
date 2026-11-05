@@ -43,9 +43,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * the resource appends to its JPQL queries. The persistence context is cleared before
  * the queries so that {@link Hibernate#isInitialized} reflects the fetch joins only.
  */
+@io.quarkus.test.junit.TestProfile(OrderResourceTest.Isolated.class)
 @QuarkusTest
 @TestTransaction
 public class OrderResourceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_OrderResourceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     @Inject
     OrderResource orderResource;

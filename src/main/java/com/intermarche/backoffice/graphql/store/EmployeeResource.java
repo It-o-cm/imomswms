@@ -165,6 +165,7 @@ public class EmployeeResource implements GraphQLTrait {
 
             // Password Hashing (Security)
             if (input.password != null && !input.password.isBlank()) {
+                com.intermarche.backoffice.auth.AuthenticationService.checkPasswordPolicy(input.password);
                 employee.password = org.mindrot.jbcrypt.BCrypt.hashpw(input.password, org.mindrot.jbcrypt.BCrypt.gensalt());
             } else {
                 throw new IllegalArgumentException("Password cannot be empty");
@@ -240,7 +241,10 @@ public class EmployeeResource implements GraphQLTrait {
 
             // Password Hashing (Security) - Only if provided
             if (input.password != null && !input.password.isBlank()) {
+                com.intermarche.backoffice.auth.AuthenticationService.checkPasswordPolicy(input.password);
                 employee.password = org.mindrot.jbcrypt.BCrypt.hashpw(input.password, org.mindrot.jbcrypt.BCrypt.gensalt());
+                // Sessions opened with the former password end now
+                employee.credentialsChangedAt = java.time.Instant.now().getEpochSecond();
             }
 
             // Enum conversion

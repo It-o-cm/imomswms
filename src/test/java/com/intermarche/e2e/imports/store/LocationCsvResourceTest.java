@@ -34,8 +34,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * updates, checksum optimization, duplicate detection on re-import, the 1-by-1
  * fallback mechanism and error handling.
  */
+@io.quarkus.test.junit.TestProfile(LocationCsvResourceTest.Isolated.class)
 @QuarkusTest
 public class LocationCsvResourceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_LocationCsvResourceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     /**
      * The TransactionManager for manual transaction control in tests.

@@ -41,6 +41,8 @@ class StoreActivityPollingConsumerTest {
     @BeforeEach
     void setUp() {
         consumer = new StoreActivityPollingConsumer();
+        consumer.startup = mock(BusinessStartup.class);
+        when(consumer.startup.ready()).thenReturn(true);
         storeActivityEngine = mock(StoreActivityEngine.class);
         em = mock(EntityManager.class);
         consumer.storeActivityEngine = storeActivityEngine;
@@ -311,4 +313,6 @@ class StoreActivityPollingConsumerTest {
             handleMock.verify(() -> WMSStoreHandle.reserveBatch(anyLong(), anyInt(), anyString(), anyString()));
         }
     }
+    @Test void schedulingWaitsForTransactionalStartupToFinish(){when(consumer.startup.ready()).thenReturn(false);consumer.pollAndProcess();verifyNoInteractions(em);}
+
 }

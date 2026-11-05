@@ -328,13 +328,21 @@ public class FulfillmentResource implements CollectingOrderGraphQLTrait {
             if (chunk == null) {
                 throw new NoSuchElementException("FulfillmentChunk with id " + id + " not found");
             }
+            Store owner = chunkStore(chunk);
+            Store scope = readScope();
+            if (scope != null && (owner == null || !owner.id.equals(scope.id))) {
+                throw new NoSuchElementException("FulfillmentChunk with id " + id + " not found");
+            }
             // 1. Update Basic Fields
             if (input.type != null) chunk.type = input.type;
             if (input.label != null) chunk.label = input.label;
             if (input.deliveryDate != null) chunk.deliveryDate = input.deliveryDate;
             // 2. Update Building
             if (input.buildingId != null) {
-                chunk.building = Building.findById(input.buildingId);
+                Building building = Building.findById(input.buildingId);
+                if (building == null) throw new NoSuchElementException("Building with id " + input.buildingId + " not found");
+                sameStore(owner, buildingStore(building.id), "Building");
+                chunk.building = building;
             } else {
                 chunk.building = null;
             }
@@ -373,7 +381,10 @@ public class FulfillmentResource implements CollectingOrderGraphQLTrait {
                         line.product = Product.findById(lineInput.productId);
                     }
                     if (lineInput.locationId != null) {
-                        line.location = BaseLocation.findById(lineInput.locationId);
+                        BaseLocation location = BaseLocation.findById(lineInput.locationId);
+                        if (location == null) throw new NoSuchElementException("Location with id " + lineInput.locationId + " not found");
+                        sameStore(owner, locationStore(location), "Location");
+                        line.location = location;
                     } else {
                         line.location = ShelfLocation.findClosestForProduct(
                             locSpec.store, line.product, locSpec.building, locSpec.area, locSpec.aisle
@@ -384,6 +395,50 @@ public class FulfillmentResource implements CollectingOrderGraphQLTrait {
             LOGGER.info("Exiting method updateFulfillmentChunk");
             return chunk;
         }, FulfillmentResource.class, "updateFulfillmentChunk");
+    }
+
+    /**
+     * Returns the store of the order a chunk fulfils.
+     *
+     * @param chunk the chunk
+     * @return the store, or null when the chunk belongs to no fulfillment
+     */
+    Store chunkStore(FulfillmentChunk chunk) {
+        return Fulfillment.getEntityManager().createQuery("select f.order.store from Fulfillment f join f.chunks c where c = :chunk", Store.class)
+                .setParameter("chunk", chunk).getResultStream().findFirst().orElse(null);
+    }
+
+    /**
+     * Finds the store of a building.
+     *
+     * @param buildingId the building
+     * @return its store, or null
+     */
+    Store buildingStore(Long buildingId) {
+        return Building.findStoreByBuildingId(buildingId);
+    }
+
+    /**
+     * Finds the store of a location, through its single building.
+     *
+     * @param location the location
+     * @return its store, or null when the location has no building or several
+     */
+    Store locationStore(BaseLocation location) {
+        var buildings = BaseLocation.findBuildingsByLocations(List.of(location));
+        return buildings.size() == 1 ? buildingStore(buildings.getFirst().id) : null;
+    }
+
+    /**
+     * Checks that a building or location given for a chunk belongs to the store of its order.
+     *
+     * @param owner  the store of the order of the chunk
+     * @param target the store of the building or location, or null when unknown
+     * @param what   the kind of object, for the message
+     * @throws SecurityException if the object belongs to another store
+     */
+    static void sameStore(Store owner, Store target, String what) {
+        if (owner == null || target == null || !owner.id.equals(target.id)) throw new SecurityException(what + " belongs to another store");
     }
 
     /**

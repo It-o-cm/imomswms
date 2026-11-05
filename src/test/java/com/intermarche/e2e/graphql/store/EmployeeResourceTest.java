@@ -289,6 +289,37 @@ public class EmployeeResourceTest {
         // Password must be re-hashed
         assertNotEquals(oldHash, updated.password);
         assertTrue(BCrypt.checkpw("newPassword", updated.password));
+        // Sessions opened with the former password end
+        assertNotNull(updated.credentialsChangedAt);
+    }
+
+    /**
+     * A password outside the policy (fewer than four or more than a hundred characters) is refused on creation and
+     * on update, and an update without password keeps the sessions.
+     */
+    @Test
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
+    void testEmployeePasswordPolicy() throws GraphQLException {
+        Store store = DomainUtils.createAndPersistStore("STORE_E30", 48.0, 2.0);
+        EmployeeResource.EmployeeRecord shortOne = new EmployeeResource.EmployeeRecord();
+        shortOne.firstName = "Short";
+        shortOne.lastName = "Pin";
+        shortOne.email = "short@test.com";
+        shortOne.badgeId = "BADGE_E30";
+        shortOne.password = "123";
+        shortOne.role = "PICKER";
+        shortOne.storeId = store.id;
+        assertThrows(GraphQLException.class, () -> employeeResource.createEmployee(shortOne));
+        assertNull(Employee.findByBadgeId("BADGE_E30"));
+
+        Employee existing = persistEmployee("BADGE_E31", store);
+        EmployeeResource.EmployeeRecord longOne = new EmployeeResource.EmployeeRecord();
+        longOne.password = "x".repeat(101);
+        assertThrows(GraphQLException.class, () -> employeeResource.updateEmployee(existing.id, longOne));
+
+        EmployeeResource.EmployeeRecord rename = new EmployeeResource.EmployeeRecord();
+        rename.firstName = "Renamed";
+        assertNull(employeeResource.updateEmployee(existing.id, rename).credentialsChangedAt);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.intermarche.backoffice.graphql;
 
+import com.intermarche.backoffice.domain.commerce.CommerceStoreGrant;
 import com.intermarche.backoffice.domain.store.Employee;
 import com.intermarche.backoffice.domain.store.Store;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -77,19 +78,36 @@ public interface GraphQLTrait {
         String badgeId = getIdentity().getPrincipal().getName();
         Employee employee = Employee.findByBadgeId(badgeId);
         if (employee != null && employee.store != null) return employee.store;
-        if (getIdentity().hasRole("ADMIN") || getIdentity().hasRole("SERVICE_CALLER")) return null;
+        if (getIdentity().hasRole("ADMIN")) return null;
+        if (getIdentity().hasRole("SERVICE_CALLER")) return serviceStore(badgeId);
         throw new SecurityException("User not linked to a store and lacks global privileges.");
     }
 
     /**
-     * Returns the store whose data the current user may read: none (every store) for administrators and
-     * integration services, the store of the employee for a manager.
+     * Returns the store an integration account works for: the single store of its active grants. An integration
+     * account acts on one store, like a manager; administrators keep a global access.
+     *
+     * @param principal the name of the integration account
+     * @return the granted store
+     * @throws SecurityException if the account holds no active grant, or grants on several stores
+     */
+    static Store serviceStore(String principal) {
+        var stores = CommerceStoreGrant.<CommerceStoreGrant>list("principal = ?1 and active = true", principal).stream()
+                .map(g -> org.hibernate.Hibernate.unproxy(g.store, Store.class))
+                .collect(java.util.stream.Collectors.toMap(store -> store.id, store -> store, (a, b) -> a)).values();
+        if (stores.size() == 1) return stores.iterator().next();
+        throw new SecurityException(stores.isEmpty() ? "Integration account without store grant" : "Integration account granted on several stores: use one account per store");
+    }
+
+    /**
+     * Returns the store whose data the current user may read: none (every store) for administrators, the store of
+     * the employee for a manager, the granted store for an integration account.
      *
      * @return the store to restrict the results to, or {@code null} for global access
      * @throws SecurityException if a manager is not linked to any store
      */
     default Store readScope() {
-        if (getIdentity().hasRole("ADMIN") || getIdentity().hasRole("SERVICE_CALLER")) return null;
+        if (getIdentity().hasRole("ADMIN")) return null;
         return getStoreContext();
     }
 

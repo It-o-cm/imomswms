@@ -44,16 +44,26 @@ public class OrderResourceTest {
     @Inject
     TransactionManager tm;
 
+    /**
+     * Builds a clean database fixture.
+     */
     @BeforeEach
     void cleanDatabase() {
         withTransaction(() -> {
             Event.deleteAll(); // events reference stores: delete them first
             OrderRequest.deleteAll();
+            com.intermarche.backoffice.domain.commerce.CommerceStoreGrant.deleteAll();
             Store.deleteAll();
             return null;
         });
     }
 
+    /**
+     * Builds a with transaction fixture.
+     *
+     * @param runnable the runnable
+     * @return the with transaction
+     */
     private <R> R withTransaction(Supplier<R> runnable) {
         try {
             tm.begin();
@@ -72,10 +82,27 @@ public class OrderResourceTest {
         }
     }
 
+    /**
+     * Creates a store granted to the integration account "svc".
+     *
+     * @param code the store code
+     * @return the store
+     */
     private Store createStore(String code) {
-        return withTransaction(() -> DomainUtils.createAndPersistStore(code, 48.0, 2.0));
+        return withTransaction(() -> {
+            Store store = DomainUtils.createAndPersistStore(code, 48.0, 2.0);
+            DomainUtils.grantStore(store, "svc");
+            return store;
+        });
     }
 
+    /**
+     * Builds a valid payload fixture.
+     *
+     * @param orderId the order id
+     * @param storeCode the store code
+     * @return the valid payload
+     */
     private String validPayload(String orderId, String storeCode) {
         return """
                 {
@@ -135,6 +162,9 @@ public class OrderResourceTest {
     // 202 - Accepted
     // --------------------------------------------------
 
+    /**
+     * Checks test submit order: valid payload, accepted.
+     */
     @Test
     @TestSecurity(user = "svc", roles = {"SERVICE_CALLER"})
     void testSubmitOrder_ValidPayload_Accepted() throws Exception {
@@ -169,9 +199,36 @@ public class OrderResourceTest {
     }
 
     // --------------------------------------------------
+    // 403 - Store not granted
+    // --------------------------------------------------
+
+    /**
+     * An integration account cannot order for a store it is not granted: nothing is saved.
+     */
+    @Test
+    @TestSecurity(user = "svc", roles = {"SERVICE_CALLER"})
+    void testSubmitOrder_StoreNotGranted_Forbidden() {
+        createStore("ORD_RS1");
+        withTransaction(() -> DomainUtils.createAndPersistStore("ORD_RS9", 48.0, 2.0));
+
+        given()
+                .body(validPayload("ORD-TEST-009", "ORD_RS9"))
+                .contentType(ContentType.JSON)
+                .when()
+                .post("/orders")
+                .then()
+                .statusCode(403);
+
+        assertEquals(0, OrderRequest.count(), "No OrderRequest must be persisted");
+    }
+
+    // --------------------------------------------------
     // 400 - Malformed JSON
     // --------------------------------------------------
 
+    /**
+     * Checks test submit order: malformed json, bad request.
+     */
     @Test
     @TestSecurity(user = "svc", roles = {"SERVICE_CALLER"})
     void testSubmitOrder_MalformedJson_BadRequest() {
@@ -193,6 +250,9 @@ public class OrderResourceTest {
     // 400 - Schema violation
     // --------------------------------------------------
 
+    /**
+     * Checks test submit order: schema violation, bad request.
+     */
     @Test
     @TestSecurity(user = "svc", roles = {"SERVICE_CALLER"})
     void testSubmitOrder_SchemaViolation_BadRequest() {
@@ -221,6 +281,9 @@ public class OrderResourceTest {
                 "The event description must help locate the failure");
     }
 
+    /**
+     * Checks test submit order: schema violation, unknown store, bad request.
+     */
     @Test
     @TestSecurity(user = "svc", roles = {"SERVICE_CALLER"})
     void testSubmitOrder_SchemaViolation_UnknownStore_BadRequest() {
@@ -244,6 +307,9 @@ public class OrderResourceTest {
     // 400 - Missing mandatory business fields
     // --------------------------------------------------
 
+    /**
+     * Checks test submit order: missing mandatory fields, bad request.
+     */
     @Test
     @TestSecurity(user = "svc", roles = {"SERVICE_CALLER"})
     void testSubmitOrder_MissingMandatoryFields_BadRequest() {
@@ -272,6 +338,9 @@ public class OrderResourceTest {
     // Security
     // --------------------------------------------------
 
+    /**
+     * Checks test submit order: unauthenticated, unauthorized.
+     */
     @Test
     void testSubmitOrder_Unauthenticated_Unauthorized() {
         given()
@@ -283,6 +352,9 @@ public class OrderResourceTest {
                 .statusCode(401);
     }
 
+    /**
+     * Checks test submit order: wrong role, forbidden.
+     */
     @Test
     @TestSecurity(user = "manager", roles = {"MANAGER"})
     void testSubmitOrder_WrongRole_Forbidden() {

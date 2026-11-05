@@ -38,6 +38,26 @@ import com.intermarche.backoffice.domain.store.TemperatureZone;
 @QuarkusTest
 public class PickingExecutionTest {
 
+    @jakarta.inject.Inject com.intermarche.backoffice.engine.executing.ProductPickingLocations productLocations;
+
+    @Test @TestTransaction void alternateWarehouseAndShopSourcesAreKeptOnEachPartialPicking() {
+        var store=createStore("ACTSRC");var employee=createEmployee(store,"ACTSRC");var order=createOrder(store,"ACTSRC");
+        var product=createProduct("ACTSRC","9988776655001");var planned=createLocation(product,"FOOD","S1");
+        var shop=new StoreBuilding();shop.buildingCode="ACTUAL-SHOP";shop.locations.add(planned);shop.persist();store.buildings.add(shop);
+        var alternate=new com.intermarche.backoffice.domain.store.WarehouseShelfLocation();alternate.product=product;alternate.area="AMBIENT";alternate.aisle="W1";alternate.unit="B1";alternate.elevation="1";alternate.position="1";alternate.persist();
+        var warehouse=new com.intermarche.backoffice.domain.store.WarehouseBuilding();warehouse.buildingCode="ACTUAL-WH";warehouse.locations.add(alternate);warehouse.persist();store.buildings.add(warehouse);store.persistAndFlush();
+        var line=createFullChain(order,store,product,planned,"ACTSRC");var execution=createExecution(order,employee);var item=createPickedItem(line,product,"5");execution.itemsToPick.add(item);
+        var tote=createTote(store,"ACTSRC",Tote.ToteType.STANDARD);execution.addTote(tote,TemperatureZone.AMBIENT);var loaded=execution.loadedTotes.iterator().next();
+        var choices=productLocations.choices(store,product,planned.locationCode,shop.buildingCode);
+        assertEquals(planned.id,choices.get(0).get("id"));assertEquals(true,choices.get(0).get("planned"));assertTrue(choices.stream().anyMatch(row->warehouse.id.equals(row.get("buildingId"))));
+        execution.addItemToTote(loaded,item,BigDecimal.ONE,product,productLocations.validate(store,product,alternate.id));
+        assertNull(item.sourceLocation);assertEquals(0,new BigDecimal("4").compareTo(item.quantity));
+        var picked=loaded.items.stream().filter(i->alternate.equals(i.sourceLocation)).findFirst().orElseThrow();assertEquals(BigDecimal.ONE,picked.quantity);
+        execution.addItemToTote(loaded,item,new BigDecimal("4"),product,planned);
+        assertEquals(planned,item.sourceLocation);assertEquals(2,loaded.items.size());
+        assertEquals(planned,line.location);
+    }
+
     // --------------------------------------------------
     // Fixture Helpers
     // --------------------------------------------------

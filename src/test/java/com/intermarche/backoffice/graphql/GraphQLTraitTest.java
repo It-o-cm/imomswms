@@ -20,6 +20,11 @@ public class GraphQLTraitTest {
 
     // Create an anonymous implementation to test the default method
     private final GraphQLTrait trait = new GraphQLTrait() {
+        /**
+         * Builds a get identity fixture.
+         *
+         * @return the get identity
+         */
         @Override
         public SecurityIdentity getIdentity() {
             return null;
@@ -196,13 +201,15 @@ public class GraphQLTraitTest {
     }
 
     /**
-     * Administrators and integration services read every store, even when linked to one; a manager reads their store.
+     * Administrators read every store, even when linked to one or also integration services; a manager and an
+     * integration service read their store only.
      */
     @Test
-    void readScope_isGlobalForAdministratorsAndServices_andTheOwnStoreForAManager() {
+    void readScope_isGlobalForAdministratorsOnly_andTheOwnStoreForAManagerOrAService() {
         Store own = store(1);
         assertNull(scoped(true, false, own).readScope());
-        assertNull(scoped(false, true, own).readScope());
+        assertNull(scoped(true, true, own).readScope());
+        assertSame(own, scoped(false, true, own).readScope());
         assertSame(own, scoped(false, false, own).readScope());
         assertThrows(SecurityException.class, () -> scoped(false, false, null).readScope());
     }

@@ -40,6 +40,11 @@ import java.util.stream.Collectors;
  */
 @ApplicationScoped
 public class HandlingOrderService {
+    @Inject com.intermarche.backoffice.engine.stock.PickedStockCoordinator stockTrace;
+    @Inject com.intermarche.backoffice.engine.catalog.ProductInformationService productInformation;
+    @Inject ProductPickingLocations productLocations;
+    @Inject com.intermarche.backoffice.engine.stock.InventoryScopeGuard freezes;
+    @Inject com.intermarche.backoffice.engine.operator.OperationQuantities quantities;
     @Inject com.intermarche.backoffice.engine.storeops.EmployeeTransitService employeeTransit;
 
     /**
@@ -76,6 +81,11 @@ public class HandlingOrderService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public List<HandlingOrderSummaryDTO> listAvailableOrders(com.intermarche.backoffice.domain.store.Store store) {
+        return BaseHandlingOrder.<BaseHandlingOrder>list("store=?1 and id not in (select he.handlingOrder.id from HandlingExecution he)",store).stream().map(this::mapToSummaryDTO).toList();
+    }
+
     /**
      * Reserves a specific handling order for an employee by creating a new execution.
      * <p>
@@ -92,6 +102,7 @@ public class HandlingOrderService {
      */
     @Transactional
     public HandlingExecutionDTO reserveOrder(Long orderId, String badgeId) {
+        com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(orderId);
         BaseHandlingOrder order = BaseHandlingOrder.findById(orderId);
         if (order == null) {
             throw new IllegalStateException("Order not found");
@@ -126,6 +137,7 @@ public class HandlingOrderService {
      */
     @Transactional
     public void cancelReservation(Long orderId) {
+        com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(orderId);
         HandlingExecution execution = HandlingExecution.find("handlingOrder.id", orderId).firstResult();
         if (execution != null) {
             execution.delete();
@@ -151,6 +163,7 @@ public class HandlingOrderService {
      */
     @Transactional
     public BatchStartResponse startBatchExecutions(List<Long> orderIds, String badgeId) {
+        if(orderIds!=null)for(Long pausedId:new java.util.TreeSet<>(orderIds))com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(pausedId);
         if (orderIds == null || orderIds.isEmpty()) {
             throw new IllegalArgumentException("Order IDs list cannot be null or empty");
         }
@@ -199,7 +212,9 @@ public class HandlingOrderService {
      */
     @Transactional
     public void substituteProduct(Long executionId, Long pickedItemId, Long newProductId) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         PickedItem item = PickedItem.findById(pickedItemId);
+        com.intermarche.backoffice.engine.fieldops.CancellationDispositionService.requireUncancelled(item);
         if (item == null) throw new IllegalArgumentException("PickedItem not found");
         Product newProduct = Product.findById(newProductId);
         if (newProduct == null) throw new IllegalArgumentException("Product not found");
@@ -230,6 +245,7 @@ public class HandlingOrderService {
      */
     @Transactional
     public void addTote(Long executionId, String toteCode, TemperatureZone usage) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(executionId);
         if (execution == null) throw new IllegalArgumentException("Execution not found");
         Tote physicalTote = Tote.find("code", toteCode).firstResult();
@@ -253,12 +269,15 @@ public class HandlingOrderService {
      */
     @Transactional
     public void removeEmptyTote(Long executionId, String toteCode) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(executionId);
         if (execution == null) throw new IllegalArgumentException("Execution not found");
         LoadedTote loadedTote = LoadedTote.find("tote.code = ?1 and status = ?2", toteCode, LoadedTote.Status.IN_USE).firstResult();
         if (loadedTote == null) throw new IllegalArgumentException("LoadedTote not found");
         execution.removeEmptyTote(loadedTote.tote);
-        loadedTote.delete();
+        freezes.tote(execution.handlingOrder.store,loadedTote);
+        loadedTote.status=LoadedTote.Status.DELIVERED;
+        loadedTote.clearCell();loadedTote.buffer=null;
     }
 
     /**
@@ -277,9 +296,11 @@ public class HandlingOrderService {
      */
     @Transactional
     public void addItemToTote(Long executionId, String toteCode, Long pickedItemId, BigDecimal quantity, Long productId) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(executionId);
         LoadedTote tote = LoadedTote.find("tote.code = ?1 and status = ?2", toteCode, LoadedTote.Status.IN_USE).firstResult();
         PickedItem item = PickedItem.findById(pickedItemId);
+        com.intermarche.backoffice.engine.fieldops.CancellationDispositionService.requireUncancelled(item);
         if (execution == null || tote == null || item == null) {
             throw new IllegalArgumentException("Invalid execution, tote, or item");
         }
@@ -290,7 +311,15 @@ public class HandlingOrderService {
         }
         newProduct=resolutions.replacement(execution.handlingOrder.store,item.lotLine.product,newProduct==null?item.product.id:newProduct.id);
         if(!newProduct.id.equals(item.lotLine.product.id))resolutions.record(execution.handlingOrder,item.lotLine,execution.employee,quantity==null?item.quantity:quantity,newProduct,"Produit indisponible au prélèvement");
+        com.intermarche.backoffice.engine.fieldops.SupportLayoutService.requireWritable(tote);
+        var worked=new java.util.ArrayList<com.intermarche.backoffice.engine.operator.OperationQuantities.Amount>();
+        BigDecimal picked=quantity==null?item.quantity:quantity;
+        if(picked.signum()<=0||item.status!=PickedItem.PickStatus.PENDING)throw new IllegalArgumentException("Quantité ou état de prélèvement invalide");
+        worked.add(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("PICKED",newProduct,item.lotLine.id,picked));
+        if(!newProduct.id.equals(item.lotLine.product.id))worked.add(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("SUBSTITUTED",newProduct,item.lotLine.id,picked));
         execution.addItemToTote(tote, item, quantity, newProduct);
+        quantities.legacy(execution,"PICK",worked);
+        traceLegacy(execution,"PICK");
     }
 
     /**
@@ -307,16 +336,22 @@ public class HandlingOrderService {
      */
     @Transactional
     public void moveItem(Long executionId, String sourceToteCode, String targetToteCode, Long pickedItemId) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(executionId);
         if (execution == null) throw new IllegalArgumentException("Execution not found");
         PickedItem item = PickedItem.findById(pickedItemId);
+        com.intermarche.backoffice.engine.fieldops.CancellationDispositionService.requireUncancelled(item);
         LoadedTote targetTote = LoadedTote.find("tote.code = ?1 and status = ?2", targetToteCode, LoadedTote.Status.IN_USE).firstResult();
         if (item == null || targetTote == null) throw new IllegalArgumentException("Item or Target Tote not found");
         LoadedTote sourceTote = null;
         if (sourceToteCode != null && !sourceToteCode.isBlank()) {
             sourceTote = LoadedTote.find("tote.code = ?1 and status = ?2", sourceToteCode, LoadedTote.Status.IN_USE).firstResult();
         }
+        com.intermarche.backoffice.engine.fieldops.SupportLayoutService.requireWritable(targetTote);
+        var worked=com.intermarche.backoffice.engine.operator.OperationQuantities.amount("TRANSFERRED",item.product,item.lotLine.id,item.quantity);
         execution.moveItemToTote(sourceTote, targetTote, item);
+        quantities.legacy(execution,"MOVE_ITEM",List.of(worked));
+        traceLegacy(execution,"MOVE_ITEM");
     }
 
     /**
@@ -333,12 +368,17 @@ public class HandlingOrderService {
      */
     @Transactional
     public void removeItemFromTote(Long executionId, String toteCode, Long pickedItemId) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         PickedItem item = PickedItem.findById(pickedItemId);
+        com.intermarche.backoffice.engine.fieldops.CancellationDispositionService.requireUncancelled(item);
         if (item == null) throw new IllegalArgumentException("Item not found");
         if (item.loadedTote != null) {
-            item.loadedTote.items.remove(item);
-            item.loadedTote = null;
+            var execution=PickingExecution.<PickingExecution>findById(executionId);
+            quantities.legacy(execution,"RETURN_ITEM",List.of(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("RETURNED_TO_SHELF",item.product,item.lotLine.id,item.quantity)));
+            var from=item.loadedTote;
+            execution.removeItemFromTote(from,item);
         }
+        traceLegacy(HandlingExecution.findById(executionId),"RETURN_ITEM");
     }
 
     /**
@@ -353,8 +393,14 @@ public class HandlingOrderService {
      */
     @Transactional
     public void cancelPickedItem(Long executionId, Long pickedItemId) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         PickedItem item = PickedItem.findById(pickedItemId);
+        com.intermarche.backoffice.engine.fieldops.CancellationDispositionService.requireUncancelled(item);
         if (item == null) throw new IllegalArgumentException("Item not found");
+        if(item.status!=PickedItem.PickStatus.PENDING)throw new IllegalArgumentException("Seul un article non collecté peut être déclaré manquant");
+        quantities.legacy(stateGuard,"MISSING",List.of(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("MISSING",item.lotLine.product,item.lotLine.id,item.quantity)));
+        resolutions.record(stateGuard.handlingOrder,item.lotLine,stateGuard.employee,item.quantity,null,"Produit indisponible au prélèvement");
+        item.quantity=BigDecimal.ZERO;
         item.status = PickedItem.PickStatus.CANCELED;
     }
 
@@ -371,6 +417,7 @@ public class HandlingOrderService {
      */
     @Transactional
     public void concludePickingExecution(Long executionId, Long bufferId) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(executionId);
         Buffer buffer = Buffer.findById(bufferId);
         if (execution == null || buffer == null) throw new IllegalArgumentException("Execution or Buffer not found");
@@ -379,8 +426,13 @@ public class HandlingOrderService {
             for(var tote:totes)bufferOccupancy.deposit(tote,bufferId,execution.handlingOrder.store);
             execution.loadedTotes.addAll(totes);execution.handlingOrder.status=BaseHandlingOrder.HandlingOrderStatus.DONE;
         }
+        var deposits=new java.util.ArrayList<com.intermarche.backoffice.engine.operator.OperationQuantities.Amount>();
+        for(var t:execution.loadedTotes)for(var i:t.items)if(i.status==PickedItem.PickStatus.PICKED)deposits.add(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("DEPOSITED",i.product,i.lotLine.id,i.quantity));
+        deposits.addAll(quantities.completion(execution));
         execution.concludeExecution(buffer);
+        quantities.legacy(execution,"CONCLUDE",deposits);
         execution.status = HandlingExecution.ExecutionStatus.DONE;
+        traceLegacy(execution,"CONCLUDE");
     }
 
     // --------------------------------------------------
@@ -399,10 +451,20 @@ public class HandlingOrderService {
      */
     @Transactional
     public void moveToteToDestination(Long executionId, String toteCode) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         HandlingExecution exec = HandlingExecution.findById(executionId);
+        if(exec!=null)exec=org.hibernate.Hibernate.unproxy(exec,HandlingExecution.class);
         if (exec instanceof GroupingExecution ge) {
             Tote t = Tote.find("code", toteCode).firstResult();
-            if (t != null) ge.moveToteToDestination(t);
+            if (t != null) {
+                var load=ge.loadedTotes.stream().filter(v->java.util.Objects.equals(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(v.tote),t.id)).findFirst().orElseThrow(()->new IllegalArgumentException("Bac hors de ce regroupement"));
+                var target=((com.intermarche.backoffice.domain.wms.handling.GroupingOrder)org.hibernate.Hibernate.unproxy(ge.handlingOrder)).buffer;
+                if(java.util.Objects.equals(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(load.buffer),com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(target)))return;
+                bufferOccupancy.deposit(load,target.id,ge.handlingOrder.store);
+                var amounts=new java.util.ArrayList<com.intermarche.backoffice.engine.operator.OperationQuantities.Amount>();
+                for(var i:load.items)if(i.status==PickedItem.PickStatus.PICKED)amounts.add(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("DEPOSITED",i.product,i.lotLine.id,i.quantity));
+                quantities.legacy(ge,"DEPOSIT_TOTE",amounts);
+            }
         }
     }
 
@@ -416,10 +478,14 @@ public class HandlingOrderService {
      */
     @Transactional
     public void concludeGroupingExecution(Long executionId) {
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         HandlingExecution exec = HandlingExecution.findById(executionId);
+        if(exec!=null)exec=org.hibernate.Hibernate.unproxy(exec,HandlingExecution.class);
         if (exec instanceof GroupingExecution ge) {
             ge.loadedTotes.addAll(mixedPreparation.completeTotes((PreparingOrder)ge.handlingOrder));
+            var amounts=quantities.completion(ge);
             ge.concludeExecution();
+            quantities.legacy(ge,"CONCLUDE",amounts);
             ge.status = HandlingExecution.ExecutionStatus.DONE;
         }
     }
@@ -444,6 +510,8 @@ public class HandlingOrderService {
         if (request == null) {
             throw new IllegalArgumentException("Request cannot be null");
         }
+        validateToteReports(request.totes);
+        HandlingExecution stateGuard=HandlingExecution.findById(executionId);if(stateGuard!=null)com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(stateGuard.handlingOrder));
         HandlingExecution raw = HandlingExecution.findById(executionId);
         if (raw == null) {
             throw new IllegalArgumentException("Execution not found");
@@ -453,11 +521,15 @@ public class HandlingOrderService {
             var report=new OrderReportDTO();report.orderId=raw.handlingOrder.id;report.totes=request.totes;batch.reports=List.of(report);
             createAndConcludeBatch(batch);return;
         }
+        raw=org.hibernate.Hibernate.unproxy(raw,HandlingExecution.class);
         if(!(raw instanceof PickingExecution execution))throw new IllegalArgumentException("Cette exécution ne permet pas une collecte.");
+        var amounts=new java.util.ArrayList<com.intermarche.backoffice.engine.operator.OperationQuantities.Amount>();
+        var tracePicks=new java.util.ArrayList<com.intermarche.backoffice.engine.stock.PickedStockCoordinator.ReportPick>();
+        if(request.totes!=null)for(var tote:request.totes)if(tote!=null&&tote.items!=null)for(var row:tote.items){var item=PickedItem.<PickedItem>findById(row.pickedItemId);if(item==null)throw new IllegalArgumentException("Article inconnu");var hint=new OperatorCommandInput();hint.stockSegmentId=row.stockSegmentId;hint.manufacturerLotId=row.manufacturerLotId;hint.serialId=row.serialId;hint.scanId=row.scanId;hint.measurement=row.measurement;hint.quantity=row.qty;hint.requestKey="legacy-report:"+java.util.UUID.randomUUID();Product actual=row.productId==null?item.product:Product.findById(row.productId);if(hint.scanId!=null||hint.measurement!=null)productInformation.preparePick(hint,actual,execution.handlingOrder.store,execution.employee);tracePicks.add(new com.intermarche.backoffice.engine.stock.PickedStockCoordinator.ReportPick(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(item.lotLine),com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(actual),tote.code,row.qty,hint));}
         Buffer buffer = (request.bufferId != null) ? Buffer.findById(request.bufferId) : null;
         if (request.totes != null) {
             for (ToteReportDTO toteDto : request.totes) {
-                assignItemsToTote(execution, toteDto, id -> PickedItem.findById(id));
+                assignItemsToTote(execution, toteDto, id -> {var item=PickedItem.<PickedItem>findById(id);if(item==null||!execution.itemsToPick.contains(item))throw new IllegalArgumentException("Article hors de cette préparation");return item;},amounts);
             }
         }
         if(execution.itemsToPick!=null && execution.itemsToPick.stream().anyMatch(item->item.status==PickedItem.PickStatus.PENDING))throw new IllegalStateException("La collecte contient encore des articles à traiter.");
@@ -465,6 +537,9 @@ public class HandlingOrderService {
             execution.concludeExecution(buffer);
         }
         execution.status = HandlingExecution.ExecutionStatus.DONE;
+        quantities.legacy(execution,"COLLECTION_REPORT",amounts);
+        var lineIds=PickedItem.getEntityManager().createQuery("select distinct line.id from PreparingOrder p join p.lots lot join lot.lines line where p.id=?1",Long.class).setParameter(1,com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(execution.handlingOrder)).getResultList();
+        var guard=new OperatorCommandInput();guard.action="VALIDATE_REPORT";stockTrace.syncLines(execution.handlingOrder.store,lineIds,guard,"legacy-report:"+java.util.UUID.randomUUID(),tracePicks);
     }
 
     /**
@@ -481,7 +556,27 @@ public class HandlingOrderService {
      * @throws IllegalStateException if the created execution is not of the expected type (PickingExecution).
      */
     @Transactional
-    public void createAndConcludeBatch(BatchValidationRequest request) {
+    public void createAndConcludeBatch(BatchValidationRequest request) {createAndConcludeBatch(request,"legacy-report:"+java.util.UUID.randomUUID());}
+    public void createAndConcludeBatch(BatchValidationRequest request,String operation) {
+        if(request==null||request.orderIds==null||request.orderIds.isEmpty())throw new IllegalArgumentException("Rapport requis");
+        if(request.reports!=null)for(var report:request.reports){if(report==null)throw new IllegalArgumentException("Order report cannot be null");validateToteReports(report.totes);}
+        BaseHandlingOrder first=BaseHandlingOrder.findById(request.orderIds.getFirst());if(first==null)throw new IllegalArgumentException("Ordre inconnu");
+        var store=org.hibernate.Hibernate.unproxy(first.store,com.intermarche.backoffice.domain.store.Store.class);collectionLocks.lock(store,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        var hints=new java.util.ArrayList<com.intermarche.backoffice.engine.stock.PickedStockCoordinator.ReportPick>();
+        if(request.reports!=null)for(var report:request.reports)if(report!=null&&report.totes!=null)for(var tote:report.totes)if(tote!=null&&tote.items!=null)for(var row:tote.items){
+            if(row==null||row.pickedItemId==null||row.qty==null)throw new IllegalArgumentException("Ligne de rapport incomplète");
+            if(row.pickedItemId<0){if(row.scanId!=null||row.measurement!=null||row.stockSegmentId!=null||row.manufacturerLotId!=null||row.serialId!=null)throw new IllegalArgumentException("Un produit déjà en bac conserve son identité fabricant");continue;}
+            var line=com.intermarche.backoffice.domain.wms.LotLine.<com.intermarche.backoffice.domain.wms.LotLine>findById(row.pickedItemId);if(line==null)throw new IllegalArgumentException("Ligne commerciale inconnue");
+            Product actual=row.productId==null?line.product:Product.findById(row.productId);if(actual==null)throw new IllegalArgumentException("Produit inconnu");
+            var hint=new OperatorCommandInput();hint.stockSegmentId=row.stockSegmentId;hint.manufacturerLotId=row.manufacturerLotId;hint.serialId=row.serialId;hint.scanId=row.scanId;hint.measurement=row.measurement;hint.quantity=row.qty;hint.requestKey=operation.length()>100?com.intermarche.backoffice.engine.stock.StockTraceLedger.key(operation):operation;
+            if(hint.scanId!=null||hint.measurement!=null){var actor=authenticationService.getConnectedAccount();if(!(actor instanceof Employee employee))throw new IllegalArgumentException("Préparateur requis");productInformation.preparePick(hint,actual,store,employee);}
+            hints.add(new com.intermarche.backoffice.engine.stock.PickedStockCoordinator.ReportPick(line.id,com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(actual),tote.code,row.qty,hint));
+        }
+        applyAndConcludeBatch(request);
+        var lines=PickedItem.getEntityManager().createQuery("select distinct line.id from PreparingOrder p join p.lots lot join lot.lines line where p.store=?1 and p.id in ?2",Long.class).setParameter(1,store).setParameter(2,request.orderIds).getResultList();
+        var guard=new OperatorCommandInput();guard.action="VALIDATE_REPORT";stockTrace.syncLines(store,lines,guard,operation,hints);
+    }
+    private void applyAndConcludeBatch(BatchValidationRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Request cannot be null");
         }
@@ -489,6 +584,7 @@ public class HandlingOrderService {
             throw new IllegalArgumentException("Order IDs list cannot be null or empty");
         }
         if(new HashSet<>(request.orderIds).size()!=request.orderIds.size())throw new IllegalArgumentException("Ordre dupliqué dans le lot.");
+        for(Long pausedId:new java.util.TreeSet<>(request.orderIds))com.intermarche.backoffice.domain.fieldops.MissionOperationalState.requireActive(pausedId);
         Map<Long, OrderReportDTO> reportMap = new HashMap<>();
         if (request.reports != null) {
             for (OrderReportDTO r : request.reports) {
@@ -536,24 +632,29 @@ public class HandlingOrderService {
                     }
                 }
             }
+            var amounts=new java.util.ArrayList<com.intermarche.backoffice.engine.operator.OperationQuantities.Amount>();
             OrderReportDTO report = reportMap.get(orderId);
             if (report != null && report.totes != null) {
                 for (ToteReportDTO toteDto : report.totes) {
                     if(toteDto!=null && toteDto.bufferId==null)toteDto.bufferId=request.bufferId;
                     if(toteDto!=null && toteDto.bufferId==null)throw new IllegalArgumentException("Choisissez le buffer de dépôt de chaque bac.");
-                    assignItemsToTote(pe, toteDto, id -> {var pending=lineToItemMap.get(id);if(pending!=null && pending.status!=PickedItem.PickStatus.PENDING)throw new IllegalArgumentException("Cette ligne est déjà entièrement affectée à un bac.");return pending;});
+                    assignItemsToTote(pe, toteDto, id -> {var pending=lineToItemMap.get(id);if(pending!=null && pending.status!=PickedItem.PickStatus.PENDING)throw new IllegalArgumentException("Cette ligne est déjà entièrement affectée à un bac.");return pending;},amounts);
                 }
             }
             if(report!=null && report.missing!=null)for(var missing:report.missing){
                 PickedItem item=missing==null?null:lineToItemMap.get(missing.pickedItemId);
                 if(item==null || item.status!=PickedItem.PickStatus.PENDING || missing.qty==null || missing.qty.compareTo(item.quantity)!=0)throw new IllegalArgumentException("Le manquant doit correspondre exactement au reliquat non collecté.");
+                amounts.add(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("MISSING",item.lotLine.product,item.lotLine.id,missing.qty));
                 resolutions.record(order,item.lotLine,employee,missing.qty,null,missing.reason);item.quantity=BigDecimal.ZERO;item.status=PickedItem.PickStatus.CANCELED;
             }
             if(pe.itemsToPick!=null && pe.itemsToPick.stream().anyMatch(item->item.status==PickedItem.PickStatus.PENDING))
                 throw new IllegalStateException("La collecte contient encore des articles à traiter.");
             execution.status = HandlingExecution.ExecutionStatus.DONE;
+            quantities.legacy(execution,"COLLECTION_REPORT",amounts);
         }
     }
+
+    private void traceLegacy(HandlingExecution execution,String action){if(execution==null)return;var store=org.hibernate.Hibernate.unproxy(execution.handlingOrder.store,com.intermarche.backoffice.domain.store.Store.class);collectionLocks.lock(store,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);var input=new OperatorCommandInput();input.action=action;stockTrace.synchronize(store,java.util.List.of(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(execution.handlingOrder)),input,"legacy:"+java.util.UUID.randomUUID());}
 
     // --------------------------------------------------
     // Private Helpers
@@ -577,7 +678,12 @@ public class HandlingOrderService {
      *                    This allows flexibility between looking up items directly from the database
      *                    or from a pre-loaded map (used in batch operations).
      */
-    private void assignItemsToTote(PickingExecution execution, ToteReportDTO toteDto, Function<Long, PickedItem> itemLookup) {
+    private static void validateToteReports(List<ToteReportDTO> totes){
+        if(totes==null)return;
+        for(var tote:totes){if(tote==null)throw new IllegalArgumentException("Tote report cannot be null");if(tote.items!=null)for(var item:tote.items)if(item==null)throw new IllegalArgumentException("Item report cannot be null");}
+    }
+
+    private void assignItemsToTote(PickingExecution execution, ToteReportDTO toteDto, Function<Long, PickedItem> itemLookup, List<com.intermarche.backoffice.engine.operator.OperationQuantities.Amount> amounts) {
         if (toteDto == null) {
             throw new IllegalArgumentException("Tote report cannot be null");
         }
@@ -587,12 +693,13 @@ public class HandlingOrderService {
             if (physicalTote == null) {
                 throw new IllegalArgumentException("Tote not found: " + toteDto.code);
             }
+            if(!java.util.Objects.equals(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(physicalTote.store),com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(execution.handlingOrder.store)))throw new IllegalArgumentException("Bac hors du magasin");
             loadedTote = LoadedTote.useAnEmptyTote(physicalTote);
             loadedTote.storageType = toteDto.zone;
             loadedTote.persist();
             execution.loadedTotes.add(loadedTote);
         }
-        if(toteDto.bufferId!=null && !execution.loadedTotes.contains(loadedTote))
+        if(!execution.loadedTotes.contains(loadedTote))
             throw new IllegalArgumentException("Ce bac est déjà utilisé par une autre collecte.");
         if (toteDto.items != null) {
             for (ToteItemReportDTO itemDto : toteDto.items) {
@@ -600,13 +707,23 @@ public class HandlingOrderService {
                     throw new IllegalArgumentException("Item report cannot be null");
                 }
                 PickedItem item = itemLookup.apply(itemDto.pickedItemId);
+                com.intermarche.backoffice.engine.fieldops.CancellationDispositionService.requireUncancelled(item);
                 if (item == null)throw new IllegalArgumentException("Article hors de cette préparation.");
                 if(itemDto.qty==null || itemDto.qty.signum()<=0 || item.quantity==null || itemDto.qty.compareTo(item.quantity)>0)throw new IllegalArgumentException("Quantité collectée invalide.");
+                if(item.status==PickedItem.PickStatus.PENDING)com.intermarche.backoffice.engine.fieldops.LineDirectiveService.requireReady(execution.handlingOrder,"LOT_LINE",item.lotLine.id);
+                if(item.status==PickedItem.PickStatus.PENDING)com.intermarche.backoffice.engine.fieldops.DepositTargetGuard.require(execution.handlingOrder.store,execution.handlingOrder,toteDto.code,itemDto.depositScanCode,item.lotLine);
                 Product actual=itemDto.productId==null?item.product:resolutions.replacement(execution.handlingOrder.store,item.lotLine.product,itemDto.productId);
+                if(item.status!=PickedItem.PickStatus.PENDING && (item.status!=PickedItem.PickStatus.PICKED || item.loadedTote==null || !java.util.Objects.equals(item.loadedTote.id,loadedTote.id) || itemDto.qty.compareTo(item.quantity)!=0))throw new IllegalArgumentException("Un article déjà prélevé ne peut pas être réaffecté par ce rapport");
                 if(actual.temperatureZone!=loadedTote.storageType || !loadedTote.tote.isUsageAllowed(actual.temperatureZone))throw new IllegalArgumentException("Bac incompatible avec le produit réellement collecté.");
                 if(itemDto.productId!=null && !actual.id.equals(item.lotLine.product.id))resolutions.record(execution.handlingOrder,item.lotLine,execution.employee,itemDto.qty,actual,itemDto.missingReason);
+                if(item.status==PickedItem.PickStatus.PENDING){
+                    amounts.add(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("PICKED",actual,item.lotLine.id,itemDto.qty));
+                    if(!actual.id.equals(item.lotLine.product.id))amounts.add(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("SUBSTITUTED",actual,item.lotLine.id,itemDto.qty));
+                }
+                if(toteDto.bufferId!=null)amounts.add(com.intermarche.backoffice.engine.operator.OperationQuantities.amount("DEPOSITED",actual,item.lotLine.id,itemDto.qty));
                 PickedItem allocated=item;
                 if(item.status==PickedItem.PickStatus.PENDING && itemDto.qty.compareTo(item.quantity)<0){item.quantity=item.quantity.subtract(itemDto.qty);allocated=new PickedItem();allocated.lotLine=item.lotLine;allocated.quantity=itemDto.qty;allocated.product=actual;allocated.persist();}
+                allocated.sourceLocation=itemDto.sourceLocationId==null?null:productLocations.validate(execution.handlingOrder.store,actual,itemDto.sourceLocationId);
                 allocated.loadedTote=loadedTote;allocated.status=PickedItem.PickStatus.PICKED;allocated.product=actual;allocated.quantity=itemDto.qty;
                 if(loadedTote.items==null)loadedTote.items=new HashSet<>();loadedTote.items.add(allocated);
             }
@@ -946,6 +1063,10 @@ public class HandlingOrderService {
     /** Report DTO for an item inside a tote validation request. */
     public static class MissingReportDTO {public Long pickedItemId;public BigDecimal qty;public String reason;}
     public static class ToteItemReportDTO {
+        public Long stockSegmentId,manufacturerLotId,serialId;
+        public String scanId,depositScanCode;
+        public com.intermarche.backoffice.engine.catalog.ProductMeasure.Input measurement;
+        public Long sourceLocationId;
         public Long productId;
         public String missingReason;
         public String sourceSnapshot;

@@ -288,6 +288,7 @@ public class OrderRequestResourceTest {
     @Test
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testCreateOrderRequest_Success() throws GraphQLException {
+        createEmployee("testUser", createStore("STORE_A"));
         OrderRequestResource.OrderRequestRecord input = new OrderRequestResource.OrderRequestRecord();
         input.orderNumber = "REQ_O19";
         input.storeCode = "STORE_A";
@@ -307,8 +308,10 @@ public class OrderRequestResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testUpdateOrderRequest_Success() throws GraphQLException {
+        createStore("STORE_A");
+        createStore("STORE_B");
         OrderRequest existing = persistOrderRequest("REQ_O20", "STORE_A");
 
         OrderRequestResource.OrderRequestRecord input = new OrderRequestResource.OrderRequestRecord();
@@ -326,6 +329,7 @@ public class OrderRequestResourceTest {
     @Test
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testUpdateOrderRequest_PartialUpdate_KeepsOtherFields() throws GraphQLException {
+        createEmployee("testUser", createStore("STORE_A"));
         OrderRequest existing = persistOrderRequest("REQ_O21", "STORE_A");
 
         OrderRequestResource.OrderRequestRecord input = new OrderRequestResource.OrderRequestRecord();
@@ -347,6 +351,42 @@ public class OrderRequestResourceTest {
         assertThrows(NoSuchElementException.class, () -> {
             orderRequestResource.updateOrderRequest(9999L, input);
         });
+    }
+
+    /**
+     * A manager can neither create an order request for another store, nor one whose specification targets another
+     * store, nor move one of its order requests to another store; an order request of another store is reported as
+     * missing.
+     */
+    @Test
+    @TestSecurity(user = "testUser", roles = {"MANAGER"})
+    void testOrderRequestMutations_StayInTheStoreOfTheManager() {
+        createEmployee("testUser", createStore("STORE_A"));
+        createStore("STORE_B");
+        OrderRequestResource.OrderRequestRecord foreign = new OrderRequestResource.OrderRequestRecord();
+        foreign.orderNumber = "REQ_X1";
+        foreign.storeCode = "STORE_B";
+        GraphQLException refused = assertThrows(GraphQLException.class, () -> orderRequestResource.createOrderRequest(foreign));
+        assertInstanceOf(SecurityException.class, refused.getCause());
+
+        OrderRequestResource.OrderRequestRecord smuggled = new OrderRequestResource.OrderRequestRecord();
+        smuggled.orderNumber = "REQ_X2";
+        smuggled.storeCode = "STORE_A";
+        smuggled.specification = "{\"orderHeader\":{\"store\":{\"code\":\"STORE_B\"}}}";
+        assertInstanceOf(IllegalArgumentException.class,
+                assertThrows(GraphQLException.class, () -> orderRequestResource.createOrderRequest(smuggled)).getCause());
+
+        OrderRequest mine = persistOrderRequest("REQ_X3", "STORE_A");
+        OrderRequestResource.OrderRequestRecord move = new OrderRequestResource.OrderRequestRecord();
+        move.storeCode = "STORE_B";
+        assertInstanceOf(SecurityException.class,
+                assertThrows(GraphQLException.class, () -> orderRequestResource.updateOrderRequest(mine.id, move)).getCause());
+        assertEquals("STORE_A", mine.storeCode);
+
+        OrderRequest theirs = persistOrderRequest("REQ_X4", "STORE_B");
+        assertThrows(NoSuchElementException.class,
+                () -> orderRequestResource.updateOrderRequest(theirs.id, new OrderRequestResource.OrderRequestRecord()));
+        assertEquals(0, OrderRequest.count("orderNumber in ?1", List.of("REQ_X1", "REQ_X2")));
     }
 
     // --------------------------------------------------

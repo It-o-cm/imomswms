@@ -112,7 +112,7 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
             throw new IllegalArgumentException(
                     String.format("Usage %s is not allowed for Tote type %s", usage, tote.toteType));
         }
-        LoadedTote loadedTote = LoadedTote.useAnEmptyTote(tote);
+        LoadedTote loadedTote = LoadedTote.useAnEmptyTote(tote,usage);
         loadedTote.storageType = usage;
         // Persist before adding to the HashSet: BaseEntity.hashCode() is based on id,
         // which changes on persist and would break the Set contract.
@@ -173,6 +173,9 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
      */
     @Override
     public void addItemToTote(LoadedTote loadedTote, PickedItem pickedItem, BigDecimal quantity, Product newProduct) {
+        addItemToTote(loadedTote,pickedItem,quantity,newProduct,null);
+    }
+    public void addItemToTote(LoadedTote loadedTote, PickedItem pickedItem, BigDecimal quantity, Product newProduct, com.intermarche.backoffice.domain.store.BaseLocation sourceLocation) {
         if (loadedTote == null || pickedItem == null) {
             throw new IllegalArgumentException("Tote and PickedItem cannot be null");
         }
@@ -195,12 +198,14 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
             moveItemToToteInternal(loadedTote, pickedItem);
             pickedItem.product = productToAssign;
             pickedItem.status = PickedItem.PickStatus.PICKED;
+            pickedItem.sourceLocation=sourceLocation;
 
         } else if (comparison > 0) {
             // Split the item: Keep the remainder in itemsToPick, create a new one for the Tote
             pickedItem.quantity = pickedItem.quantity.subtract(quantityToMove);
 
             PickedItem movedItem = new PickedItem();
+            movedItem.sourceLocation=sourceLocation;
             movedItem.lotLine = pickedItem.lotLine;
             movedItem.product = productToAssign;
             movedItem.quantity = quantityToMove;
@@ -275,6 +280,7 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
         // 2. Reset product to original LotLine product and status
         pickedItem.product = pickedItem.lotLine.product;
         pickedItem.status = PickedItem.PickStatus.PENDING;
+        pickedItem.sourceLocation=null;
 
         // 3. Check for an existing item in the work list for the same LotLine
         Optional<PickedItem> existingItemOpt = this.itemsToPick.stream()
@@ -437,11 +443,10 @@ public class PickingExecution extends HandlingExecution implements PickingOperat
      * @return true if the item is part of the order, false otherwise.
      */
     private boolean isValidItemForOrder(PickedItem pickedItem) {
-        if (this.handlingOrder instanceof CollectingOrder) {
-            CollectingOrder order = (CollectingOrder) this.handlingOrder;
-            // Since the relationship is unidirectional (Lot -> LotLine), we iterate lots to find the line
-            return order.lots.stream()
-                    .anyMatch(lot -> lot.lines.contains(pickedItem.lotLine));
+        var raw=org.hibernate.Hibernate.unproxy(this.handlingOrder,com.intermarche.backoffice.domain.wms.BaseHandlingOrder.class);
+        if (raw instanceof CollectingOrder order) {
+            Long lineId=com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(pickedItem.lotLine);
+            return order.lots.stream().flatMap(lot->lot.lines.stream()).anyMatch(line->line==pickedItem.lotLine||lineId!=null&&lineId.equals(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(line)));
         }
         return false;
     }

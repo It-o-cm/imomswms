@@ -539,35 +539,19 @@ public class StorePlanResource implements GraphQLTrait {
     }
 
     /**
-     * Reconciles the desired state of the shelf locations of a building with
-     * the existing ones. Pure logic: no database access, the product resolution
-     * and the reference check are injected.
-     * <p>
-     * Each input is matched to an existing location by {@code id} first, then
-     * by location code; unmatched inputs create a new location. Existing
-     * locations that no input claimed are marked for deletion, unless the
-     * reference checker reports them as still in use (e.g. referenced by a
-     * fulfillment line).
-     *
-     * @param existing         The existing shelf locations of the building.
-     * @param inputs           The desired state (may be null or empty).
-     * @param productResolver  Resolves a product EAN to a product (null EAN = empty bay).
-     * @param referenceChecker Tells whether a location is still referenced and must be kept.
-     * @return The reconciliation result: saved locations (in input order) and
-     *         locations to delete.
-     */
-    /**
      * Applies the background image state carried by a {@code saveStorePlan} input
      * to the building. A null/blank {@code planImage} removes the image and resets
      * its placement to the defaults.
      *
      * @param building The building to update (managed entity).
      * @param input    The save input carrying the image fields.
-     * @throws IllegalArgumentException if the scale is not positive or the opacity
+     * @throws IllegalArgumentException if the image is not a PNG, JPEG, GIF or WebP image in base64 of at most
+     *                                  {@link #PLAN_IMAGE_MAX_BYTES} bytes, the scale is not positive or the opacity
      *                                  is outside [0, 1].
      */
     public static void applyPlanImage(Building building, StorePlan input) {
         if (input.planImage != null && !input.planImage.isBlank()) {
+            checkPlanImage(input.planImage);
             if (input.planImageScale != null && input.planImageScale <= 0) {
                 throw new IllegalArgumentException("Plan image scale must be positive.");
             }
@@ -591,6 +575,73 @@ public class StorePlanResource implements GraphQLTrait {
         }
     }
 
+    /**
+     * Largest accepted background image, once decoded.
+     */
+    static final int PLAN_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+
+    /**
+     * Checks a background image: valid base64, at most {@link #PLAN_IMAGE_MAX_BYTES} bytes, and a PNG, JPEG, GIF or
+     * WebP signature, so that nothing but a raster image is stored and served back to the browsers.
+     *
+     * @param base64 the image in base64, without data URL prefix
+     * @throws IllegalArgumentException if the image is not accepted
+     */
+    static void checkPlanImage(String base64) {
+        if (base64.length() > (PLAN_IMAGE_MAX_BYTES / 3 + 1) * 4) {
+            throw new IllegalArgumentException("Plan image too large (8 MB at most).");
+        }
+        byte[] bytes;
+        try {
+            bytes = java.util.Base64.getDecoder().decode(base64.strip());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Plan image must be encoded in base64.");
+        }
+        if (bytes.length > PLAN_IMAGE_MAX_BYTES) {
+            throw new IllegalArgumentException("Plan image too large (8 MB at most).");
+        }
+        if (!startsWith(bytes, 0, 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A)
+                && !startsWith(bytes, 0, 0xFF, 0xD8, 0xFF)
+                && !startsWith(bytes, 0, 'G', 'I', 'F', '8')
+                && !(startsWith(bytes, 0, 'R', 'I', 'F', 'F') && startsWith(bytes, 8, 'W', 'E', 'B', 'P'))) {
+            throw new IllegalArgumentException("Plan image must be a PNG, JPEG, GIF or WebP image.");
+        }
+    }
+
+    /**
+     * Tells whether bytes hold a signature at an offset.
+     *
+     * @param bytes     the bytes
+     * @param offset    where the signature starts
+     * @param signature the expected byte values
+     * @return true when every byte matches
+     */
+    private static boolean startsWith(byte[] bytes, int offset, int... signature) {
+        if (bytes.length < offset + signature.length) return false;
+        for (int i = 0; i < signature.length; i++) {
+            if ((bytes[offset + i] & 0xFF) != signature[i]) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Reconciles the desired state of the shelf locations of a building with
+     * the existing ones. Pure logic: no database access, the product resolution
+     * and the reference check are injected.
+     * <p>
+     * Each input is matched to an existing location by {@code id} first, then
+     * by location code; unmatched inputs create a new location. Existing
+     * locations that no input claimed are marked for deletion, unless the
+     * reference checker reports them as still in use (e.g. referenced by a
+     * fulfillment line).
+     *
+     * @param existing         The existing shelf locations of the building.
+     * @param inputs           The desired state (may be null or empty).
+     * @param productResolver  Resolves a product EAN to a product (null EAN = empty bay).
+     * @param referenceChecker Tells whether a location is still referenced and must be kept.
+     * @return The reconciliation result: saved locations (in input order) and
+     *         locations to delete.
+     */
     public static Reconciliation reconcileLocations(List<StoreShelfLocation> existing,List<StoreLocation> inputs,
             Function<String,Product> productResolver,Predicate<StoreShelfLocation> referenceChecker) {
         ShelfReconciliation result=reconcileShelfLocations(new ArrayList<>(existing),inputs,productResolver,

@@ -1,5 +1,7 @@
 package com.intermarche.e2e.graphql.store;
 
+import com.intermarche.e2e.domain.util.DomainUtils;
+
 import com.intermarche.backoffice.domain.store.PlanZone;
 import com.intermarche.backoffice.domain.store.PlanZoneVertex;
 import com.intermarche.backoffice.domain.store.StoreBuilding;
@@ -31,12 +33,18 @@ public class PlanZoneResourceTest {
     PlanZoneResource planZoneResource;
 
     /**
-     * Creates and persists a StoreBuilding (concrete Building) with the given code.
+     * Creates and persists a StoreBuilding (concrete Building) with the given code, in the store of the manager
+     * "testUser".
+     *
+     * @param buildingCode the building code
+     * @return the building
      */
     private StoreBuilding persistBuilding(String buildingCode) {
         StoreBuilding building = new StoreBuilding();
         building.buildingCode = buildingCode;
         building.persist();
+        // The building belongs to the store of the manager "testUser" of the query tests
+        DomainUtils.managerStore("testUser").buildings.add(building);
         return building;
     }
 

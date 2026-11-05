@@ -29,6 +29,9 @@ class HandlingOrderControllerTest {
         service = mock(HandlingOrderService.class);
         controller = new HandlingOrderController();
         controller.handlingOrderService = service;
+        controller.access=mock(LegacyExecutionAccess.class);
+        var employee=new com.intermarche.backoffice.domain.store.Employee();employee.badgeId="BADGE-1";
+        when(controller.access.actor()).thenReturn(employee);
     }
 
     // --------------------------------------------------
@@ -40,7 +43,7 @@ class HandlingOrderControllerTest {
         var summary = new HandlingOrderService.HandlingOrderSummaryDTO();
         summary.id = 1L;
         summary.type = "PackingOrder";
-        when(service.listAvailableOrders()).thenReturn(List.of(summary));
+        when(service.listAvailableOrders(any())).thenReturn(List.of(summary));
 
         Response response = controller.listAvailable();
 

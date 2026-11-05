@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # launch.sh — lance imomswms (backend) + storepilot (frontend)
-# pour les sessions de debug.
+# pour les sessions de debug, sans lancer ni compiler les tests.
 #
 # Usage :
 #   ./launch.sh             lance les deux serveurs
@@ -14,9 +14,13 @@
 # Ctrl+C arrête proprement les deux serveurs (et leurs enfants).
 # Si un port (8040/3000) est déjà occupé, les processus qui l'occupent
 # sont automatiquement arrêtés avant le lancement.
+# La base H2 locale (data/imomswms) est supprimée à chaque lancement du
+# backend : la démo est regénérée, datée du jour (sauf si DATABASE_URL).
 #
 # Variables d'env optionnelles :
 #   BROWSER=none ./launch.sh    pour ne pas ouvrir le navigateur
+#   BACKEND_TIMEOUT=300 ./launch.sh  pour imposer une limite (aucune par défaut)
+#   LAUNCH_VERBOSE=1 ./launch.sh    pour afficher aussi les traces DEBUG internes
 # ============================================================
 
 set -u
@@ -28,7 +32,10 @@ FRONTEND_DIR="$SCRIPT_DIR/../storepilot"
 
 BACKEND_PORT=8040
 FRONTEND_PORT=3000
-BACKEND_TIMEOUT=180   # secondes max d'attente du démarrage backend
+BACKEND_TIMEOUT=${BACKEND_TIMEOUT:-0}   # 0 : attendre sans couper le démarrage
+case "$BACKEND_TIMEOUT" in
+  ''|*[!0-9]*) echo "BACKEND_TIMEOUT doit être un nombre de secondes (0 = aucune limite)."; exit 1 ;;
+esac
 
 ONLY_BACKEND=0
 ONLY_FRONTEND=0
@@ -37,7 +44,7 @@ case "${1:-}" in
   --back|--backend)   ONLY_FRONTEND=1 ;;
   --front|--frontend) ONLY_BACKEND=1 ;;
   -h|--help)
-    sed -n '2,20p' "$0"
+    sed -n '2,/^$/p' "$0"
     exit 0
     ;;
   "") ;;
@@ -54,6 +61,7 @@ BACKEND_PID=""
 FRONTEND_PID=""
 TAIL_BACK_PID=""
 TAIL_FRONT_PID=""
+ESC=$'\033'
 
 # Tue un process et tous ses descendants (npm -> node, mvnw -> java...)
 kill_tree() {
@@ -74,12 +82,8 @@ cleanup() {
   sleep 2
   [ -n "$FRONTEND_PID" ] && kill -9 "$FRONTEND_PID" 2>/dev/null
   [ -n "$BACKEND_PID" ] && kill -9 "$BACKEND_PID" 2>/dev/null
-  [ -n "$TAIL_BACK_PID" ] && kill "$TAIL_BACK_PID" 2>/dev/null
-  [ -n "$TAIL_FRONT_PID" ] && kill "$TAIL_FRONT_PID" 2>/dev/null
-  # Dans une pipeline `tail | awk`, $! capture awk : le tail est tué par pattern
-  # (le chemin du log est unique ; on évite les regex sur "tail -n +1")
-  pkill -f "$BACKEND_LOG" 2>/dev/null
-  pkill -f "$FRONTEND_LOG" 2>/dev/null
+  [ -n "$TAIL_BACK_PID" ] && kill_tree "$TAIL_BACK_PID"
+  [ -n "$TAIL_FRONT_PID" ] && kill_tree "$TAIL_FRONT_PID"
   echo "[debug] Logs conservés :"
   echo "  backend  : $BACKEND_LOG"
   echo "  frontend : $FRONTEND_LOG"
@@ -149,14 +153,36 @@ fi
 if [ "$ONLY_BACKEND" -eq 0 ]; then
   echo "[debug] Lancement d'imomswms (Quarkus dev, port $BACKEND_PORT)..."
   cd "$BACKEND_DIR" || exit 1
+  if [ -z "${DATABASE_URL:-}" ]; then
+    echo "[debug] Réinitialisation de la base locale (data/imomswms) : la démo sera regénérée."
+    rm -f data/imomswms.mv.db data/imomswms.trace.db
+  fi
   [ -x ./mvnw ] || chmod +x ./mvnw
-  ./mvnw quarkus:dev >"$BACKEND_LOG" 2>&1 &
+  # Aucun test ni compilation des tests ; pas de tests continus en mode dev.
+  BACKEND_ARGS=(-Plaunch-no-tests -Dmaven.test.skip=true -Djacoco.skip=true -Dquarkus.test.continuous-testing=disabled)
+  if [ "${LAUNCH_VERBOSE:-0}" != 1 ]; then
+    BACKEND_ARGS+=(-Dquarkus.log.console.level=INFO
+      '-Dquarkus.log.category."io.smallrye.graphql".level=INFO'
+      '-Dquarkus.log.category."io.smallrye.jwt".level=INFO'
+      '-Dquarkus.log.category."io.quarkus.security".level=INFO'
+      '-Dquarkus.log.category."io.vertx.ext.web".level=INFO')
+  fi
+  ./mvnw "${BACKEND_ARGS[@]}" quarkus:dev >"$BACKEND_LOG" 2>&1 &
   BACKEND_PID=$!
+  # Afficher compilation et démarrage dès le début, sans attendre le serveur HTTP.
+  (tail -n +1 -f "$BACKEND_LOG" | awk -v p="${ESC}[36m[imomswms]${ESC}[0m " '{ print p $0; fflush() }') &
+  TAIL_BACK_PID=$!
 
-  echo "[debug] Attente du démarrage du backend (max ${BACKEND_TIMEOUT}s)..."
+  if [ "$BACKEND_TIMEOUT" -eq 0 ]; then
+    echo "[debug] Démarrage du backend — logs en direct, sans coupure automatique."
+  else
+    echo "[debug] Démarrage du backend — limite demandée : ${BACKEND_TIMEOUT}s."
+  fi
+  echo "[debug] Fichier de log backend : $BACKEND_LOG"
   up=0
-  i=0
-  while [ "$i" -lt "$BACKEND_TIMEOUT" ]; do
+  BACKEND_WAIT_START=$SECONDS
+  LAST_WAIT_NOTICE=$SECONDS
+  while [ "$BACKEND_TIMEOUT" -eq 0 ] || [ $((SECONDS - BACKEND_WAIT_START)) -lt "$BACKEND_TIMEOUT" ]; do
     if curl -s -o /dev/null --max-time 2 "http://localhost:$BACKEND_PORT/"; then
       up=1
       break
@@ -167,14 +193,17 @@ if [ "$ONLY_BACKEND" -eq 0 ]; then
       cleanup 1
     fi
     sleep 1
-    i=$((i + 1))
+    if [ $((SECONDS - LAST_WAIT_NOTICE)) -ge 15 ]; then
+      echo "[debug] Backend toujours en démarrage ($((SECONDS - BACKEND_WAIT_START))s écoulées) — logs ci-dessus ; Ctrl+C pour arrêter."
+      LAST_WAIT_NOTICE=$SECONDS
+    fi
   done
   if [ "$up" -ne 1 ]; then
     echo "[debug] ERREUR: backend injoignable après ${BACKEND_TIMEOUT}s."
     tail -40 "$BACKEND_LOG"
     cleanup 1
   fi
-  echo "[debug] Backend prêt : http://localhost:$BACKEND_PORT (Dev UI: /q/dev, H2 console: /h2-console)"
+  echo "[debug] Backend prêt après $((SECONDS - BACKEND_WAIT_START))s : http://localhost:$BACKEND_PORT (Dev UI: /q/dev, H2 console: /h2-console)"
 fi
 
 # --- Frontend : storepilot (React) ------------------------------
@@ -182,6 +211,9 @@ fi
 if [ "$ONLY_FRONTEND" -eq 0 ]; then
   echo "[debug] Lancement de storepilot (React, port $FRONTEND_PORT)..."
   cd "$FRONTEND_DIR" || exit 1
+  # Afficher aussi l’installation des dépendances et le démarrage React en direct.
+  (tail -n +1 -f "$FRONTEND_LOG" | awk -v p="${ESC}[32m[storepilot]${ESC}[0m " '{ print p $0; fflush() }') &
+  TAIL_FRONT_PID=$!
   if [ ! -d node_modules ]; then
     echo "[debug] node_modules absent : npm ci en cours..."
     npm ci >"$FRONTEND_LOG" 2>&1 || { echo "[debug] ERREUR: npm ci a échoué"; cleanup 1; }
@@ -190,9 +222,7 @@ if [ "$ONLY_FRONTEND" -eq 0 ]; then
   FRONTEND_PID=$!
 fi
 
-# --- Bannière + logs en continu ---------------------------------
-
-ESC=$'\033'
+# --- Bannière (les logs sont déjà affichés en continu) -----------
 echo
 echo "=============================================================="
 [ "$ONLY_BACKEND" -eq 0 ] && echo "  imomswms   (backend)  : http://localhost:$BACKEND_PORT"
@@ -200,16 +230,6 @@ echo "=============================================================="
 echo "  Ctrl+C pour tout arrêter"
 echo "=============================================================="
 echo
-
-if [ -n "$BACKEND_PID" ]; then
-  # awk + fflush : line-buffered (sed bufferiserait par blocs de 4Ko)
-  tail -n +1 -f "$BACKEND_LOG" | awk -v p="${ESC}[36m[imomswms]${ESC}[0m " '{ print p $0; fflush() }' &
-  TAIL_BACK_PID=$!
-fi
-if [ -n "$FRONTEND_PID" ]; then
-  tail -n +1 -f "$FRONTEND_LOG" | awk -v p="${ESC}[32m[storepilot]${ESC}[0m " '{ print p $0; fflush() }' &
-  TAIL_FRONT_PID=$!
-fi
 
 # --- Surveillance : si un serveur meurt, on arrête tout ---------
 

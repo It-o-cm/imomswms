@@ -36,8 +36,11 @@ import java.util.HashSet;
  * <p>
  * CSV format (6 columns): name|type|priority|specification|storeCodes|groupCodes
  */
+@io.quarkus.test.junit.TestProfile(ConfigurationCsvResourceTest.Isolated.class)
 @QuarkusTest
 public class ConfigurationCsvResourceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_ConfigurationCsvResourceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     /**
      * The TransactionManager for manual transaction control in tests.

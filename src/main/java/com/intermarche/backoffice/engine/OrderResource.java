@@ -40,6 +40,28 @@ import java.util.stream.Collectors;
 @RunOnVirtualThread
 public class OrderResource {
 
+    /**
+     * Security identity of the calling integration account.
+     */
+    @Inject
+    io.quarkus.security.identity.SecurityIdentity identity;
+
+    /**
+     * Tells whether the caller may submit orders for a store: administrators for any store, an integration account
+     * for the store it is granted.
+     *
+     * @param store the store addressed by the order
+     * @return true when allowed
+     */
+    boolean mayOrderFor(Store store) {
+        if (identity.hasRole("ADMIN")) return true;
+        try {
+            return com.intermarche.backoffice.graphql.GraphQLTrait.serviceStore(identity.getPrincipal().getName()).id.equals(store.id);
+        } catch (SecurityException e) {
+            return false;
+        }
+    }
+
     static final Logger LOGGER = Logger.getLogger(OrderResource.class);
 
     // --------------------------------------------------
@@ -312,6 +334,11 @@ public class OrderResource {
         String storeCode = rootNode.path("orderHeader").path("store").path("code").asText("INCONNU");
         Store store = storeCode.equals("INCONNU") ? null : Store.findByCode(storeCode);
         OrderRequest fallbackTarget = createFallbackTarget(orderNumber, storeCode);
+        if (store != null && !mayOrderFor(store)) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("{\"error\": \"Store not granted to this integration account.\"}")
+                    .build();
+        }
 
         // 3. Validate Schema
         Response validationResponse = validateSchema(rootNode, rawPayload, fallbackTarget, store);

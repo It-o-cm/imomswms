@@ -41,6 +41,12 @@ import static org.mockito.Mockito.*;
  * conclusion and aisle code extraction.
  */
 class PickingExecutionTest {
+    // This unit suite isolates the collection mutations from the persistent support policy.
+    // Store/blocked/thermal policy is exercised through the real HTTP workflow tests.
+    private MockedStatic<com.intermarche.backoffice.domain.fieldops.PhysicalSupport> supportPolicy;
+    @org.junit.jupiter.api.BeforeEach void isolateSupportPolicy(){supportPolicy=mockStatic(com.intermarche.backoffice.domain.fieldops.PhysicalSupport.class);}
+    @org.junit.jupiter.api.AfterEach void closeSupportPolicy(){supportPolicy.close();}
+
 
     // --------------------------------------------------
     // Helpers
@@ -169,12 +175,13 @@ class PickingExecutionTest {
         ZoneCollectingOrder order = collectingOrderWith(lotWith(line1, line2));
         // An item already exists for line1
         PickedItem existing = pickedItem(line1, product, "5");
+        existing.status = PickedItem.PickStatus.PICKED;
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
             Session session = PanacheTestSupport.mockArcSession(arcMock);
-            panacheMock.when(() -> PanacheEntityBase.list(eq("lotLine.id in ?1"), any(Object[].class)))
-                    .thenReturn(List.of(existing));
+            panacheMock.when(() -> PanacheEntityBase.list(eq("lotLine"), any(Object[].class)))
+                    .thenAnswer(invocation -> invocation.getArgument(1) == line1 ? List.of(existing) : List.of());
 
             PickingExecution execution = new PickingExecution(order, new Employee());
 
@@ -217,9 +224,14 @@ class PickingExecutionTest {
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
             Session session = PanacheTestSupport.mockArcSession(arcMock);
+            panacheMock.when(PanacheEntityBase::getEntityManager).thenReturn(session);
             PanacheQuery<LoadedTote> query = stubToteAvailability(session, null);
             panacheMock.when(() -> PanacheEntityBase.find(eq("tote = ?1 and status = ?2"), any(Object[].class)))
                     .thenReturn(query);
+            // The tote has no physical support record: nothing restricts its use
+            PanacheQuery<Object> noSupport = mock(PanacheQuery.class);
+            panacheMock.when(() -> PanacheEntityBase.find(startsWith("select s from PhysicalSupport"), any(Object[].class)))
+                    .thenReturn(noSupport);
 
             LoadedTote loadedTote = execution.addTote(standardTote, TemperatureZone.AMBIENT);
 
@@ -241,6 +253,7 @@ class PickingExecutionTest {
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
             Session session = PanacheTestSupport.mockArcSession(arcMock);
+            panacheMock.when(PanacheEntityBase::getEntityManager).thenReturn(session);
             PanacheQuery<LoadedTote> query = stubToteAvailability(session, existing);
             panacheMock.when(() -> PanacheEntityBase.find(eq("tote = ?1 and status = ?2"), any(Object[].class)))
                     .thenReturn(query);
@@ -276,7 +289,9 @@ class PickingExecutionTest {
     void removeEmptyTote_toteWithItems_throwsIllegalArgument() {
         Tote tote = tote(Tote.ToteType.STANDARD, "T-1");
         LoadedTote loadedTote = loadedTote(tote);
-        loadedTote.items.add(pickedItem(lotLine(1L, product(1L, "EAN-1"), "1"), product(1L, "EAN-1"), "1"));
+        PickedItem collected = pickedItem(lotLine(1L, product(1L, "EAN-1"), "1"), product(1L, "EAN-1"), "1");
+        collected.status = PickedItem.PickStatus.PICKED;
+        loadedTote.items.add(collected);
         PickingExecution execution = executionWith(loadedTote);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,

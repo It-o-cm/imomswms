@@ -16,6 +16,8 @@ import java.util.List;
  * process (totes, items), and conclude executions.
  * </p>
  */
+@jakarta.annotation.security.RolesAllowed({"ADMIN","MANAGER","PICKER"})
+@jakarta.transaction.Transactional
 @Path("/handling-orders")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -23,6 +25,7 @@ public class HandlingOrderController {
 
     @Inject
     HandlingOrderService handlingOrderService;
+    @Inject LegacyExecutionAccess access;
 
     // --------------------------------------------------
     // Listing & Reservation
@@ -37,7 +40,7 @@ public class HandlingOrderController {
     @GET
     @Path("/available")
     public Response listAvailable() {
-        var dtoList = handlingOrderService.listAvailableOrders();
+        var dtoList = handlingOrderService.listAvailableOrders(access.actor().store);
         return Response.ok(dtoList).build();
     }
 
@@ -54,6 +57,8 @@ public class HandlingOrderController {
         if (request == null) {
             return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
         }
+        access.reserve(id);
+        if(!access.actor().badgeId.equals(request.badgeId))throw new ForbiddenException("Badge différent du compte connecté");
         HandlingOrderService.HandlingExecutionDTO dto = handlingOrderService.reserveOrder(id, request.badgeId);
         if (dto == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -71,6 +76,7 @@ public class HandlingOrderController {
     @DELETE
     @Path("/{id}/reserve")
     public Response cancelReservation(@PathParam("id") Long id) {
+        access.release(id);
         handlingOrderService.cancelReservation(id);
         return Response.noContent().build();
     }
@@ -93,7 +99,8 @@ public class HandlingOrderController {
             return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
         }
         try {
-            String badgeId = "CURRENT_USER_BADGE";
+            access.orders(request.orderIds);
+            String badgeId = access.actor().badgeId;
             HandlingOrderService.BatchStartResponse response = handlingOrderService.startBatchExecutions(request.orderIds, badgeId);
             return Response.ok(response).build();
         } catch (IllegalArgumentException e) {
@@ -112,8 +119,11 @@ public class HandlingOrderController {
     @Path("/executions/batch")
     public Response getBatchState(@QueryParam("ids") List<Long> ids) {
         try {
+            if(ids!=null){if(ids.size()>200||ids.stream().anyMatch(java.util.Objects::isNull))throw new BadRequestException("Sélection invalide");for(Long id:ids)access.execution(id,false);}
             HandlingOrderService.PickingExecutionStateDTO state = handlingOrderService.getBatchState(ids);
             return Response.ok(state).build();
+        } catch (WebApplicationException e) {
+            throw e;
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
         }
@@ -138,6 +148,7 @@ public class HandlingOrderController {
             return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
         }
         try {
+            access.item(executionId,itemId);
             handlingOrderService.substituteProduct(executionId, itemId, request.newProductId);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
@@ -164,6 +175,7 @@ public class HandlingOrderController {
             return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
         }
         try {
+            access.tote(executionId,request.toteCode,false);
             handlingOrderService.addTote(executionId, request.toteCode, request.usage);
             return Response.status(Response.Status.CREATED).build();
         } catch (IllegalArgumentException e) {
@@ -183,6 +195,7 @@ public class HandlingOrderController {
     @Path("/{executionId}/totes/{toteCode}")
     public Response removeEmptyTote(@PathParam("executionId") Long executionId, @PathParam("toteCode") String toteCode) {
         try {
+            access.tote(executionId,toteCode,true);
             handlingOrderService.removeEmptyTote(executionId, toteCode);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
@@ -208,6 +221,7 @@ public class HandlingOrderController {
             return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
         }
         try {
+            access.item(executionId,request.pickedItemId);access.tote(executionId,toteCode,true);
             handlingOrderService.addItemToTote(executionId, toteCode, request.pickedItemId, request.quantity, request.productId);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
@@ -230,6 +244,7 @@ public class HandlingOrderController {
             return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
         }
         try {
+            access.item(executionId,request.pickedItemId);access.tote(executionId,request.targetToteCode,true);if(request.sourceToteCode!=null)access.tote(executionId,request.sourceToteCode,true);
             handlingOrderService.moveItem(executionId, request.sourceToteCode, request.targetToteCode, request.pickedItemId);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
@@ -252,6 +267,7 @@ public class HandlingOrderController {
                                        @PathParam("toteCode") String toteCode,
                                        @PathParam("itemId") Long itemId) {
         try {
+            access.itemInTote(executionId,itemId,toteCode);
             handlingOrderService.removeItemFromTote(executionId, toteCode, itemId);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
@@ -271,6 +287,7 @@ public class HandlingOrderController {
     @Path("/{executionId}/items/{itemId}/cancel")
     public Response cancelItem(@PathParam("executionId") Long executionId, @PathParam("itemId") Long itemId) {
         try {
+            access.item(executionId,itemId);
             handlingOrderService.cancelPickedItem(executionId, itemId);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
@@ -293,6 +310,7 @@ public class HandlingOrderController {
             return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
         }
         try {
+            access.execution(executionId,true);access.buffer(executionId,request.bufferId);
             handlingOrderService.concludePickingExecution(executionId, request.bufferId);
             return Response.noContent().build();
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -317,6 +335,7 @@ public class HandlingOrderController {
     public Response moveToteToDestination(@PathParam("executionId") Long executionId,
                                           @PathParam("toteCode") String toteCode) {
         try {
+            access.tote(executionId,toteCode,true);
             handlingOrderService.moveToteToDestination(executionId, toteCode);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
@@ -335,6 +354,7 @@ public class HandlingOrderController {
     @Path("/{executionId}/conclude-grouping")
     public Response concludeGroupingExecution(@PathParam("executionId") Long executionId) {
         try {
+            access.execution(executionId,true);
             handlingOrderService.concludeGroupingExecution(executionId);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
@@ -363,10 +383,13 @@ public class HandlingOrderController {
             return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
         }
         try {
+            access.report(executionId,request);
             handlingOrderService.saveAndConcludeExecution(executionId, request);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+        } catch (WebApplicationException e) {
+            throw e;
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Validation failed").build();
         }
@@ -386,10 +409,13 @@ public class HandlingOrderController {
             return Response.status(Response.Status.BAD_REQUEST).entity("Request body is required").build();
         }
         try {
+            access.orders(request.orderIds);
             handlingOrderService.createAndConcludeBatch(request);
             return Response.noContent().build();
         } catch (IllegalArgumentException | IllegalStateException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+        } catch (WebApplicationException e) {
+            throw e;
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Batch validation failed").build();
         }

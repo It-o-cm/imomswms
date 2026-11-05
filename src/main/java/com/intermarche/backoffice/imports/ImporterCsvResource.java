@@ -103,10 +103,10 @@ public abstract class ImporterCsvResource {
             }
         } catch (IOException e) {
             LOGGER.error("Error reading input stream", e);
-            return Response.serverError().entity("Error reading file: " + e.getMessage()).build();
+            return Response.serverError().entity("Error reading file").build();
         } catch (Throwable e) {
             LOGGER.error("Unexpected error", e);
-            return Response.serverError().entity("Unexcepted error: " + e.getMessage()).build();
+            return Response.serverError().entity("Unexpected error").build();
         }
         LOGGER.info("Import finished. Created: " + counters[0] + ", Updated: " + counters[1]);
         StringBuilder sb = buildAnswer(counters, errors);
@@ -178,7 +178,7 @@ public abstract class ImporterCsvResource {
             }).onSuccess(lCounters -> {
                 updateCounters(counters, lCounters);
             }).onFailure(rowEx -> {
-                errors.add("Line " + data.lineNumber + " (" + data.code + "): " + rowEx.getMessage());
+                errors.add("Line " + data.lineNumber + " (" + data.code + "): " + rowError(rowEx));
             });
         }
     }
@@ -215,19 +215,54 @@ public abstract class ImporterCsvResource {
     }
 
     /**
-     * Builds a JSON response string summarizing the import results.
+     * Writes the JSON summary of an import; texts coming from the file are escaped.
      */
-    private static StringBuilder buildAnswer(int[] counters, List<String> errors) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\"createdCount\":").append(counters[0]);
-        sb.append(", \"updatedCount\":").append(counters[1]);
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    /**
+     * Builds a JSON response string summarizing the import results.
+     *
+     * @param counters the created and updated counts
+     * @param errors   the messages of the rejected lines
+     * @return the JSON text
+     */
+    static StringBuilder buildAnswer(int[] counters, List<String> errors) {
+        Map<String, Object> answer = new LinkedHashMap<>();
+        answer.put("createdCount", counters[0]);
+        answer.put("updatedCount", counters[1]);
         if (!errors.isEmpty()) {
-            sb.append(", \"errors\":[\"");
-            sb.append(String.join("\",\"", errors));
-            sb.append("\"]");
+            answer.put("errors", errors);
         }
-        sb.append("}");
-        return sb;
+        try {
+            return new StringBuilder(JSON.writeValueAsString(answer));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * Tells why a line was rejected: the message of a validation failure (bean validation included, as
+     * "field : message"), or a generic text for a database or technical failure, whose details are only logged.
+     *
+     * @param failure the failure of the line
+     * @return the message returned to the client
+     */
+    static String rowError(Throwable failure) {
+        Throwable root = failure;
+        while (root.getCause() != null && root.getCause() != root) {
+            if (root instanceof IllegalArgumentException || root instanceof IllegalStateException
+                    || root instanceof jakarta.validation.ConstraintViolationException) break;
+            root = root.getCause();
+        }
+        if (root instanceof jakarta.validation.ConstraintViolationException violations && !violations.getConstraintViolations().isEmpty()) {
+            return violations.getConstraintViolations().stream()
+                    .map(v -> v.getPropertyPath() + " : " + v.getMessage()).sorted().collect(Collectors.joining(", "));
+        }
+        if ((root instanceof IllegalArgumentException || root instanceof IllegalStateException) && root.getMessage() != null) {
+            return root.getMessage();
+        }
+        LOGGER.warn("Import line rejected", failure);
+        return "ligne refusée (doublon ou donnée invalide)";
     }
 
     // --------------------------------------------------

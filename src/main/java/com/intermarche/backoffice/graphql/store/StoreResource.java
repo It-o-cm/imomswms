@@ -63,6 +63,8 @@ public class StoreResource implements GraphQLTrait {
      * <p>
      * This method relies on the {@code @BatchSize} annotation on the {@link Store#buildings} and
      * {@link Building#locations} fields to optimize collection fetching.
+     * <p>
+     * Restricted to the store of the caller, except for administrators.
      *
      * @return A list of all Store entities.
      */
@@ -73,7 +75,8 @@ public class StoreResource implements GraphQLTrait {
         LOGGER.info("Entering method allStores");
         // No explicit JOIN FETCH here to avoid Cartesian product issues with large lists.
         // @BatchSize on entities handles the optimization.
-        List<Store> result = Store.listAll();
+        Store scope = readScope();
+        List<Store> result = scope == null ? Store.listAll() : List.of(scope);
         LOGGER.info("Exiting method allStores");
         return result;
     }
@@ -86,6 +89,7 @@ public class StoreResource implements GraphQLTrait {
      * @param id The unique ID of the store.
      * @return The Store entity.
      * @throws NoSuchElementException if the store with the given ID does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get a store by its ID")
@@ -97,6 +101,7 @@ public class StoreResource implements GraphQLTrait {
             LOGGER.error("Store with id " + id + " not found");
             throw new NoSuchElementException("Store with id " + id + " not found");
         }
+        checkReadable(store);
         LOGGER.info("Exiting method store");
         return store;
     }
@@ -109,6 +114,7 @@ public class StoreResource implements GraphQLTrait {
      * @param code The unique code of the store.
      * @return The Store entity.
      * @throws NoSuchElementException if the store with the given code does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get a store by its code")
@@ -120,6 +126,7 @@ public class StoreResource implements GraphQLTrait {
             LOGGER.error("Store with code " + code + " not found");
             throw new NoSuchElementException("Store with code " + code + " not found");
         }
+        checkReadable(store);
         LOGGER.info("Exiting method storeByCode");
         return store;
     }

@@ -37,8 +37,11 @@ import java.util.Set;
  * Tests the CSV import endpoint, covering creation, updates, checksum optimization,
  * and error handling mechanisms.
  */
+@io.quarkus.test.junit.TestProfile(ProductCsvResourceTest.Isolated.class)
 @QuarkusTest
 public class ProductCsvResourceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_ProductCsvResourceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     /**
      * The Product CSV resource under test.
@@ -237,7 +240,8 @@ public class ProductCsvResourceTest {
                 .body(containsString("\"createdCount\":1"))   // New Product created via fallback
                 .body(containsString("\"updatedCount\":1"))   // Existing Product updated via fallback
                 .body(containsString("\"errors\""))          // Invalid line added to errors
-                .body(containsString("Could not commit transaction")); // Depending on how parser handles empty cols
+                .body(containsString("Line 4 (3270190777777): name : "))  // The violated field, without technical detail
+                .body(org.hamcrest.Matchers.not(containsString("Could not commit transaction")));
         // Verify DB state to ensure fallback worked correctly
         Product updated = Product.findByEan("3270190999999");
         assertEquals("Updated Name", updated.name);
@@ -306,6 +310,7 @@ public class ProductCsvResourceTest {
             Product existing = new Product();
             existing.ean = "3270190123459";
             existing.name = "Produit Identique";
+            existing.characteristics="Caractéristiques déjà documentées";
             existing.description = "Desc";
             existing.brand = "Brand";
             existing.referenceWeight = new BigDecimal("0.5");
@@ -335,8 +340,13 @@ public class ProductCsvResourceTest {
             Product unchanged = Panache.getEntityManager().find(Product.class, productId);
             assertNotNull(unchanged);
             assertEquals("Produit Identique", unchanged.name);
+            assertEquals("Caractéristiques déjà documentées",unchanged.characteristics);
             return true;
         });
+        String enriched="ean|name|description|brand|refWeight|refVolume|type|unit|temperatureZone|active|characteristics\n3270190123459|Produit Identique|Desc|Brand|0.5|1.0|VOLUME|L|AMBIENT|true|Nouvelle caractéristique";
+        given().body(enriched).contentType(ContentType.TEXT).post("/products/import").then().statusCode(200).body(containsString("\"updatedCount\":1"));
+        given().body(enriched).contentType(ContentType.TEXT).post("/products/import").then().statusCode(200).body(containsString("\"updatedCount\":0"));
+
     }
 
     /**

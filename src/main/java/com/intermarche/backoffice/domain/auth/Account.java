@@ -29,6 +29,7 @@ public interface Account {
      *
      * @return the hashed password string.
      */
+    @org.eclipse.microprofile.graphql.Ignore
     String getPassword();
 
     /**
@@ -87,6 +88,7 @@ public interface Account {
      *
      * @param password the new hashed password.
      */
+    @org.eclipse.microprofile.graphql.Ignore
     void setPassword(String password);
 
     /**
@@ -103,6 +105,7 @@ public interface Account {
      *
      * @return the reset token, or null if no reset is in progress.
      */
+    @org.eclipse.microprofile.graphql.Ignore
     String getPasswordResetToken();
 
     /**
@@ -110,6 +113,7 @@ public interface Account {
      *
      * @param token the reset token.
      */
+    @org.eclipse.microprofile.graphql.Ignore
     void setPasswordResetToken(String token);
 
     /**
@@ -117,6 +121,7 @@ public interface Account {
      *
      * @return the expiration date and time, or null.
      */
+    @org.eclipse.microprofile.graphql.Ignore
     LocalDateTime getPasswordResetTokenExpiry();
 
     /**
@@ -124,5 +129,22 @@ public interface Account {
      *
      * @param expiry the expiration date and time.
      */
+    @org.eclipse.microprofile.graphql.Ignore
     void setPasswordResetTokenExpiry(LocalDateTime expiry);
+
+    /**
+     * Returns when the credentials of the account last changed, so that tokens issued before are refused.
+     *
+     * @return the change time in epoch seconds, or null if they never changed.
+     */
+    @org.eclipse.microprofile.graphql.Ignore
+    Long getCredentialsChangedAt();
+
+    /**
+     * Records when the credentials of the account changed.
+     *
+     * @param epochSeconds the change time in epoch seconds.
+     */
+    @org.eclipse.microprofile.graphql.Ignore
+    void setCredentialsChangedAt(Long epochSeconds);
 }

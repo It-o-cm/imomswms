@@ -148,9 +148,9 @@ public class ImporterCsvResourceTest {
         // Verify that the catch (Throwable e) block was triggered
         assertEquals(500, response.getStatus());
         String entity = response.getEntity().toString();
-        // Note: The source code has a typo "Unexcepted", we match it exactly.
-        assertTrue(entity.contains("Unexcepted error"));
-        assertTrue(entity.contains("Simulated Generic Exception for Testing Catch Throwable"));
+        // The technical detail stays in the log, never in the answer
+        assertEquals("Unexpected error", entity);
+        assertFalse(entity.contains("Simulated Generic Exception for Testing Catch Throwable"));
     }
 
     /**
@@ -248,8 +248,8 @@ public class ImporterCsvResourceTest {
         };
         Response response = resource.importCsvStream(brokenStream, 2);
         assertEquals(500, response.getStatus());
-        assertTrue(response.getEntity().toString().contains("Error reading file"));
-        assertTrue(response.getEntity().toString().contains("Simulated Read Error"));
+        assertEquals("Error reading file", response.getEntity().toString());
+        assertFalse(response.getEntity().toString().contains("Simulated Read Error"));
     }
 
     // --------------------------------------------------
@@ -603,6 +603,15 @@ public class ImporterCsvResourceTest {
         /** If true, simulates a generic RuntimeException in processChunkWithFallback. */
         public boolean throwGenericException = false;
 
+        /**
+         * Builds a process chunk with fallback fixture.
+         *
+         * @param parsedLines the parsed lines
+         * @param targetCodes the target codes
+         * @param counters the counters
+         * @param errors the errors
+         * @return the process chunk with fallback
+         */
         @Override
         public Map<String, Object> processChunkWithFallback(List<LineData> parsedLines, Set<String> targetCodes, int[] counters, List<String> errors) {
             // NEW LOGIC: Simulate a generic error to test the catch (Throwable e) block
@@ -614,6 +623,13 @@ public class ImporterCsvResourceTest {
             return new HashMap<>();
         }
 
+        /**
+         * Builds a process line logic fixture.
+         *
+         * @param data the data
+         * @param entityMap the entity map
+         * @param counters the counters
+         */
         @Override
         public void processLineLogic(LineData data, Map<String, Object> entityMap, int[] counters) {
             processLineLogicCallCount++;
@@ -623,6 +639,12 @@ public class ImporterCsvResourceTest {
             counters[0]++;
         }
 
+        /**
+         * Finds entity for line.
+         *
+         * @param data the data
+         * @return the find entity for line
+         */
         @Override
         public Object findEntityForLine(LineData data) {
             // Simulation of the null case

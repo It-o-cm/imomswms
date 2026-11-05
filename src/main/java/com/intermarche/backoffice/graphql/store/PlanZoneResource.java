@@ -1,6 +1,7 @@
 package com.intermarche.backoffice.graphql.store;
 
 import com.intermarche.backoffice.domain.store.Building;
+import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.store.PlanZone;
 import com.intermarche.backoffice.domain.store.PlanZoneVertex;
 import com.intermarche.backoffice.domain.store.TemperatureZone;
@@ -61,6 +62,8 @@ public class PlanZoneResource implements GraphQLTrait {
 
     /**
      * Retrieves the list of all plan zones in the database.
+     * <p>
+     * Restricted to the store of the caller, except for administrators.
      *
      * @return A list of all PlanZone entities.
      */
@@ -69,7 +72,8 @@ public class PlanZoneResource implements GraphQLTrait {
     @RolesAllowed("MANAGER")
     public List<PlanZone> allPlanZones() {
         LOGGER.info("Entering method allPlanZones");
-        List<PlanZone> result = PlanZone.listAll();
+        Store scope = readScope();
+        List<PlanZone> result = scope == null ? PlanZone.listAll() : PlanZone.list("building.id in (select b.id from Store s join s.buildings b where s = ?1)", scope);
         LOGGER.info("Exiting method allPlanZones");
         return result;
     }
@@ -80,6 +84,7 @@ public class PlanZoneResource implements GraphQLTrait {
      * @param id The unique ID of the zone.
      * @return The PlanZone entity.
      * @throws NoSuchElementException if the zone with the given ID does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get a plan zone by its ID")
@@ -92,6 +97,7 @@ public class PlanZoneResource implements GraphQLTrait {
             throw new NoSuchElementException("PlanZone with id " + id + " not found");
         }
         LOGGER.info("Exiting method planZone");
+        checkReadable(Building.findStoreByBuildingId(zone.building.id));
         return zone;
     }
 
@@ -101,6 +107,7 @@ public class PlanZoneResource implements GraphQLTrait {
      * @param code The unique code of the zone.
      * @return The PlanZone entity.
      * @throws NoSuchElementException if the zone with the given code does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get a plan zone by its code")
@@ -113,6 +120,7 @@ public class PlanZoneResource implements GraphQLTrait {
             throw new NoSuchElementException("PlanZone with code '" + code + "' not found");
         }
         LOGGER.info("Exiting method planZoneByCode");
+        checkReadable(Building.findStoreByBuildingId(zone.building.id));
         return zone;
     }
 
@@ -122,6 +130,7 @@ public class PlanZoneResource implements GraphQLTrait {
      * @param buildingCode The unique code of the building.
      * @return The list of PlanZone entities of the building, ordered by code.
      * @throws NoSuchElementException if the building does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get the plan zones of a building")
@@ -133,6 +142,7 @@ public class PlanZoneResource implements GraphQLTrait {
             LOGGER.error("Building with code " + buildingCode + " not found");
             throw new NoSuchElementException("Building with code '" + buildingCode + "' not found");
         }
+        checkReadable(Building.findStoreByBuildingId(building.id));
         List<PlanZone> result = PlanZone.listByBuilding(building);
         LOGGER.info("Exiting method planZonesByBuilding");
         return result;

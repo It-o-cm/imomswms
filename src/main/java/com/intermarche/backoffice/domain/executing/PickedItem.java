@@ -83,6 +83,11 @@ public class PickedItem extends BaseEntity {
     @JoinColumn(name = "loaded_tote_id", foreignKey = @ForeignKey(name = "fk_pickeditem_loadedtote"))
     public LoadedTote loadedTote;
 
+    /** Actual source of this particular partial collection; the order's planned address is unchanged. */
+    @ManyToOne(fetch=FetchType.LAZY)
+    @JoinColumn(name="source_location_id")
+    public com.intermarche.backoffice.domain.store.BaseLocation sourceLocation;
+
     // --------------------------------------------------
     // Details
     // --------------------------------------------------
@@ -120,6 +125,7 @@ public class PickedItem extends BaseEntity {
                 lotLine != null ? lotLine.id : null,
                 product != null ? product.id : null,
                 loadedTote != null ? loadedTote.id : null,
+                sourceLocation==null?null:org.hibernate.Hibernate.unproxy(sourceLocation,com.intermarche.backoffice.domain.store.BaseLocation.class).id,
                 quantity,
                 status
         );

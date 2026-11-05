@@ -2,6 +2,7 @@ package com.intermarche.backoffice.domain.order;
 
 import com.intermarche.backoffice.domain.Adresse;
 import com.intermarche.backoffice.domain.BaseEntity;
+import com.intermarche.backoffice.domain.GPSPosition;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Cacheable;
@@ -101,11 +102,36 @@ public class Customer extends BaseEntity {
             @AttributeOverride(name = "streetLine2", column = @Column(name = "address_street_line2")),
             @AttributeOverride(name = "postalCode", column = @Column(name = "address_postal_code")),
             @AttributeOverride(name = "city", column = @Column(name = "address_city")),
-            @AttributeOverride(name = "country", column = @Column(name = "address_country")),
+            @AttributeOverride(name = "country", column = @Column(name = "address_country"))
+    })
+    public Adresse address;
+
+    /**
+     * GPS position of the main address, used to order the stops of carrier tours; null while unknown.
+     */
+    @Embedded
+    @AttributeOverrides({
             @AttributeOverride(name = "latitude", column = @Column(name = "address_latitude")),
             @AttributeOverride(name = "longitude", column = @Column(name = "address_longitude"))
     })
-    public Adresse address;
+    public GPSPosition addressPosition;
+
+    /**
+     * Where {@link #addressPosition} comes from: {@link #POSITION_PROVIDED} when the order sent it,
+     * {@link #POSITION_GEOCODED} when it was looked up from the address; null while unknown.
+     */
+    @Column(name = "address_position_source", length = 20)
+    public String addressPositionSource;
+
+    /**
+     * Source of a position sent with the order.
+     */
+    public static final String POSITION_PROVIDED = "PROVIDED";
+
+    /**
+     * Source of a position looked up from the postal address.
+     */
+    public static final String POSITION_GEOCODED = "GEOCODED";
 
     // --------------------------------------------------
     // Data Payload

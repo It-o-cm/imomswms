@@ -34,8 +34,11 @@ import java.util.Set;
  * Tests the CSV import endpoint for Stores, covering creation, updates, embedded address handling,
  * checksum optimization, and error handling mechanisms.
  */
+@io.quarkus.test.junit.TestProfile(StoreCsvResourceTest.Isolated.class)
 @QuarkusTest
 public class StoreCsvResourceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_StoreCsvResourceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     /**
      * The Store CSV resource under test.

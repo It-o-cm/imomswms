@@ -146,7 +146,7 @@ public class ToteResourceTest {
 
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
-    void testCreateTote_MinimalFields_Success() throws GraphQLException {
+    void testCreateTote_MissingPhysicalProperties_IsRejected() throws GraphQLException {
         Store store = DomainUtils.createAndPersistStore("STORE_T15", 48.0, 2.0);
 
         ToteResource.ToteRecord input = new ToteResource.ToteRecord();
@@ -154,18 +154,13 @@ public class ToteResourceTest {
         input.storeId = store.id; // mandatory
         // volume, toteType are null
 
-        Tote created = toteResource.createTote(input);
-
-        assertNotNull(created);
-        assertEquals("TOTE_11", created.code);
-        assertNull(created.volume);
-        assertNull(created.toteType);
-        assertEquals(store.id, created.store.id);
+        assertThrows(GraphQLException.class,()->toteResource.createTote(input));
+        assertNull(Tote.findByCode("TOTE_11"));
     }
 
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
-    void testCreateTote_BlankVolume_Ignored() throws GraphQLException {
+    void testCreateTote_BlankVolume_IsRejected() throws GraphQLException {
         Store store = DomainUtils.createAndPersistStore("STORE_T16", 48.0, 2.0);
 
         ToteResource.ToteRecord input = new ToteResource.ToteRecord();
@@ -173,10 +168,8 @@ public class ToteResourceTest {
         input.storeId = store.id;
         input.volume = "   "; // blank: must be ignored, not parsed
 
-        Tote created = toteResource.createTote(input);
-
-        assertNotNull(created);
-        assertNull(created.volume);
+        assertThrows(GraphQLException.class,()->toteResource.createTote(input));
+        assertNull(Tote.findByCode("TOTE_12"));
     }
 
     @Test

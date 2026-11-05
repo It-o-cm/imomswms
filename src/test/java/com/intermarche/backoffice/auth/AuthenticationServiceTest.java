@@ -39,6 +39,9 @@ class AuthenticationServiceTest {
     private JsonWebToken jwtMock;
     private TokenService tokenServiceMock;
 
+    /**
+     * Builds the service in the dev profile with mocked token collaborators.
+     */
     @BeforeEach
     void setUp() {
         service = new AuthenticationService();
@@ -49,6 +52,13 @@ class AuthenticationServiceTest {
         service.profile = "dev";
     }
 
+    /**
+     * Builds a Panache query whose first result is given.
+     *
+     * @param result the first result
+     * @param <T>    the entity type
+     * @return the mocked query
+     */
     @SuppressWarnings("unchecked")
     private static <T> PanacheQuery<T> mockQuery(T result) {
         PanacheQuery<T> query = mock(PanacheQuery.class);
@@ -56,6 +66,13 @@ class AuthenticationServiceTest {
         return query;
     }
 
+    /**
+     * Builds a picker of store S001.
+     *
+     * @param badgeId the badge
+     * @param active  whether the account is active
+     * @return the employee
+     */
     private Employee createEmployee(String badgeId, boolean active) {
         Employee employee = new Employee();
         employee.badgeId = badgeId;
@@ -76,6 +93,9 @@ class AuthenticationServiceTest {
     // findAccountByUsername
     // --------------------------------------------------
 
+    /**
+     * Checks find account by username: admin found, returns admin.
+     */
     @Test
     void findAccountByUsername_adminFound_returnsAdmin() {
         Administrative admin = new Administrative();
@@ -97,6 +117,9 @@ class AuthenticationServiceTest {
         }
     }
 
+    /**
+     * Checks find account by username: no admin, falls back to employee.
+     */
     @Test
     void findAccountByUsername_noAdmin_fallsBackToEmployee() {
         Employee employee = createEmployee("AS10", true);
@@ -115,6 +138,9 @@ class AuthenticationServiceTest {
         }
     }
 
+    /**
+     * Checks find account by username: nothing found, returns null.
+     */
     @Test
     void findAccountByUsername_nothingFound_returnsNull() {
         PanacheQuery<Administrative> adminQuery = mockQuery(null);
@@ -134,6 +160,9 @@ class AuthenticationServiceTest {
     // authenticate (dev)
     // --------------------------------------------------
 
+    /**
+     * Checks authenticate: valid credentials, returns token.
+     */
     @Test
     void authenticate_validCredentials_returnsToken() {
         Employee employee = createEmployee("AS10", true);
@@ -148,6 +177,9 @@ class AuthenticationServiceTest {
         assertEquals("jwt-token", token);
     }
 
+    /**
+     * Checks authenticate: null username, throws security exception.
+     */
     @Test
     void authenticate_nullUsername_throwsSecurityException() {
         SecurityException exception = assertThrows(SecurityException.class,
@@ -155,6 +187,9 @@ class AuthenticationServiceTest {
         assertEquals("Invalid credentials", exception.getMessage());
     }
 
+    /**
+     * Checks authenticate: null password, throws security exception.
+     */
     @Test
     void authenticate_nullPassword_throwsSecurityException() {
         SecurityException exception = assertThrows(SecurityException.class,
@@ -162,6 +197,9 @@ class AuthenticationServiceTest {
         assertEquals("Invalid credentials", exception.getMessage());
     }
 
+    /**
+     * Checks authenticate: unknown user, throws security exception.
+     */
     @Test
     void authenticate_unknownUser_throwsSecurityException() {
         AuthenticationService spyService = spy(service);
@@ -169,9 +207,12 @@ class AuthenticationServiceTest {
 
         SecurityException exception = assertThrows(SecurityException.class,
                 () -> spyService.authenticate("GHOST", "1234"));
-        assertTrue(exception.getMessage().contains("null"));
+        assertEquals("Invalid credentials", exception.getMessage());
     }
 
+    /**
+     * Checks authenticate: disabled account, throws security exception.
+     */
     @Test
     void authenticate_disabledAccount_throwsSecurityException() {
         Employee employee = createEmployee("AS10", false);
@@ -182,9 +223,12 @@ class AuthenticationServiceTest {
 
         SecurityException exception = assertThrows(SecurityException.class,
                 () -> spyService.authenticate("AS10", "1234"));
-        assertTrue(exception.getMessage().contains("false"));
+        assertEquals("Invalid credentials", exception.getMessage());
     }
 
+    /**
+     * Checks authenticate: wrong password, throws security exception.
+     */
     @Test
     void authenticate_wrongPassword_throwsSecurityException() {
         Employee employee = createEmployee("AS10", true);
@@ -195,13 +239,16 @@ class AuthenticationServiceTest {
 
         SecurityException exception = assertThrows(SecurityException.class,
                 () -> spyService.authenticate("AS10", "wrong-password"));
-        assertTrue(exception.getMessage().contains("wrong password"));
+        assertEquals("Invalid credentials", exception.getMessage());
     }
 
     // --------------------------------------------------
     // getConnectedAccount
     // --------------------------------------------------
 
+    /**
+     * Checks get connected account: known user, returns account.
+     */
     @Test
     void getConnectedAccount_knownUser_returnsAccount() {
         Employee employee = createEmployee("AS10", true);
@@ -215,6 +262,9 @@ class AuthenticationServiceTest {
         assertSame(employee, account);
     }
 
+    /**
+     * Checks get connected account: no jwt name, throws illegal state.
+     */
     @Test
     void getConnectedAccount_noJwtName_throwsIllegalState() {
         when(jwtMock.getName()).thenReturn(null);
@@ -222,6 +272,9 @@ class AuthenticationServiceTest {
         assertThrows(IllegalStateException.class, service::getConnectedAccount);
     }
 
+    /**
+     * Checks get connected account: unknown user, throws illegal state.
+     */
     @Test
     void getConnectedAccount_unknownUser_throwsIllegalState() {
         when(jwtMock.getName()).thenReturn("GHOST");
@@ -237,6 +290,9 @@ class AuthenticationServiceTest {
     // PROD profile (Keycloak) — error paths
     // --------------------------------------------------
 
+    /**
+     * Switches the service to the Keycloak (prod) profile, pointing at an unreachable server.
+     */
     private void configureProdProfile() {
         service.profile = "prod";
         // Port 1 is never open: the HTTP call fails fast with a connection error
@@ -247,6 +303,9 @@ class AuthenticationServiceTest {
         service.mailer = mock(Mailer.class);
     }
 
+    /**
+     * Checks authenticate: prod profile, unreachable keycloak, throws security exception.
+     */
     @Test
     void authenticate_prodProfile_unreachableKeycloak_throwsSecurityException() {
         configureProdProfile();
@@ -256,6 +315,9 @@ class AuthenticationServiceTest {
         assertEquals("Authentication service unavailable", exception.getMessage());
     }
 
+    /**
+     * Checks initiate password reset: prod profile, unreachable keycloak, throws runtime exception.
+     */
     @Test
     void initiatePasswordReset_prodProfile_unreachableKeycloak_throwsRuntimeException() {
         configureProdProfile();
@@ -265,6 +327,9 @@ class AuthenticationServiceTest {
         assertEquals("Failed to initiate password reset", exception.getMessage());
     }
 
+    /**
+     * Checks reset password: prod profile, unknown token, throws security exception.
+     */
     @Test
     void resetPassword_prodProfile_unknownToken_throwsSecurityException() {
         configureProdProfile();
@@ -277,15 +342,19 @@ class AuthenticationServiceTest {
 
             SecurityException exception = assertThrows(SecurityException.class,
                     () -> service.resetPassword("unknown-token", "newPassword1!"));
-            assertEquals("Invalid token", exception.getMessage());
+            assertEquals("Invalid or expired token", exception.getMessage());
         }
     }
 
+    /**
+     * Checks reset password: prod profile, unreachable keycloak, throws security exception.
+     */
     @Test
     void resetPassword_prodProfile_unreachableKeycloak_throwsSecurityException() {
         configureProdProfile();
         Administrative admin = new Administrative();
         admin.username = "root";
+        admin.setPasswordResetTokenExpiry(LocalDateTime.now().plusMinutes(10));
         PanacheQuery<Administrative> adminQuery = mockQuery(admin);
         PanacheQuery<Employee> employeeQuery = mockQuery(null);
 
@@ -303,6 +372,9 @@ class AuthenticationServiceTest {
     // extractTokenFromJson (private, tested via reflection)
     // --------------------------------------------------
 
+    /**
+     * Checks extract token from json: valid json, returns token.
+     */
     @Test
     void extractTokenFromJson_validJson_returnsToken() throws Exception {
         Method method = AuthenticationService.class.getDeclaredMethod("extractTokenFromJson", String.class);
@@ -313,6 +385,9 @@ class AuthenticationServiceTest {
         assertEquals("abc.def.ghi", token);
     }
 
+    /**
+     * Checks extract token from json: missing token, throws runtime exception.
+     */
     @Test
     void extractTokenFromJson_missingToken_throwsRuntimeException() throws Exception {
         Method method = AuthenticationService.class.getDeclaredMethod("extractTokenFromJson", String.class);
@@ -328,6 +403,9 @@ class AuthenticationServiceTest {
     // initiatePasswordReset (dev) — success paths
     // --------------------------------------------------
 
+    /**
+     * Checks initiate password reset: dev profile, employee, sends email and persists.
+     */
     @Test
     void initiatePasswordReset_devProfile_employee_sendsEmailAndPersists() {
         Employee employee = createEmployee("AS10", true);
@@ -359,11 +437,18 @@ class AuthenticationServiceTest {
             Mail mail = mailCaptor.getValue();
             assertEquals(List.of("AS10@test.com"), mail.getTo());
             assertEquals("Password Reset Request", mail.getSubject());
-            assertTrue(mail.getHtml().contains("http://frontend/reset-password/" + employee.getPasswordResetToken()));
+            // The mail carries the token; only its digest is stored
+            java.util.regex.Matcher link = java.util.regex.Pattern.compile("http://frontend/reset-password/([0-9a-f-]{36})").matcher(mail.getHtml());
+            assertTrue(link.find());
+            assertNotEquals(link.group(1), employee.getPasswordResetToken());
+            assertEquals(AuthenticationService.digest(link.group(1)), employee.getPasswordResetToken());
             assertTrue(mail.getHtml().contains("John Doe"));
         }
     }
 
+    /**
+     * Checks initiate password reset: dev profile, admin, persists admin.
+     */
     @Test
     void initiatePasswordReset_devProfile_admin_persistsAdmin() {
         Administrative admin = new Administrative();
@@ -393,6 +478,9 @@ class AuthenticationServiceTest {
         }
     }
 
+    /**
+     * Checks initiate password reset: dev profile, unknown user, logs and returns.
+     */
     @Test
     void initiatePasswordReset_devProfile_unknownUser_logsAndReturns() {
         service.mailer = mock(Mailer.class);
@@ -416,25 +504,33 @@ class AuthenticationServiceTest {
     // resetPassword (dev) — success and error paths
     // --------------------------------------------------
 
+    /**
+     * Checks reset password: null new password, throws illegal argument exception.
+     */
     @Test
     void resetPassword_nullNewPassword_throwsIllegalArgumentException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.resetPassword("any-token", null));
-        assertEquals("New password cannot be null", exception.getMessage());
+        assertTrue(exception.getMessage().contains("de 4 à 100 caractères"));
     }
 
+    /**
+     * Checks reset password: dev profile, valid token, returns new token.
+     */
     @Test
     void resetPassword_devProfile_validToken_returnsNewToken() {
         Employee employee = createEmployee("AS10", true);
-        employee.setPasswordResetToken("reset-token");
+        employee.setPasswordResetToken(AuthenticationService.digest("reset-token"));
         employee.setPasswordResetTokenExpiry(LocalDateTime.now().plusMinutes(10));
         when(tokenServiceMock.generateToken(employee)).thenReturn("new-jwt");
         PanacheQuery<Administrative> adminQuery = mockQuery(null);
         PanacheQuery<Employee> employeeQuery = mockQuery(employee);
+        long before = java.time.Instant.now().getEpochSecond();
 
         try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class);
              MockedStatic<Arc> arcMock = mockStatic(Arc.class)) {
-            panacheMock.when(() -> PanacheEntityBase.find(eq("passwordResetToken"), any(Object[].class)))
+            // The lookup is made with the digest of the token, never with the token itself
+            panacheMock.when(() -> PanacheEntityBase.find("passwordResetToken", AuthenticationService.digest("reset-token")))
                     .thenReturn(adminQuery, employeeQuery);
             Session session = PanacheTestSupport.mockArcSession(arcMock);
 
@@ -445,10 +541,15 @@ class AuthenticationServiceTest {
             assertTrue(org.mindrot.jbcrypt.BCrypt.checkpw("newPassword1!", employee.getPassword()));
             assertNull(employee.getPasswordResetToken());
             assertNull(employee.getPasswordResetTokenExpiry());
+            // Sessions opened before the change are revoked
+            assertTrue(employee.getCredentialsChangedAt() >= before);
             verify(session).persist(employee);
         }
     }
 
+    /**
+     * Checks reset password: dev profile, admin account, persists admin.
+     */
     @Test
     void resetPassword_devProfile_adminAccount_persistsAdmin() {
         Administrative admin = new Administrative();
@@ -474,6 +575,9 @@ class AuthenticationServiceTest {
         }
     }
 
+    /**
+     * Checks reset password: dev profile, expired token, throws security exception.
+     */
     @Test
     void resetPassword_devProfile_expiredToken_throwsSecurityException() {
         Employee employee = createEmployee("AS10", true);
@@ -492,6 +596,9 @@ class AuthenticationServiceTest {
         }
     }
 
+    /**
+     * Checks reset password: dev profile, unknown token, throws security exception.
+     */
     @Test
     void resetPassword_devProfile_unknownToken_throwsSecurityException() {
         PanacheQuery<Administrative> adminQuery = mockQuery(null);
@@ -505,5 +612,140 @@ class AuthenticationServiceTest {
                     () -> service.resetPassword("unknown-token", "newPassword1!"));
             assertEquals("Invalid or expired token", exception.getMessage());
         }
+    }
+
+    /**
+     * Checks reset password: dev profile, token without expiry, throws security exception.
+     */
+    @Test
+    void resetPassword_devProfile_tokenWithoutExpiry_throwsSecurityException() {
+        Employee employee = createEmployee("AS10", true);
+        employee.setPasswordResetToken(AuthenticationService.digest("no-expiry"));
+        PanacheQuery<Administrative> adminQuery = mockQuery(null);
+        PanacheQuery<Employee> employeeQuery = mockQuery(employee);
+
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            panacheMock.when(() -> PanacheEntityBase.find(eq("passwordResetToken"), any(Object[].class)))
+                    .thenReturn(adminQuery, employeeQuery);
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> service.resetPassword("no-expiry", "newPassword1!"));
+            assertEquals("Invalid or expired token", exception.getMessage());
+        }
+    }
+
+    /**
+     * Checks reset password: prod profile, token without expiry, throws security exception.
+     */
+    @Test
+    void resetPassword_prodProfile_tokenWithoutExpiry_throwsSecurityException() {
+        configureProdProfile();
+        Administrative admin = new Administrative();
+        admin.username = "root";
+        PanacheQuery<Administrative> adminQuery = mockQuery(admin);
+        PanacheQuery<Employee> employeeQuery = mockQuery(null);
+
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            panacheMock.when(() -> PanacheEntityBase.find(eq("passwordResetToken"), any(Object[].class)))
+                    .thenReturn(adminQuery, employeeQuery);
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> service.resetPassword("valid-token", "newPassword1!"));
+            assertEquals("Invalid or expired token", exception.getMessage());
+        }
+    }
+
+    /**
+     * Checks reset password: prod profile, expired token, throws security exception.
+     */
+    @Test
+    void resetPassword_prodProfile_expiredToken_throwsSecurityException() {
+        configureProdProfile();
+        Administrative admin = new Administrative();
+        admin.username = "root";
+        admin.setPasswordResetTokenExpiry(LocalDateTime.now().minusMinutes(1));
+        PanacheQuery<Administrative> adminQuery = mockQuery(admin);
+        PanacheQuery<Employee> employeeQuery = mockQuery(null);
+
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            panacheMock.when(() -> PanacheEntityBase.find(eq("passwordResetToken"), any(Object[].class)))
+                    .thenReturn(adminQuery, employeeQuery);
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> service.resetPassword("valid-token", "newPassword1!"));
+            assertEquals("Invalid or expired token", exception.getMessage());
+        }
+    }
+
+    /**
+     * Checks reset password: missing or blank token, never queries the database.
+     */
+    @Test
+    void resetPassword_missingOrBlankToken_neverQueriesTheDatabase() {
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
+            assertThrows(SecurityException.class, () -> service.resetPassword(null, "newPassword1!"));
+            assertThrows(SecurityException.class, () -> service.resetPassword("  ", "newPassword1!"));
+            panacheMock.verifyNoInteractions();
+        }
+    }
+
+    /**
+     * Checks initiate password reset: dev profile, escapes the name in the mail.
+     */
+    @Test
+    void initiatePasswordReset_devProfile_escapesTheNameInTheMail() {
+        Employee employee = createEmployee("AS10", true);
+        employee.firstName = "<img src=x onerror=alert(1)>";
+        service.mailer = mock(Mailer.class);
+        service.frontendUrl = "http://frontend";
+        PanacheQuery<Administrative> adminQuery = mockQuery(null);
+        PanacheQuery<Employee> employeeQuery = mockQuery(employee);
+
+        try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class);
+             MockedStatic<Arc> arcMock = mockStatic(Arc.class)) {
+            panacheMock.when(() -> PanacheEntityBase.find(eq("username"), any(Object[].class)))
+                    .thenReturn(adminQuery);
+            panacheMock.when(() -> PanacheEntityBase.find(eq("badgeId"), any(Object[].class)))
+                    .thenReturn(employeeQuery);
+            PanacheTestSupport.mockArcSession(arcMock);
+
+            service.initiatePasswordReset("AS10");
+
+            ArgumentCaptor<Mail> mailCaptor = ArgumentCaptor.forClass(Mail.class);
+            verify(service.mailer).send(mailCaptor.capture());
+            assertFalse(mailCaptor.getValue().getHtml().contains("<img"));
+            assertTrue(mailCaptor.getValue().getHtml().contains("&lt;img src=x onerror=alert(1)&gt;"));
+        }
+    }
+
+    /**
+     * Checks check password policy: covers each rule.
+     */
+    @Test
+    void checkPasswordPolicy_coversEachRule() {
+        assertThrows(IllegalArgumentException.class, () -> AuthenticationService.checkPasswordPolicy(null));
+        assertThrows(IllegalArgumentException.class, () -> AuthenticationService.checkPasswordPolicy("      "));
+        assertThrows(IllegalArgumentException.class, () -> AuthenticationService.checkPasswordPolicy("abc"));
+        assertThrows(IllegalArgumentException.class, () -> AuthenticationService.checkPasswordPolicy("x".repeat(101)));
+        assertDoesNotThrow(() -> AuthenticationService.checkPasswordPolicy("1234"));
+        assertDoesNotThrow(() -> AuthenticationService.checkPasswordPolicy("x".repeat(100)));
+    }
+
+    /**
+     * Checks digest: is the hexadecimal sha 256.
+     */
+    @Test
+    void digest_isTheHexadecimalSha256() {
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", AuthenticationService.digest("abc"));
+    }
+
+    /**
+     * Checks escape html: escapes every special character.
+     */
+    @Test
+    void escapeHtml_escapesEverySpecialCharacter() {
+        assertEquals("", AuthenticationService.escapeHtml(null));
+        assertEquals("Jean Dupont", AuthenticationService.escapeHtml("Jean Dupont"));
+        assertEquals("&lt;a&gt; &amp; &quot;b&quot; &#39;c&#39;", AuthenticationService.escapeHtml("<a> & \"b\" 'c'"));
     }
 }

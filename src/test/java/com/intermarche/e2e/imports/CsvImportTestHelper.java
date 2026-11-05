@@ -108,6 +108,8 @@ public final class CsvImportTestHelper {
         withTransaction(tm, () -> {
             Event.deleteAll();
             WMSStoreHandle.deleteAll();
+            com.intermarche.backoffice.domain.fieldops.PhysicalSupport.deleteAll();
+            com.intermarche.backoffice.domain.fieldops.SupportType.deleteAll();
             Tote.deleteAll();
             Employee.deleteAll();
             AisleWaypoint.deleteAll();

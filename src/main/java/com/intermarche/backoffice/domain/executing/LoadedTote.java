@@ -85,6 +85,7 @@ public class LoadedTote extends BaseEntity {
     public Buffer buffer;
     @ManyToOne(fetch=FetchType.LAZY)
     public com.intermarche.backoffice.domain.store.BufferCabinet cabinet;
+    @ManyToOne(fetch=FetchType.LAZY) public com.intermarche.backoffice.domain.shipping.LogisticsDeparture loadingDeparture;
     public Integer cellRow;
     public Integer cellColumn;
     public void clearCell(){cabinet=null;cellRow=null;cellColumn=null;}
@@ -149,16 +150,21 @@ public class LoadedTote extends BaseEntity {
      * @throws IllegalArgumentException if the physical Tote is null.
      * @throws IllegalStateException if the physical Tote is already {@link Status#IN_USE} by another process.
      */
-    public static LoadedTote useAnEmptyTote(Tote physicalTote) {
+    public static LoadedTote useAnEmptyTote(Tote physicalTote) {return useAnEmptyTote(physicalTote,null);}
+    public static LoadedTote useAnEmptyTote(Tote physicalTote,TemperatureZone usage) {
         if (physicalTote == null) {
             throw new IllegalArgumentException("Physical Tote cannot be null.");
         }
+        // Serialize claims of the same physical bin, including legacy and manager callers.
+        Tote.getEntityManager().lock(physicalTote, LockModeType.PESSIMISTIC_WRITE);
+        com.intermarche.backoffice.domain.fieldops.PhysicalSupport.requireAvailable(physicalTote,usage);
         // Verify that the physical Tote is not currently IN_USE by another active LoadedTote
         LoadedTote existing = find("tote = ?1 and status = ?2", physicalTote, Status.IN_USE).firstResult();
         if (existing != null) {
             throw new IllegalStateException(
                     "Tote " + physicalTote.code + " is already in use by LoadedTote #" + existing.id);
         }
+        com.intermarche.backoffice.engine.fieldops.ConsumableService.onLoad(physicalTote);
         // The Tote is available; proceed with creating a new usage session
         // Note: persist() is intentionally NOT called here. The caller must set
         // the mandatory storageType field and then persist (or rely on cascade).

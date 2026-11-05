@@ -49,6 +49,12 @@ public class OrderRequestResource implements GraphQLTrait {
     SecurityIdentity identity;
 
     /**
+     * JSON mapper reading the store targeted by a specification.
+     */
+    @Inject
+    com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    /**
      * Retrieves the current security identity of the user or context.
      *
      * @return The {@link SecurityIdentity} associated with the current context.
@@ -232,6 +238,7 @@ public class OrderRequestResource implements GraphQLTrait {
         return this.execute(() -> {
             LOGGER.info("Entering method createOrderRequest for orderNumber: " + input.orderNumber);
 
+            checkWritable(input.storeCode, input.specification);
             // --- Creation Logic ---
             // Le constructeur initialise déjà le ReservationRecord avec PENDING
             OrderRequest order = new OrderRequest();
@@ -276,6 +283,12 @@ public class OrderRequestResource implements GraphQLTrait {
                 throw new NoSuchElementException("OrderRequest with id " + id + " not found");
             }
 
+            Store scope = readScope();
+            if (scope != null && !scope.code.equals(order.storeCode)) {
+                throw new NoSuchElementException("OrderRequest with id " + id + " not found");
+            }
+            checkWritable(input.storeCode != null ? input.storeCode : order.storeCode,
+                    input.specification != null ? input.specification : order.specification);
             // --- Apply Updates (Partial Update Logic) ---
             if (input.orderNumber != null) order.orderNumber = input.orderNumber;
             if (input.storeCode != null) order.storeCode = input.storeCode;
@@ -304,6 +317,30 @@ public class OrderRequestResource implements GraphQLTrait {
             LOGGER.info("Exiting method deleteOrderRequest. Result: " + result);
             return result;
         }, OrderRequestResource.class, "deleteOrderRequest");
+    }
+
+    /**
+     * Checks that an order request is addressed to a store the caller manages and that its specification targets
+     * that same store, since the specification is what creates the order.
+     *
+     * @param storeCode     the store code of the request
+     * @param specification the JSON specification, possibly null
+     * @throws IllegalArgumentException if the store is unknown or the specification targets another store
+     * @throws SecurityException        if the store is outside the scope of the caller
+     */
+    private void checkWritable(String storeCode, String specification) {
+        Store store = storeCode == null ? null : Store.findByCode(storeCode);
+        if (store == null) throw new IllegalArgumentException("Unknown store code: " + storeCode);
+        Store scope = readScope();
+        if (scope != null && !scope.id.equals(store.id)) throw new SecurityException("Order request belongs to another store");
+        if (specification == null || specification.isBlank()) return;
+        String target;
+        try {
+            target = objectMapper.readTree(specification).path("orderHeader").path("store").path("code").asText(null);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Specification is not valid JSON");
+        }
+        if (target != null && !target.equals(storeCode)) throw new IllegalArgumentException("Specification targets store " + target + " instead of " + storeCode);
     }
 
     /**

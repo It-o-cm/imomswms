@@ -1,6 +1,7 @@
 package com.intermarche.backoffice.graphql.store;
 
 import com.intermarche.backoffice.domain.store.Building;
+import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.store.PlanNode;
 import com.intermarche.backoffice.domain.store.PlanNodeType;
 import com.intermarche.backoffice.graphql.AlreadyExistsException;
@@ -54,6 +55,8 @@ public class PlanNodeResource implements GraphQLTrait {
 
     /**
      * Retrieves the list of all plan nodes in the database.
+     * <p>
+     * Restricted to the store of the caller, except for administrators.
      *
      * @return A list of all PlanNode entities.
      */
@@ -62,7 +65,8 @@ public class PlanNodeResource implements GraphQLTrait {
     @RolesAllowed("MANAGER")
     public List<PlanNode> allPlanNodes() {
         LOGGER.info("Entering method allPlanNodes");
-        List<PlanNode> result = PlanNode.listAll();
+        Store scope = readScope();
+        List<PlanNode> result = scope == null ? PlanNode.listAll() : PlanNode.list("building.id in (select b.id from Store s join s.buildings b where s = ?1)", scope);
         LOGGER.info("Exiting method allPlanNodes");
         return result;
     }
@@ -73,6 +77,7 @@ public class PlanNodeResource implements GraphQLTrait {
      * @param id The unique ID of the node.
      * @return The PlanNode entity.
      * @throws NoSuchElementException if the node with the given ID does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get a plan node by its ID")
@@ -85,6 +90,7 @@ public class PlanNodeResource implements GraphQLTrait {
             throw new NoSuchElementException("PlanNode with id " + id + " not found");
         }
         LOGGER.info("Exiting method planNode");
+        checkReadable(Building.findStoreByBuildingId(node.building.id));
         return node;
     }
 
@@ -94,6 +100,7 @@ public class PlanNodeResource implements GraphQLTrait {
      * @param code The unique code of the node.
      * @return The PlanNode entity.
      * @throws NoSuchElementException if the node with the given code does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get a plan node by its code")
@@ -106,6 +113,7 @@ public class PlanNodeResource implements GraphQLTrait {
             throw new NoSuchElementException("PlanNode with code '" + code + "' not found");
         }
         LOGGER.info("Exiting method planNodeByCode");
+        checkReadable(Building.findStoreByBuildingId(node.building.id));
         return node;
     }
 
@@ -115,6 +123,7 @@ public class PlanNodeResource implements GraphQLTrait {
      * @param buildingCode The unique code of the building.
      * @return The list of PlanNode entities of the building, ordered by code.
      * @throws NoSuchElementException if the building does not exist.
+     * @throws SecurityException if it belongs to another store than the caller's, except for administrators.
      */
     @Query
     @Description("Get the plan nodes of a building")
@@ -126,6 +135,7 @@ public class PlanNodeResource implements GraphQLTrait {
             LOGGER.error("Building with code " + buildingCode + " not found");
             throw new NoSuchElementException("Building with code '" + buildingCode + "' not found");
         }
+        checkReadable(Building.findStoreByBuildingId(building.id));
         List<PlanNode> result = PlanNode.listByBuilding(building);
         LOGGER.info("Exiting method planNodesByBuilding");
         return result;

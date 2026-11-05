@@ -38,9 +38,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * The GraphQL {@link Context} is mocked: the selection set controls which fetch joins
  * the resource appends to its JPQL queries.
  */
+@io.quarkus.test.junit.TestProfile(EventResourceTest.Isolated.class)
 @QuarkusTest
 @TestTransaction
 public class EventResourceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_EventResourceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     @Inject
     EventResource eventResource;

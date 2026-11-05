@@ -4,7 +4,9 @@ import com.intermarche.backoffice.domain.auth.Account;
 import com.intermarche.backoffice.domain.store.Store;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotBlank;
+import io.vertx.core.http.HttpServerRequest;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -39,26 +41,46 @@ public class AuthenticationResource {
     JsonWebToken jwt;
 
     /**
+     * Limits failed logins and password reset requests.
+     */
+    @Inject
+    LoginThrottle throttle;
+
+    /**
+     * The generic answer to a refused login: it never tells whether the account exists, is disabled or the password
+     * is wrong.
+     */
+    static final String INVALID_CREDENTIALS = "{\"error\": \"Identifiants invalides\"}";
+
+    /**
      * Endpoint to authenticate a user and receive a JWT token.
      *
      * @param request the login request containing username and password.
-     * @return the response containing the JWT token or an error message.
+     * @param http    the HTTP request, used for the client address; may be null outside a server.
+     * @return the response containing the JWT token, 401 with a generic message, or 429 after too many failures.
      */
     @POST
     @Path("/login")
-    public Response login(LoginRequest request) {
+    public Response login(LoginRequest request, @Context HttpServerRequest http) {
         if (request == null || request.username == null || request.password == null) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("{\"error\": \"Username and Password are required\"}")
                     .build();
         }
-
+        String address = clientAddress(http);
+        if (throttle.loginBlocked(request.username, address)) {
+            return Response.status(Response.Status.TOO_MANY_REQUESTS)
+                    .entity("{\"error\": \"Trop de tentatives, réessayez dans quelques minutes\"}")
+                    .build();
+        }
         try {
             String token = authenticationService.authenticate(request.username, request.password);
+            throttle.loginSucceeded(request.username);
             return Response.ok(new TokenResponse(token, EIGHT_HOURS_IN_SECONDS)).build();
         } catch (SecurityException e) {
+            throttle.loginFailed(request.username, address);
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"error\": \"Invalid credentials:"+e.getMessage()+"\"}")
+                    .entity(INVALID_CREDENTIALS)
                     .build();
         } catch (Exception e) {
             return Response.serverError().build();
@@ -107,20 +129,24 @@ public class AuthenticationResource {
      * Requests a password reset for a specific user.
      *
      * @param request the request containing the username.
-     * @return 200 OK response.
+     * @param http    the HTTP request, used for the client address; may be null outside a server.
+     * @return 200 OK response, whether the account exists, the mail was sent or the request was throttled.
      */
     @POST
     @Path("/password-reset/request")
-    public Response requestPasswordReset(ResetRequest request) {
+    public Response requestPasswordReset(ResetRequest request, @Context HttpServerRequest http) {
         if (request == null || request.username == null) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("{\"error\": \"Username is required\"}")
                     .build();
         }
-        try {
-            authenticationService.initiatePasswordReset(request.username);
-        } catch (IllegalArgumentException e) {
-            // Log error but do not reveal specific details to the client
+        // A throttled request is answered like any other, so that it reveals nothing
+        if (throttle.resetAllowed(request.username, clientAddress(http))) {
+            try {
+                authenticationService.initiatePasswordReset(request.username);
+            } catch (RuntimeException e) {
+                // Do not reveal specific details to the client
+            }
         }
         return Response.ok("{\"message\": \"If the account exists, a reset email has been sent.\"}").build();
     }
@@ -133,7 +159,8 @@ public class AuthenticationResource {
      *
      * @param token   the reset token extracted from the URI path.
      * @param request the request containing the new password.
-     * @return 200 OK with a {@link TokenResponse} on success, 403 Forbidden on failure.
+     * @return 200 OK with a {@link TokenResponse} on success, 400 when the new password does not meet the policy,
+     *         403 Forbidden with a generic message on an invalid or expired token.
      */
     @POST
     @Path("/password-reset/{token}")
@@ -146,11 +173,25 @@ public class AuthenticationResource {
         try {
             String jwtToken = authenticationService.resetPassword(token, request.newPassword);
             return Response.ok(new TokenResponse(jwtToken, EIGHT_HOURS_IN_SECONDS)).build();
-        } catch (SecurityException e) {
-            return Response.status(Response.Status.FORBIDDEN)
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
                     .entity("{\"error\": \"" + e.getMessage() + "\"}")
                     .build();
+        } catch (SecurityException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity("{\"error\": \"Lien invalide ou expiré\"}")
+                    .build();
         }
+    }
+
+    /**
+     * Reads the address of the client.
+     *
+     * @param http the HTTP request, possibly null
+     * @return the remote host, or null when unknown
+     */
+    static String clientAddress(HttpServerRequest http) {
+        return http == null || http.remoteAddress() == null ? null : http.remoteAddress().host();
     }
 
     // --------------------------------------------------

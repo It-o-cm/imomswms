@@ -48,9 +48,20 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestTransaction
 public class StorePlanResourceTest {
 
+    /** A one-pixel PNG in base64: plan images must be real raster images. */
+    private static final String ONE_PIXEL_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
     @Inject
     StorePlanResource storePlanResource;
 
+    /**
+     * Builds a manager store fixture.
+     *
+     * @param code the code
+     * @param badge the badge
+     * @param building the building
+     * @return the manager store
+     */
     private Store managerStore(String code, String badge, StoreBuilding building) {
         Store store = new Store(); store.code=code; store.name=code;
         store.address=new Adresse(); store.address.streetLine1="Test"; store.address.city="Lyon";
@@ -65,6 +76,9 @@ public class StorePlanResourceTest {
         return store;
     }
 
+    /**
+     * Checks that manager can save topology and bays in own store.
+     */
     @Test
     @TestSecurity(user="topology-manager", roles={"MANAGER"})
     void managerCanSaveTopologyAndBaysInOwnStore() throws GraphQLException {
@@ -76,6 +90,9 @@ public class StorePlanResourceTest {
         assertTrue(storePlanResource.saveStoreLocations(building.buildingCode,List.of()).isEmpty());
     }
 
+    /**
+     * Checks that manager cannot save topology of another store.
+     */
     @Test
     @TestSecurity(user="topology-manager", roles={"MANAGER"})
     void managerCannotSaveTopologyOfAnotherStore() {
@@ -86,6 +103,9 @@ public class StorePlanResourceTest {
         assertInstanceOf(SecurityException.class,error.getCause());
     }
 
+    /**
+     * Checks that manager cannot save bays of another store.
+     */
     @Test
     @TestSecurity(user="topology-manager", roles={"MANAGER"})
     void managerCannotSaveBaysOfAnotherStore() {
@@ -96,6 +116,9 @@ public class StorePlanResourceTest {
         assertInstanceOf(SecurityException.class,error.getCause());
     }
 
+    /**
+     * Checks that manager without store cannot save topology.
+     */
     @Test
     @TestSecurity(user="unlinked-topology-manager", roles={"MANAGER"})
     void managerWithoutStoreCannotSaveTopology() {
@@ -166,6 +189,13 @@ public class StorePlanResourceTest {
         return zone;
     }
 
+    /**
+     * Builds a point fixture.
+     *
+     * @param x the x
+     * @param y the y
+     * @return the point
+     */
     private StorePlanResource.Point point(double x, double y) {
         StorePlanResource.Point p = new StorePlanResource.Point();
         p.x = x;
@@ -173,6 +203,14 @@ public class StorePlanResourceTest {
         return p;
     }
 
+    /**
+     * Builds a node input fixture.
+     *
+     * @param code the code
+     * @param x the x
+     * @param y the y
+     * @return the node input
+     */
     private StorePlanResource.PlanNode nodeInput(String code, double x, double y) {
         StorePlanResource.PlanNode n = new StorePlanResource.PlanNode();
         n.code = code;
@@ -187,6 +225,9 @@ public class StorePlanResourceTest {
     // Query Tests (Requires MANAGER role)
     // --------------------------------------------------
 
+    /**
+     * Checks test store plan: building not found.
+     */
     @Test
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testStorePlan_BuildingNotFound() {
@@ -195,6 +236,9 @@ public class StorePlanResourceTest {
         });
     }
 
+    /**
+     * Checks test store plan: empty building.
+     */
     @Test
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testStorePlan_EmptyBuilding() {
@@ -212,6 +256,9 @@ public class StorePlanResourceTest {
         assertTrue(data.zones.isEmpty());
     }
 
+    /**
+     * Checks test store plan: returns full plan.
+     */
     @Test
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testStorePlan_ReturnsFullPlan() {
@@ -281,6 +328,9 @@ public class StorePlanResourceTest {
     // Mutation Tests: saveStorePlan (Requires ADMIN role)
     // --------------------------------------------------
 
+    /**
+     * Checks test save store plan: building not found.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_BuildingNotFound() {
@@ -291,6 +341,9 @@ public class StorePlanResourceTest {
         });
     }
 
+    /**
+     * Checks test save store plan: null input.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_NullInput() {
@@ -303,6 +356,9 @@ public class StorePlanResourceTest {
         assertTrue(ex.getCause().getMessage().contains("Input is mandatory"));
     }
 
+    /**
+     * Checks test save store plan: replaces nodes and zones.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_ReplacesNodesAndZones() throws GraphQLException {
@@ -338,6 +394,9 @@ public class StorePlanResourceTest {
         assertNull(reloaded.tailNode);
     }
 
+    /**
+     * Checks test save store plan: persists plan image.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_PersistsPlanImage() throws GraphQLException {
@@ -345,7 +404,7 @@ public class StorePlanResourceTest {
 
         StorePlanResource.StorePlan input = new StorePlanResource.StorePlan();
         input.nodes = List.of();
-        input.planImage = "aW1hZ2UtcG5n";
+        input.planImage = ONE_PIXEL_PNG;
         input.planImageX = -283.0;
         input.planImageY = -238.0;
         input.planImageScale = 1.5;
@@ -355,7 +414,7 @@ public class StorePlanResourceTest {
         storePlanResource.saveStorePlan("BLD_SP_IMG", input);
 
         Building reloaded = Building.findByCode("BLD_SP_IMG");
-        assertEquals("aW1hZ2UtcG5n", reloaded.planImage);
+        assertEquals(ONE_PIXEL_PNG, reloaded.planImage);
         assertEquals(-283.0, reloaded.planImageX);
         assertEquals(-238.0, reloaded.planImageY);
         assertEquals(1.5, reloaded.planImageScale);
@@ -363,6 +422,9 @@ public class StorePlanResourceTest {
         assertEquals(0.8, reloaded.planImageOpacity);
     }
 
+    /**
+     * Checks test save store plan: plan image defaults when partial.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_PlanImageDefaultsWhenPartial() throws GraphQLException {
@@ -370,13 +432,13 @@ public class StorePlanResourceTest {
 
         StorePlanResource.StorePlan input = new StorePlanResource.StorePlan();
         input.nodes = List.of();
-        input.planImage = "aW1hZ2U=";
+        input.planImage = ONE_PIXEL_PNG;
         // X/Y/scale/rotation/opacity not provided: defaults apply
 
         storePlanResource.saveStorePlan("BLD_SP_IMGD", input);
 
         Building reloaded = Building.findByCode("BLD_SP_IMGD");
-        assertEquals("aW1hZ2U=", reloaded.planImage);
+        assertEquals(ONE_PIXEL_PNG, reloaded.planImage);
         assertEquals(0.0, reloaded.planImageX);
         assertEquals(0.0, reloaded.planImageY);
         assertEquals(1.0, reloaded.planImageScale);
@@ -384,11 +446,14 @@ public class StorePlanResourceTest {
         assertEquals(1.0, reloaded.planImageOpacity);
     }
 
+    /**
+     * Checks test save store plan: clears plan image when null.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_ClearsPlanImageWhenNull() throws GraphQLException {
         StoreBuilding building = persistBuilding("BLD_SP_IMGC");
-        building.planImage = "aW1hZ2UtcG5n";
+        building.planImage = ONE_PIXEL_PNG;
         building.planImageX = -283.0;
         building.planImageY = -238.0;
         building.planImageScale = 2.0;
@@ -411,6 +476,9 @@ public class StorePlanResourceTest {
         assertEquals(1.0, reloaded.planImageOpacity);
     }
 
+    /**
+     * Checks test save store plan: rejects invalid plan image transform.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_RejectsInvalidPlanImageTransform() {
@@ -418,12 +486,12 @@ public class StorePlanResourceTest {
 
         StorePlanResource.StorePlan badScale = new StorePlanResource.StorePlan();
         badScale.nodes = List.of();
-        badScale.planImage = "aW1hZ2U=";
+        badScale.planImage = ONE_PIXEL_PNG;
         badScale.planImageScale = 0.0;
 
         StorePlanResource.StorePlan badOpacity = new StorePlanResource.StorePlan();
         badOpacity.nodes = List.of();
-        badOpacity.planImage = "aW1hZ2U=";
+        badOpacity.planImage = ONE_PIXEL_PNG;
         badOpacity.planImageOpacity = 1.5;
 
         GraphQLException scaleEx = assertThrows(GraphQLException.class,
@@ -437,6 +505,27 @@ public class StorePlanResourceTest {
         assertTrue(opacityEx.getCause().getMessage().contains("opacity must be between 0 and 1"));
     }
 
+    /**
+     * A background that is not a raster image (here an SVG with a script) is refused and nothing is stored.
+     */
+    @Test
+    @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
+    void testSaveStorePlan_RejectsAPlanImageThatIsNotARasterImage() {
+        persistBuilding("BLD_SP_IMGX");
+        StorePlanResource.StorePlan svg = new StorePlanResource.StorePlan();
+        svg.nodes = List.of();
+        svg.planImage = java.util.Base64.getEncoder().encodeToString("<svg onload=\"alert(1)\"/>".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        GraphQLException refused = assertThrows(GraphQLException.class,
+                () -> storePlanResource.saveStorePlan("BLD_SP_IMGX", svg));
+
+        assertInstanceOf(IllegalArgumentException.class, refused.getCause());
+        assertNull(Building.findByCode("BLD_SP_IMGX").planImage);
+    }
+
+    /**
+     * Checks test save store plan: schema exposes plan image fields.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_SchemaExposesPlanImageFields() {
@@ -469,6 +558,9 @@ public class StorePlanResourceTest {
                 .body(not(containsString("Validation error")));
     }
 
+    /**
+     * Checks test save store plan: updates existing aisle geometry.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_UpdatesExistingAisleGeometry() throws GraphQLException {
@@ -514,6 +606,9 @@ public class StorePlanResourceTest {
         assertEquals(2, data.aisles.get(0).points.size());
     }
 
+    /**
+     * Checks test save store plan: creates unknown aisle.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_CreatesUnknownAisle() throws GraphQLException {
@@ -553,6 +648,9 @@ public class StorePlanResourceTest {
         assertNull(created2.tailNode);
     }
 
+    /**
+     * Checks test save store plan: unknown node reference.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_UnknownNodeReference() {
@@ -570,6 +668,9 @@ public class StorePlanResourceTest {
         });
     }
 
+    /**
+     * Checks test save store plan: zone too few vertices.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_ZoneTooFewVertices() {
@@ -588,6 +689,9 @@ public class StorePlanResourceTest {
         assertTrue(ex.getCause().getMessage().contains("at least 3 vertices"));
     }
 
+    /**
+     * Checks test save store plan: node missing code.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_NodeMissingCode() {
@@ -607,6 +711,9 @@ public class StorePlanResourceTest {
         assertTrue(ex.getCause().getMessage().contains("Code is mandatory"));
     }
 
+    /**
+     * Checks test save store plan: node missing coordinate.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_NodeMissingCoordinate() {
@@ -626,6 +733,9 @@ public class StorePlanResourceTest {
         assertTrue(ex.getCause().getMessage().contains("Coordinate is mandatory"));
     }
 
+    /**
+     * Checks test save store plan: node default type.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_NodeDefaultType() throws GraphQLException {
@@ -646,6 +756,9 @@ public class StorePlanResourceTest {
         assertEquals(PlanNodeType.DEADEND, PlanNode.findByCode(building, "N1").nodeType);
     }
 
+    /**
+     * Checks test save store plan: null lists, clears nodes and zones.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_NullLists_ClearsNodesAndZones() throws GraphQLException {
@@ -665,6 +778,9 @@ public class StorePlanResourceTest {
         assertEquals(0, PlanZoneVertex.count());
     }
 
+    /**
+     * Checks test save store plan: saves zones with polygon.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStorePlan_SavesZonesWithPolygon() throws GraphQLException {
@@ -701,12 +817,18 @@ public class StorePlanResourceTest {
     // Shelf Locations (bays) — Query Tests (MANAGER)
     // --------------------------------------------------
 
+    /**
+     * Checks test store locations: building not found.
+     */
     @Test
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testStoreLocations_BuildingNotFound() {
         assertThrows(NoSuchElementException.class, () -> storePlanResource.storeLocations("BLD_UNKNOWN"));
     }
 
+    /**
+     * Checks test store locations: returns locations sorted by code.
+     */
     @Test
     @TestSecurity(user = "testUser", roles = {"MANAGER"})
     void testStoreLocations_ReturnsLocationsSortedByCode() {
@@ -738,6 +860,9 @@ public class StorePlanResourceTest {
     // Shelf Locations (bays) — Mutation Tests (ADMIN)
     // --------------------------------------------------
 
+    /**
+     * Checks test save store locations: building not found.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_BuildingNotFound() {
@@ -745,6 +870,9 @@ public class StorePlanResourceTest {
                 () -> storePlanResource.saveStoreLocations("BLD_UNKNOWN", List.of()));
     }
 
+    /**
+     * Checks test save store locations: creates empty bay.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_CreatesEmptyBay() throws GraphQLException {
@@ -770,6 +898,9 @@ public class StorePlanResourceTest {
         assertTrue(building.locations.contains(persisted));
     }
 
+    /**
+     * Checks test save store locations: updates by id and regenerates code.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_UpdatesByIdAndRegeneratesCode() throws GraphQLException {
@@ -794,6 +925,9 @@ public class StorePlanResourceTest {
         assertEquals(product.id, reloaded.product.id);
     }
 
+    /**
+     * Checks test save store locations: persists aisle position.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testSaveStoreLocations_PersistsAislePosition() throws GraphQLException {
@@ -816,6 +950,9 @@ public class StorePlanResourceTest {
         assertEquals(0.42, fetched.get(0).aislePosition);
     }
 
+    /**
+     * Checks test save store locations: aisle position out of range.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_AislePositionOutOfRange() {
@@ -827,6 +964,9 @@ public class StorePlanResourceTest {
                 () -> storePlanResource.saveStoreLocations("BLD_LOC_RANGE", List.of(input)));
     }
 
+    /**
+     * Checks test save store locations: deletes unclaimed unreferenced.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_DeletesUnclaimedUnreferenced() throws GraphQLException {
@@ -846,6 +986,9 @@ public class StorePlanResourceTest {
         assertNotNull(StoreShelfLocation.findById(kept.id));
     }
 
+    /**
+     * Checks test save store locations: moves product and deletes old location.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_MovesProductAndDeletesOldLocation() throws GraphQLException {
@@ -870,6 +1013,9 @@ public class StorePlanResourceTest {
         assertEquals(product.id, reloaded.product.id);
     }
 
+    /**
+     * Checks test save store locations: moves product to new location and empties old.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_MovesProductToNewLocationAndEmptiesOld() throws GraphQLException {
@@ -893,6 +1039,9 @@ public class StorePlanResourceTest {
         assertEquals("EPICERIE-A05-B2-1-1", addedLoc.locationCode);
     }
 
+    /**
+     * Checks test save store locations: moves product between existing locations.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_MovesProductBetweenExistingLocations() throws GraphQLException {
@@ -915,6 +1064,9 @@ public class StorePlanResourceTest {
         assertEquals(product.id, reloadedTarget.product.id);
     }
 
+    /**
+     * Checks test save store locations: same product in two locations.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_SameProductInTwoLocations() throws GraphQLException {
@@ -935,6 +1087,9 @@ public class StorePlanResourceTest {
         assertEquals(product.id, reloadedB.product.id);
     }
 
+    /**
+     * Checks test save store locations: keeps location referenced by fulfillment line.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_KeepsLocationReferencedByFulfillmentLine() throws GraphQLException {
@@ -952,6 +1107,9 @@ public class StorePlanResourceTest {
         assertNotNull(StoreShelfLocation.findById(referenced.id));
     }
 
+    /**
+     * Checks test save store locations: unknown product ean.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_UnknownProductEan() {
@@ -962,6 +1120,9 @@ public class StorePlanResourceTest {
                 () -> storePlanResource.saveStoreLocations("BLD_LOC_EAN", List.of(input)));
     }
 
+    /**
+     * Checks test save store locations: blank aisle.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN"})
     void testSaveStoreLocations_BlankAisle() {
@@ -972,6 +1133,9 @@ public class StorePlanResourceTest {
                 () -> storePlanResource.saveStoreLocations("BLD_LOC_AISLE", List.of(input)));
     }
 
+    /**
+     * Checks test save store locations: round trip, preserves existing.
+     */
     @Test
     @TestSecurity(user = "testAdmin", roles = {"ADMIN", "MANAGER"})
     void testSaveStoreLocations_RoundTrip_PreservesExisting() throws GraphQLException {
@@ -1060,6 +1224,13 @@ public class StorePlanResourceTest {
     // Shelf location fixtures
     // --------------------------------------------------
 
+    /**
+     * Builds a persist product fixture.
+     *
+     * @param ean the ean
+     * @param name the name
+     * @return the persist product
+     */
     private Product persistProduct(String ean, String name) {
         Product product = new Product();
         product.ean = ean;
@@ -1070,6 +1241,20 @@ public class StorePlanResourceTest {
         return product;
     }
 
+    /**
+     * Builds a persist location fixture.
+     *
+     * @param building the building
+     * @param product the product
+     * @param area the area
+     * @param aisle the aisle
+     * @param unit the unit
+     * @param elevation the elevation
+     * @param position the position
+     * @param facings the facings
+     * @param department the department
+     * @return the persist location
+     */
     private StoreShelfLocation persistLocation(StoreBuilding building, Product product, String area, String aisle,
                                                String unit, String elevation, String position, int facings, String department) {
         StoreShelfLocation location = new StoreShelfLocation();
@@ -1087,6 +1272,13 @@ public class StorePlanResourceTest {
         return location;
     }
 
+    /**
+     * Builds a persist fulfillment line fixture.
+     *
+     * @param product the product
+     * @param location the location
+     * @return the persist fulfillment line
+     */
     private FulfillmentLine persistFulfillmentLine(Product product, BaseLocation location) {
         FulfillmentLine line = new FulfillmentLine();
         line.lineNumber = 1;
@@ -1097,6 +1289,20 @@ public class StorePlanResourceTest {
         return line;
     }
 
+    /**
+     * Builds a location input fixture.
+     *
+     * @param id the id
+     * @param area the area
+     * @param aisle the aisle
+     * @param unit the unit
+     * @param elevation the elevation
+     * @param position the position
+     * @param facings the facings
+     * @param department the department
+     * @param productEan the product ean
+     * @return the location input
+     */
     private StorePlanResource.StoreLocation locationInput(Long id, String area, String aisle, String unit,
                                                                String elevation, String position, Integer facings,
                                                                String department, String productEan) {

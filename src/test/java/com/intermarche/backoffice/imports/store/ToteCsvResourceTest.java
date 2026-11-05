@@ -29,6 +29,7 @@ import static org.mockito.Mockito.*;
 class ToteCsvResourceTest {
 
     private final ToteCsvResource resource = new ToteCsvResource();
+    @org.junit.jupiter.api.BeforeEach void supportCatalog(){resource.supportCatalog=mock(com.intermarche.backoffice.engine.fieldops.SupportCatalog.class); }
 
     // --------------------------------------------------
     // Helpers

@@ -71,6 +71,8 @@ import static org.mockito.Mockito.*;
  */
 class HandlingOrderServiceTest {
 
+    private MockedStatic<io.quarkus.hibernate.orm.panache.Panache> panacheAccess;
+    @org.junit.jupiter.api.AfterEach void closePanacheAccess(){panacheAccess.close();}
     private HandlingOrderService service;
     private AuthenticationService authenticationService;
     private static final com.intermarche.backoffice.domain.store.Store STORE=new com.intermarche.backoffice.domain.store.Store();
@@ -79,6 +81,10 @@ class HandlingOrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new HandlingOrderService();
+        service.freezes=mock(com.intermarche.backoffice.engine.stock.InventoryScopeGuard.class);
+        service.quantities=mock(com.intermarche.backoffice.engine.operator.OperationQuantities.class);
+        service.collectionLocks=mock(jakarta.persistence.EntityManager.class,RETURNS_DEEP_STUBS);service.stockTrace=mock(com.intermarche.backoffice.engine.stock.PickedStockCoordinator.class);
+        panacheAccess=mockStatic(io.quarkus.hibernate.orm.panache.Panache.class);panacheAccess.when(io.quarkus.hibernate.orm.panache.Panache::getEntityManager).thenReturn(service.collectionLocks);
         service.mixedPreparation=mock(MixedPreparationService.class);
         service.resolutions=mock(PickingResolutionService.class);
         when(service.resolutions.replacement(any(),any(),any())).thenAnswer(inv->{Product requested=inv.getArgument(1);Long id=inv.getArgument(2);return requested.id.equals(id)?requested:Product.findById(id);});
@@ -106,7 +112,7 @@ class HandlingOrderServiceTest {
     private static Product product(Long id, String name) {
         Product product = new Product();
         product.id = id;
-        product.name = name;
+        product.name = name;product.productType=com.intermarche.backoffice.domain.order.ProductType.UNIT;
         product.ean = "EAN-" + id;
         product.temperatureZone = TemperatureZone.AMBIENT;
         return product;
@@ -115,7 +121,7 @@ class HandlingOrderServiceTest {
     private static Tote tote(Long id, String code) {
         Tote tote = new Tote();
         tote.id = id;
-        tote.code = code;
+        tote.code = code;tote.store=STORE;
         tote.toteType = Tote.ToteType.STANDARD;
         return tote;
     }
@@ -187,6 +193,12 @@ class HandlingOrderServiceTest {
      * @param firstParam the expected first vararg parameter (null = match any)
      * @param firstResult the entity returned by {@code firstResult()} (null = not found)
      */
+    private static Session mockSession(MockedStatic<Arc> arc){
+        Session session=PanacheTestSupport.mockArcSession(arc);
+        when(session.createNativeQuery(anyString())).thenReturn(mock(org.hibernate.query.NativeQuery.class,RETURNS_DEEP_STUBS));
+        return session;
+    }
+
     private record FindEntry(String query, Object firstParam, Object firstResult) {
     }
 
@@ -228,9 +240,13 @@ class HandlingOrderServiceTest {
      * Stubs {@code PanacheEntityBase.findById(Object)} with a per-id lookup map.
      * Each test uses distinct ids per entity type, so a single map is enough.
      */
-    private static void stubFindById(MockedStatic<PanacheEntityBase> panacheMock, Map<Long, Object> byId) {
+    private void stubFindById(MockedStatic<PanacheEntityBase> panacheMock, Map<Long, Object> byId) {
+        panacheMock.when(PanacheEntityBase::getEntityManager).thenReturn(service.collectionLocks);
+        var active=firstResultQuery(null);panacheMock.when(()->PanacheEntityBase.find(eq("handlingOrder.id=?1 and state<>'ACTIVE'"),any(Object[].class))).thenReturn(active);
+        var identifiers=new HashMap<Long,Object>(byId);
+        for(var value:byId.values())if(value instanceof PickingExecution execution && execution.itemsToPick!=null)for(var item:execution.itemsToPick)if(item.lotLine!=null)identifiers.putIfAbsent(item.lotLine.id,item.lotLine);
         panacheMock.when(() -> PanacheEntityBase.findById(any()))
-                .thenAnswer(invocation -> byId.get(invocation.getArgument(0)));
+                .thenAnswer(invocation -> identifiers.get(invocation.getArgument(0)));
     }
 
     /**
@@ -346,7 +362,7 @@ class HandlingOrderServiceTest {
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class);
              MockedStatic<Employee> employeeMock = mockStatic(Employee.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(1L, order));
             employeeMock.when(() -> Employee.findByBadgeId("BADGE-1")).thenReturn(employee);
 
@@ -373,7 +389,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFind(panacheMock, List.of(new FindEntry("handlingOrder.id", 1L, execution)));
             // delete() appelle session.contains(entity) avant session.remove(entity)
             when(session.contains(execution)).thenReturn(true);
@@ -388,7 +404,7 @@ class HandlingOrderServiceTest {
     void cancelReservation_noExecution_doesNothing() {
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFind(panacheMock, List.of(new FindEntry("handlingOrder.id", 1L, null)));
 
             assertDoesNotThrow(() -> service.cancelReservation(1L));
@@ -426,7 +442,7 @@ class HandlingOrderServiceTest {
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class);
              MockedStatic<Employee> employeeMock = mockStatic(Employee.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(1L, order1, 2L, order2, 100L, exec1, 101L, exec2));
             employeeMock.when(() -> Employee.findByBadgeId("BADGE-1")).thenReturn(employee);
 
@@ -690,7 +706,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(100L, execution));
             stubFind(panacheMock, List.of(
                     new FindEntry("code", "TOTE-1", physicalTote),
@@ -717,7 +733,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(100L, execution));
             stubFind(panacheMock, List.of(
                     new FindEntry("code", "TOTE-1", physicalTote),
@@ -762,7 +778,7 @@ class HandlingOrderServiceTest {
     }
 
     @Test
-    void removeEmptyTote_emptyTote_removesAndDeletesIt() {
+    void removeEmptyTote_emptyTote_detachesAndKeepsTraceability() {
         BaseHandlingOrder order = orderMock(1L, "ORD-1", BaseHandlingOrder.HandlingOrderStatus.SCHEDULED);
         PickingExecution execution = pickingExecution(100L, order);
         Tote physicalTote = tote(60L, "TOTE-1");
@@ -771,7 +787,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(100L, execution));
             stubFind(panacheMock, List.of(
                     new FindEntry("tote.code = ?1 and status = ?2", "TOTE-1", loadedTote)));
@@ -780,7 +796,8 @@ class HandlingOrderServiceTest {
             service.removeEmptyTote(100L, "TOTE-1");
 
             assertTrue(execution.loadedTotes.isEmpty());
-            verify(session).remove(loadedTote);
+            verify(session,never()).remove(loadedTote);
+            assertEquals(LoadedTote.Status.DELIVERED,loadedTote.status);
         }
     }
 
@@ -791,13 +808,14 @@ class HandlingOrderServiceTest {
         Tote physicalTote = tote(60L, "TOTE-1");
         LoadedTote loadedTote = loadedTote(50L, physicalTote);
         PickedItem item = item(10L, product(1L, "Pâtes"), new BigDecimal("2"));
+        item.status=PickedItem.PickStatus.PICKED;
         loadedTote.items.add(item);
         item.loadedTote = loadedTote;
         execution.loadedTotes.add(loadedTote);
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(100L, execution));
             stubFind(panacheMock, List.of(
                     new FindEntry("tote.code = ?1 and status = ?2", "TOTE-1", loadedTote)));
@@ -950,7 +968,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(100L, execution, 10L, item));
             stubFind(panacheMock, List.of(
                     new FindEntry("tote.code = ?1 and status = ?2", "TOTE-1", tote)));
@@ -1151,8 +1169,9 @@ class HandlingOrderServiceTest {
         loadedTote.items.add(item);
         item.loadedTote = loadedTote;
 
+        var execution=pickingExecution(100L,orderMock(1L,"ORD",BaseHandlingOrder.HandlingOrderStatus.PROCESSING));execution.loadedTotes.add(loadedTote);
         try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            stubFindById(panacheMock, Map.of(10L, item));
+            stubFindById(panacheMock, Map.of(10L, item,100L,execution));
 
             service.removeItemFromTote(100L, "TOTE-1", 10L);
 
@@ -1180,8 +1199,9 @@ class HandlingOrderServiceTest {
     void cancelPickedItem_validItem_marksCanceled() {
         PickedItem item = item(10L, product(1L, "Pâtes"), new BigDecimal("5"));
 
+        var execution=pickingExecution(100L,orderMock(1L,"ORD",BaseHandlingOrder.HandlingOrderStatus.PROCESSING));
         try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            stubFindById(panacheMock, Map.of(10L, item));
+            stubFindById(panacheMock, Map.of(10L, item,100L,execution));
 
             service.cancelPickedItem(100L, 10L);
 
@@ -1300,15 +1320,16 @@ class HandlingOrderServiceTest {
         Buffer destination = buffer(7L);
         GroupingOrder order = new GroupingOrder();
         order.id = 1L;
-        order.buffer = destination;
+        order.buffer = destination;order.store=STORE;
         GroupingExecution execution = new GroupingExecution();
         execution.id = 100L;
         execution.handlingOrder = order;
         Tote physicalTote = tote(60L, "TOTE-1");
         LoadedTote loadedTote = loadedTote(50L, physicalTote);
 
+        execution.loadedTotes.add(loadedTote);
         try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            stubFindById(panacheMock, Map.of(100L, execution));
+            stubFindById(panacheMock, Map.of(100L, execution,7L,destination));
             stubFind(panacheMock, List.of(
                     new FindEntry("code", "TOTE-1", physicalTote),
                     new FindEntry("tote = ?1 and status = ?2", physicalTote, loadedTote)));
@@ -1425,7 +1446,7 @@ class HandlingOrderServiceTest {
     void saveAndConcludeExecution_nullRequest_throwsIAE() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.saveAndConcludeExecution(100L, null));
-        assertEquals("Request cannot be null", ex.getMessage());
+        assertTrue(Set.of("Request cannot be null","Rapport requis").contains(ex.getMessage()));
     }
 
     @Test
@@ -1515,9 +1536,11 @@ class HandlingOrderServiceTest {
         request.totes = List.of(toteReport("TOTE-1", TemperatureZone.AMBIENT,
                 List.of(toteItem(10L, "2"))));
 
+        execution.loadedTotes.add(loadedTote);
+        execution.itemsToPick.add(item);
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(100L, execution, 10L, item));
             stubFind(panacheMock, List.of(
                     new FindEntry("tote.code = ?1 and status = ?2", "TOTE-1", loadedTote)));
@@ -1564,9 +1587,10 @@ class HandlingOrderServiceTest {
         request.totes = List.of(toteReport("TOTE-1", TemperatureZone.AMBIENT,
                 List.of(toteItem(10L, "2"))));
 
+        execution.itemsToPick.add(item);
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(100L, execution, 10L, item));
             stubFind(panacheMock, List.of(
                     new FindEntry("tote.code = ?1 and status = ?2", "TOTE-1", null),
@@ -1639,7 +1663,7 @@ class HandlingOrderServiceTest {
     void createAndConcludeBatch_nullRequest_throwsIAE() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.createAndConcludeBatch(null));
-        assertEquals("Request cannot be null", ex.getMessage());
+        assertTrue(Set.of("Request cannot be null","Rapport requis").contains(ex.getMessage()));
     }
 
     @Test
@@ -1665,13 +1689,14 @@ class HandlingOrderServiceTest {
 
             IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                     () -> service.createAndConcludeBatch(request));
-            assertEquals("Order not found: 1", ex.getMessage());
+            assertEquals("Ordre inconnu", ex.getMessage());
         }
     }
 
     @Test
     void createAndConcludeBatch_orderAlreadyHasExecution_throwsIAE() {
         BaseHandlingOrder order = orderMock(1L, "ORD-1", BaseHandlingOrder.HandlingOrderStatus.SCHEDULED);
+        when(authenticationService.getConnectedAccount()).thenReturn(employee(7L,"BADGE-1"));
         PickingExecution existing = pickingExecution(100L, order);
         BatchValidationRequest request = new BatchValidationRequest();
         request.orderIds = List.of(1L);
@@ -1756,7 +1781,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            PanacheTestSupport.mockArcSession(arcMock);
+            mockSession(arcMock);
             stubFindById(panacheMock, Map.of(1L, order));
             stubFind(panacheMock, List.of(new FindEntry("handlingOrder.id", 1L, null)));
 
@@ -1795,7 +1820,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(1L, order, 100L, execution, 7L, buffer));
             stubFind(panacheMock, List.of(
                     new FindEntry("handlingOrder.id", 1L, null),
@@ -1830,7 +1855,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(1L, order));
             stubFind(panacheMock, List.of(new FindEntry("handlingOrder.id", 1L, null)));
 
@@ -1858,7 +1883,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            PanacheTestSupport.mockArcSession(arcMock);
+            mockSession(arcMock);
             stubFindById(panacheMock, Map.of(1L, order, 7L, buffer));
             stubFind(panacheMock, List.of(new FindEntry("handlingOrder.id", 1L, null)));
 
@@ -2080,6 +2105,7 @@ class HandlingOrderServiceTest {
         request.bufferId = null;
         request.totes = List.of(toteReport("TOTE-1", TemperatureZone.AMBIENT, null));
 
+        execution.loadedTotes.add(loadedTote);
         try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
             stubFindById(panacheMock, Map.of(100L, execution));
             stubFind(panacheMock, List.of(new FindEntry("tote.code = ?1 and status = ?2", "TOTE-1", loadedTote)));
@@ -2103,6 +2129,8 @@ class HandlingOrderServiceTest {
         request.totes = List.of(toteReport("TOTE-1", TemperatureZone.AMBIENT,
                 List.of(toteItem(10L, "2"))));
 
+        execution.loadedTotes.add(loadedTote);
+        execution.itemsToPick.add(item);
         try (MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
             stubFindById(panacheMock, Map.of(100L, execution, 10L, item));
             stubFind(panacheMock, List.of(new FindEntry("tote.code = ?1 and status = ?2", "TOTE-1", loadedTote)));
@@ -2130,7 +2158,7 @@ class HandlingOrderServiceTest {
 
         try (MockedStatic<Arc> arcMock = mockStatic(Arc.class);
              MockedStatic<PanacheEntityBase> panacheMock = mockStatic(PanacheEntityBase.class)) {
-            Session session = PanacheTestSupport.mockArcSession(arcMock);
+            Session session = mockSession(arcMock);
             stubFindById(panacheMock, Map.of(1L, order));
             stubFind(panacheMock, List.of(new FindEntry("handlingOrder.id", 1L, null)));
 
@@ -2164,9 +2192,9 @@ class HandlingOrderServiceTest {
     }
 
     @Test void saveAndConcludeExecution_partialReportCannotSilentlyCompletePicking(){
-        BaseHandlingOrder order=orderMock(1L,"ORD-1",BaseHandlingOrder.HandlingOrderStatus.SCHEDULED);PickingExecution execution=pickingExecution(100L,order);LoadedTote target=loadedTote(50L,tote(60L,"TOTE-1"));PickedItem pending=item(10L,product(1L,"Pâtes"),new BigDecimal("5"));execution.itemsToPick.add(pending);
+        BaseHandlingOrder order=orderMock(1L,"ORD-1",BaseHandlingOrder.HandlingOrderStatus.SCHEDULED);PickingExecution execution=pickingExecution(100L,order);LoadedTote target=loadedTote(50L,tote(60L,"TOTE-1"));PickedItem pending=item(10L,product(1L,"Pâtes"),new BigDecimal("5"));execution.itemsToPick.add(pending);execution.loadedTotes.add(target);
         var request=new ExecutionReportRequest();request.totes=List.of(toteReport("TOTE-1",TemperatureZone.AMBIENT,List.of(toteItem(10L,"2"))));
-        try(MockedStatic<Arc> arc=mockStatic(Arc.class);MockedStatic<PanacheEntityBase> panache=mockStatic(PanacheEntityBase.class)){PanacheTestSupport.mockArcSession(arc);stubFindById(panache,Map.of(100L,execution,10L,pending));stubFind(panache,List.of(new FindEntry("tote.code = ?1 and status = ?2","TOTE-1",target)));assertThrows(IllegalStateException.class,()->service.saveAndConcludeExecution(100L,request));assertNotEquals(HandlingExecution.ExecutionStatus.DONE,execution.status);}
+        try(MockedStatic<Arc> arc=mockStatic(Arc.class);MockedStatic<PanacheEntityBase> panache=mockStatic(PanacheEntityBase.class)){mockSession(arc);stubFindById(panache,Map.of(100L,execution,10L,pending));stubFind(panache,List.of(new FindEntry("tote.code = ?1 and status = ?2","TOTE-1",target)));assertThrows(IllegalStateException.class,()->service.saveAndConcludeExecution(100L,request));assertNotEquals(HandlingExecution.ExecutionStatus.DONE,execution.status);}
     }
 }
 

@@ -36,6 +36,7 @@ public class Administrative extends BaseEntity implements Account {
      * Stores the BCrypt hash of the raw password.
      */
     @Column(name = "password", nullable = false)
+    @org.eclipse.microprofile.graphql.Ignore
     public String password;
 
     /**
@@ -73,6 +74,7 @@ public class Administrative extends BaseEntity implements Account {
      * and is sent via email.
      */
     @Column(name = "password_reset_token")
+    @org.eclipse.microprofile.graphql.Ignore
     public String passwordResetToken;
 
     /**
@@ -81,7 +83,15 @@ public class Administrative extends BaseEntity implements Account {
      * After this time, the token cannot be used to reset the password.
      */
     @Column(name = "password_reset_token_expiry")
+    @org.eclipse.microprofile.graphql.Ignore
     public LocalDateTime passwordResetTokenExpiry;
+
+    /**
+     * When the credentials last changed, in epoch seconds: tokens issued earlier are refused.
+     */
+    @Column(name = "credentials_changed_at")
+    @org.eclipse.microprofile.graphql.Ignore
+    public Long credentialsChangedAt;
 
     /**
      * Returns the unique principal identifier used for login.
@@ -99,6 +109,7 @@ public class Administrative extends BaseEntity implements Account {
      * @return the hashed password string.
      */
     @Override
+    @org.eclipse.microprofile.graphql.Ignore
     public String getPassword() {
         return this.password;
     }
@@ -189,6 +200,7 @@ public class Administrative extends BaseEntity implements Account {
      * @return the reset token, or null if not set.
      */
     @Override
+    @org.eclipse.microprofile.graphql.Ignore
     public String getPasswordResetToken() {
         return this.passwordResetToken;
     }
@@ -209,6 +221,7 @@ public class Administrative extends BaseEntity implements Account {
      * @return the expiration timestamp, or null.
      */
     @Override
+    @org.eclipse.microprofile.graphql.Ignore
     public LocalDateTime getPasswordResetTokenExpiry() {
         return this.passwordResetTokenExpiry;
     }
@@ -221,6 +234,26 @@ public class Administrative extends BaseEntity implements Account {
     @Override
     public void setPasswordResetTokenExpiry(LocalDateTime expiry) {
         this.passwordResetTokenExpiry = expiry;
+    }
+
+    /**
+     * Returns when the credentials of this account last changed.
+     *
+     * @return the change time in epoch seconds, or null.
+     */
+    @Override
+    public Long getCredentialsChangedAt() {
+        return this.credentialsChangedAt;
+    }
+
+    /**
+     * Records when the credentials of this account changed.
+     *
+     * @param epochSeconds the change time in epoch seconds.
+     */
+    @Override
+    public void setCredentialsChangedAt(Long epochSeconds) {
+        this.credentialsChangedAt = epochSeconds;
     }
 
     /**

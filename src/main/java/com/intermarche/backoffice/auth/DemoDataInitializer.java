@@ -165,12 +165,23 @@ public class DemoDataInitializer {
      * The demo customers.
      */
     private static final List<CustomerSpec> DEMO_CUSTOMERS = List.of(
-            new CustomerSpec("CLI-452301", "Sophie", "Durand", "sophie.durand@gmail.com", "0612345678", "3606001234567", "15 Avenue des Lilas", "69003", "Lyon"),
-            new CustomerSpec("CLI-452302", "Lucas", "Moreau", "lucas.moreau@gmail.com", "0623456789", "3606001234568", "8 Rue de la République", "69002", "Lyon"),
-            new CustomerSpec("CLI-452303", "Emma", "Petit", "emma.petit@gmail.com", "0634567890", "3606001234569", "42 Cours Gambetta", "69007", "Lyon"),
-            new CustomerSpec("CLI-452304", "Hugo", "Leroy", "hugo.leroy@gmail.com", "0645678901", "3606001234570", "3 Place Bellecour", "69002", "Lyon"),
-            new CustomerSpec("CLI-452305", "Chloé", "Rousseau", "chloe.rousseau@gmail.com", "0656789012", "3606001234571", "27 Quai Saint-Vincent", "69001", "Lyon")
+            new CustomerSpec("CLI-452301", "Sophie", "Durand", "sophie.durand@gmail.com", "0612345678", "3606001234567", "15 Avenue des Lilas", "69003", "Lyon", 45.7522, 4.8890),
+            new CustomerSpec("CLI-452302", "Lucas", "Moreau", "lucas.moreau@gmail.com", "0623456789", "3606001234568", "8 Rue de la République", "69002", "Lyon", 45.7667, 4.8362),
+            new CustomerSpec("CLI-452303", "Emma", "Petit", "emma.petit@gmail.com", "0634567890", "3606001234569", "42 Cours Gambetta", "69007", "Lyon", 45.7530, 4.8470),
+            new CustomerSpec("CLI-452304", "Hugo", "Leroy", "hugo.leroy@gmail.com", "0645678901", "3606001234570", "3 Place Bellecour", "69002", "Lyon", 45.7579, 4.8330),
+            new CustomerSpec("CLI-452305", "Chloé", "Rousseau", "chloe.rousseau@gmail.com", "0656789012", "3606001234571", "27 Quai Saint-Vincent", "69001", "Lyon", 45.7690, 4.8215)
     );
+
+    /**
+     * Returns the position of the address of a demo customer, as the commerce would send it with an order.
+     *
+     * @param customerId the customer id
+     * @return the position, or null when the customer is not a demo customer
+     */
+    static GPSPosition demoPosition(String customerId) {
+        return DEMO_CUSTOMERS.stream().filter(c -> c.customerId().equals(customerId)).findFirst()
+                .map(c -> new GPSPosition(c.latitude(), c.longitude())).orElse(null);
+    }
 
     /**
      * Demo unit prices (TTC) per product EAN, used to build realistic order
@@ -233,6 +244,11 @@ public class DemoDataInitializer {
     @Inject DemoSupervisionInitializer demoSupervision;
     @Inject DemoActivityInitializer demoActivity;
     @Inject DemoSubstitutionInitializer demoSubstitutions;
+    @Inject DemoProductInformationInitializer demoProductInformation;
+    @Inject DemoFieldOperationsInitializer demoFieldOperations;
+    @Inject DemoOperationalScenarios demoOperationalScenarios;
+    @Inject DemoMarieMissions demoMarieMissions;
+    @Inject com.intermarche.backoffice.engine.fieldops.SupportCatalog supportCatalog;
 
     /**
      * Creates the demo data once, or completes an existing demo with the examples added since, without resetting it.
@@ -251,6 +267,11 @@ public class DemoDataInitializer {
                 demoPlanning.seed(demoStore);
                 demoSupervision.seed(demoStore);
                 demoActivity.seed(demoStore);
+                demoFieldOperations.seed(demoStore);
+                demoOperationalScenarios.seed(demoStore);
+                demoMarieMissions.seed(demoStore);
+                supportCatalog.registerAll(demoStore);
+                demoProductInformation.seed(demoStore,DEMO_PRODUCTS.stream().map(spec -> Product.findByEan(spec.ean())).filter(java.util.Objects::nonNull).toList());
                 demoSubstitutions.seed(demoStore,DEMO_PRODUCTS.stream().map(spec -> Product.findByEan(spec.ean())).filter(java.util.Objects::nonNull).toList());
             }
             if (demoStore != null && ProductCollectingOrder.count("code", "PRO-DEMO-OPT") == 0) {
@@ -297,9 +318,14 @@ public class DemoDataInitializer {
         demoSupervision.seed(store);
         demoActivity.seed(store);
         demoSubstitutions.seed(store,products);
+        supportCatalog.registerAll(store);
+        demoProductInformation.seed(store,products);
+        demoFieldOperations.seed(store);
         createConfigurations(store, group);
         createOrderHandlerConfiguration(store);
         createEvents(store, requests);
+        demoOperationalScenarios.seed(store);
+        demoMarieMissions.seed(store);
 
         LOGGER.info("Demo data created successfully.");
     }
@@ -994,6 +1020,8 @@ public class DemoDataInitializer {
             customer.phone = spec.phone();
             customer.loyaltyCardId = spec.loyaltyCardId();
             customer.address = createAdresse(spec.street(), spec.postalCode(), spec.city());
+            customer.addressPosition = new GPSPosition(spec.latitude(), spec.longitude());
+            customer.addressPositionSource = Customer.POSITION_PROVIDED;
             customer.persistAndFlush();
             customers.add(customer);
         }
@@ -1252,10 +1280,13 @@ public class DemoDataInitializer {
      * @param street        the street line.
      * @param postalCode    the postal code.
      * @param city          the city.
+     * @param latitude      the latitude of the address.
+     * @param longitude     the longitude of the address.
      */
     private record CustomerSpec(String customerId, String firstName, String lastName,
                                 String email, String phone, String loyaltyCardId,
-                                String street, String postalCode, String city) {
+                                String street, String postalCode, String city,
+                                double latitude, double longitude) {
     }
 
     /**

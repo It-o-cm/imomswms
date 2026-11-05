@@ -33,9 +33,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * and rollback changes after each test.
  * Uses {@link TestSecurity} to bypass authentication checks.
  */
+@io.quarkus.test.junit.TestProfile(ProductCollectingOrderResourceTest.Isolated.class)
 @QuarkusTest
 @TestTransaction
 public class ProductCollectingOrderResourceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_ProductCollectingOrderResourceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     @Inject
     ProductCollectingOrderResource productCollectingOrderResource;

@@ -201,7 +201,16 @@ public class OrderRecorder {
         customer.loyaltyCardId = customerNode.path("loyaltyCardId").asText(null);
         JsonNode addrNode = customerNode.path("address");
         if (!addrNode.isMissingNode()) {
+            Adresse previous = customer.address;
             customer.address = mapAddress(addrNode);
+            GPSPosition sent = mapPosition(addrNode);
+            if (sent != null) {
+                customer.addressPosition = sent;
+                customer.addressPositionSource = Customer.POSITION_PROVIDED;
+            } else if (!customer.address.equals(previous)) {
+                customer.addressPosition = null;
+                customer.addressPositionSource = null;
+            }
         }
         customer.specification = customerNode.toString();
         return customer;
@@ -284,5 +293,19 @@ public class OrderRecorder {
         adresse.city = node.path("city").asText(null);
         adresse.country = node.path("country").asText(null);
         return adresse;
+    }
+
+    /**
+     * Reads the GPS position sent with an address, when both coordinates are present and valid.
+     *
+     * @param node The JSON node representing the address.
+     * @return The position, or null when it is missing or out of range.
+     */
+    public static GPSPosition mapPosition(JsonNode node) {
+        JsonNode latitude = node.path("latitude"), longitude = node.path("longitude");
+        if (!latitude.isNumber() || !longitude.isNumber()) return null;
+        double lat = latitude.asDouble(), lon = longitude.asDouble();
+        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+        return new GPSPosition(lat, lon);
     }
 }

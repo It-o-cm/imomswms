@@ -27,7 +27,15 @@ public class TokenService {
     @ConfigProperty(name = "mp.jwt.verify.audiences")
     String audience;
 
+    /**
+     * Creates the local key pair when it is missing.
+     */
+    @jakarta.inject.Inject
+    LocalJwtKeys localJwtKeys;
+
     public String generateToken(Account account) {
+        // The pair is created at startup; this covers a request served before the startup observers ran
+        localJwtKeys.ensureKeys();
         Set<String> groups = new HashSet<>(account.getRoles());
 
         return Jwt

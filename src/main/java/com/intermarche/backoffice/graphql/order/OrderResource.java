@@ -37,6 +37,8 @@ import java.util.NoSuchElementException;
 @RunOnVirtualThread
 public class OrderResource implements GraphQLTrait {
 
+    @Inject com.intermarche.backoffice.engine.operator.OperatorSupportService operatorNotices;
+    @Inject com.intermarche.backoffice.engine.fieldops.CancellationDispositionService cancellationDisposition;
     private static final Logger LOGGER = Logger.getLogger(OrderResource.class);
 
     /**
@@ -223,12 +225,15 @@ public class OrderResource implements GraphQLTrait {
                 LOGGER.error("Order with id " + id + " not found");
                 throw new NoSuchElementException("Order with id " + id + " not found");
             }
+            String previous=java.util.Arrays.asList(order.status,order.channel,order.specification).toString();
+            if("CANCELLED".equals(input.status)&&!"CANCELLED".equals(order.status)){var cancel=new com.intermarche.backoffice.engine.fieldops.CancellationDispositionService.Cancel();cancel.storeId=com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(order.store);cancel.requestKey=java.util.UUID.randomUUID().toString();cancel.reason="Commande annulée depuis son éditeur";cancellationDisposition.cancel(order.id,cancel);}
             // --- Apply Updates (Partial Update Logic) ---
             if (input.status != null) order.status = input.status;
             if (input.channel != null) order.channel = input.channel;
             if (input.specification != null) order.specification = input.specification;
             // Note: Updating lines is typically done via specific endpoints or complex logic,
             // here we just update the header info for simplicity.
+            if(order.store!=null&&!previous.equals(java.util.Arrays.asList(order.status,order.channel,order.specification).toString()))for(var mission:com.intermarche.backoffice.domain.wms.BaseHandlingOrder.<com.intermarche.backoffice.domain.wms.BaseHandlingOrder>list("select distinct p from PreparingOrder p join p.lots l where l.fulfillment.order=?1 and p.status not in ?2",order,java.util.List.of(com.intermarche.backoffice.domain.wms.BaseHandlingOrder.HandlingOrderStatus.DONE,com.intermarche.backoffice.domain.wms.BaseHandlingOrder.HandlingOrderStatus.CANCELLED))){var audience=new java.util.TreeSet<String>();if(mission.assignee!=null)audience.add(mission.assignee.badgeId);for(var execution:com.intermarche.backoffice.domain.handling.HandlingExecution.<com.intermarche.backoffice.domain.handling.HandlingExecution>list("handlingOrder=?1 and status in ?2",mission,java.util.List.of(com.intermarche.backoffice.domain.handling.HandlingExecution.ExecutionStatus.PENDING,com.intermarche.backoffice.domain.handling.HandlingExecution.ExecutionStatus.IN_PROGRESS)))audience.add(execution.employee.badgeId);if(!audience.isEmpty())operatorNotices.fieldChangeNotice(order.store,"CANCELLED".equals(order.status)?"ORDER_CANCELLED":"ORDER_CHANGED","customer-update:"+order.id+":"+java.util.UUID.randomUUID(),"Commande "+order.orderId+" modifiée","Relisez la commande et les consignes avant de poursuivre.",mission.id,audience);}
             LOGGER.info("Exiting method updateOrder");
             return order;
         }, OrderResource.class, "updateOrder");

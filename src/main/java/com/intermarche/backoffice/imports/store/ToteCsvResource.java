@@ -27,6 +27,8 @@ import java.util.*;
 @ApplicationScoped
 @RunOnVirtualThread
 public class ToteCsvResource extends ImporterCsvResource {
+    @jakarta.inject.Inject com.intermarche.backoffice.engine.fieldops.SupportCatalog supportCatalog;
+
 
     private static final Logger LOGGER = Logger.getLogger(ToteCsvResource.class);
 
@@ -120,6 +122,7 @@ public class ToteCsvResource extends ImporterCsvResource {
             tote.store = store; // Update store in case it changed
             populateTote(parts, tote);
         }
+        supportCatalog.register(tote);
     }
 
     /**

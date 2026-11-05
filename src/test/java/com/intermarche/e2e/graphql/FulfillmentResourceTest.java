@@ -51,9 +51,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * The GraphQL {@link Context} is mocked: the selection set (including nested fields)
  * controls which fetch joins the resource appends to its JPQL queries.
  */
+@io.quarkus.test.junit.TestProfile(FulfillmentResourceTest.Isolated.class)
 @QuarkusTest
 @TestTransaction
 public class FulfillmentResourceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_FulfillmentResourceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     @Inject
     FulfillmentResource fulfillmentResource;
@@ -145,6 +148,33 @@ public class FulfillmentResourceTest {
         return line;
     }
 
+    /**
+     * Persists a shelf location in a building of a store, so that it may be used by the chunks of that store.
+     *
+     * @param store   the store
+     * @param product the product of the location
+     * @param area    the area
+     * @param aisle   the aisle
+     * @return the location
+     */
+    private StoreShelfLocation persistShelfLocation(Store store, Product product, String area, String aisle) {
+        StoreShelfLocation location = persistShelfLocation(product, area, aisle);
+        StoreBuilding building = new StoreBuilding();
+        building.buildingCode = "BLD_" + store.code + "_" + area + aisle;
+        building.locations.add(location);
+        building.persist();
+        store.buildings.add(building);
+        return location;
+    }
+
+    /**
+     * Persists a shelf location outside any building.
+     *
+     * @param product the product of the location
+     * @param area    the area
+     * @param aisle   the aisle
+     * @return the location
+     */
     private StoreShelfLocation persistShelfLocation(Product product, String area, String aisle) {
         StoreShelfLocation location = new StoreShelfLocation();
         location.product = product; // BaseLocation.product is @NotNull
@@ -459,6 +489,7 @@ public class FulfillmentResourceTest {
         StoreBuilding building = new StoreBuilding();
         building.buildingCode = "BLD_F1";
         building.persist();
+        store.buildings.add(building);
 
         FulfillmentResource.FulfillmentChunkRecord input = new FulfillmentResource.FulfillmentChunkRecord();
         input.type = FulfillmentChunk.PENDING;
@@ -502,7 +533,7 @@ public class FulfillmentResourceTest {
         FulfillmentChunk chunk = singleChunk(fulfillment);
         Product productA = DomainUtils.createAndPersistProduct("1234567890143", "Milk", ProductType.UNIT);
         Product productB = DomainUtils.createAndPersistProduct("1234567890144", "Eggs", ProductType.UNIT);
-        StoreShelfLocation location = persistShelfLocation(productA, "A1", "B2");
+        StoreShelfLocation location = persistShelfLocation(store, productA, "A1", "B2");
         FulfillmentLine existingLine = addLineToChunk(chunk, productA, 1, "1.000", location);
 
         FulfillmentResource.FulfillmentChunkRecord input = new FulfillmentResource.FulfillmentChunkRecord();
@@ -535,7 +566,7 @@ public class FulfillmentResourceTest {
         FulfillmentChunk chunk = singleChunk(fulfillment);
         Product productA = DomainUtils.createAndPersistProduct("1234567890146", "Cheese", ProductType.UNIT);
         Product productB = DomainUtils.createAndPersistProduct("1234567890147", "Ham", ProductType.UNIT);
-        StoreShelfLocation location = persistShelfLocation(productA, "A3", "B4");
+        StoreShelfLocation location = persistShelfLocation(store, productA, "A3", "B4");
         addLineToChunk(chunk, productA, 1, "1.000", location);
         FulfillmentLine lineB = addLineToChunk(chunk, productB, 2, "2.000", location);
 
@@ -659,5 +690,33 @@ public class FulfillmentResourceTest {
         assertThrows(GraphQLException.class, () -> fulfillmentResource.allFulfillments(mockContext(Map.of())));
         assertThrows(GraphQLException.class, () -> fulfillmentResource.fulfillment(1L, mockContext(Map.of())));
         assertThrows(GraphQLException.class, () -> fulfillmentResource.fulfillmentByOrderId("ORD", mockContext(Map.of())));
+    }
+
+    /**
+     * A manager cannot update a chunk of another store, which is reported as missing, nor attach a building of
+     * another store to a chunk of its own store.
+     */
+    @Test
+    @TestSecurity(user = "MGR_F30", roles = {"MANAGER"})
+    void testUpdateFulfillmentChunk_CrossStore_IsRefused() {
+        Store own = createStore("STORE_F30");
+        Store other = createStore("STORE_F31");
+        createEmployee("MGR_F30", own);
+        FulfillmentChunk foreignChunk = singleChunk(persistFulfillment(persistOrder("ORD_F31", other), LocalDateTime.now().plusDays(1)));
+        FulfillmentChunk ownChunk = singleChunk(persistFulfillment(persistOrder("ORD_F30", own), LocalDateTime.now().plusDays(1)));
+        StoreBuilding foreignBuilding = new StoreBuilding();
+        foreignBuilding.buildingCode = "BLD_F31";
+        foreignBuilding.persist();
+        other.buildings.add(foreignBuilding);
+
+        FulfillmentResource.FulfillmentChunkRecord relabel = new FulfillmentResource.FulfillmentChunkRecord();
+        relabel.label = "Hijacked";
+        assertThrows(NoSuchElementException.class, () -> fulfillmentResource.updateFulfillmentChunk(foreignChunk.id, relabel));
+        assertNotEquals("Hijacked", foreignChunk.label);
+
+        FulfillmentResource.FulfillmentChunkRecord move = new FulfillmentResource.FulfillmentChunkRecord();
+        move.buildingId = foreignBuilding.id;
+        GraphQLException refused = assertThrows(GraphQLException.class, () -> fulfillmentResource.updateFulfillmentChunk(ownChunk.id, move));
+        assertInstanceOf(SecurityException.class, refused.getCause());
     }
 }

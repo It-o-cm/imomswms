@@ -34,8 +34,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Regression test for the strict EAN constraint: a lot containing ANY product outside the
  * configured EAN list MUST be excluded, even if it also contains products from the list.
  */
+@io.quarkus.test.junit.TestProfile(ProductCollectingOrderManagerFactoryProcessTest.Isolated.class)
 @QuarkusTest
 class ProductCollectingOrderManagerFactoryProcessTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_ProductCollectingOrderManagerFactoryProcessTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     private final ObjectMapper mapper = new ObjectMapper();
 

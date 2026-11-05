@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class PickingPlanService {
 
+    @Inject com.intermarche.backoffice.engine.fieldops.LineDirectiveService lineDirectives;
     @Inject SheetTotePreparation sheetTotes;
     @Inject MixedPreparationService mixedPreparation;
     @Inject PickingResolutionService resolutions;
@@ -43,6 +44,20 @@ public class PickingPlanService {
     // --------------------------------------------------
     // Public API
     // --------------------------------------------------
+
+    /**
+     * Tells whether every given handling order belongs to the store of an employee.
+     *
+     * @param orderIds The IDs of the handling orders.
+     * @param badgeId  The badge of the employee.
+     * @return true when the employee is linked to a store holding all these orders.
+     */
+    @Transactional
+    public boolean allInStoreOf(List<Long> orderIds, String badgeId) {
+        com.intermarche.backoffice.domain.store.Employee employee = com.intermarche.backoffice.domain.store.Employee.findByBadgeId(badgeId);
+        if (employee == null || employee.store == null) return false;
+        return BaseHandlingOrder.count("id in ?1 and store <> ?2", orderIds, employee.store) == 0;
+    }
 
     /**
      * Finds orders eligible for merging with a primary order for batch picking.
@@ -111,7 +126,7 @@ public class PickingPlanService {
                 Map<Long, Building> lineToBuildingCache = buildLineToBuildingCache(pe.handlingOrder);
                 if (pe.itemsToPick != null) {
                     for (PickedItem item : pe.itemsToPick) {
-                        if(item.status!=PickedItem.PickStatus.PENDING || item.quantity.signum()<=0)continue;
+                        if(item.status!=PickedItem.PickStatus.PENDING || (item.quantity!=null&&item.quantity.signum()<=0))continue;
                         Building building = null;
                         if (item.lotLine != null) {
                             building = lineToBuildingCache.get(item.lotLine.id);
@@ -136,7 +151,15 @@ public class PickingPlanService {
 
         BatchPickingPlanResponse response = new BatchPickingPlanResponse();
 
+        var directives=lineDirectives==null?List.<com.intermarche.backoffice.domain.fieldops.LineDirective>of():lineDirectives.forOrders(orderIds);
+        var cancelledLines=lineDirectives==null?Set.<Long>of():lineDirectives.cancelledLines(contextsByBuilding.values().stream().flatMap(c->c.allSteps.stream()).map(s->s.lotLineId).filter(Objects::nonNull).distinct().toList());
+        var byLine=new HashMap<String,com.intermarche.backoffice.domain.fieldops.LineDirective>();
+        for(var directive:directives)byLine.put(com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id(directive.handlingOrder)+":"+directive.lineId,directive);
         for (BuildingPlanContext ctx : contextsByBuilding.values()) {
+            ctx.allSteps.removeIf(step->cancelledLines.contains(step.lotLineId));
+            var deferred=new ArrayList<RouteStepDTO>();
+            for(var step:ctx.allSteps){var directive=byLine.get(step.sourceOrderId+":"+step.lotLineId);if(directive!=null){step.lineState=directive.state;step.priority=directive.priority;step.instruction=directive.instruction;step.instructionVersion=directive.instructionVersion;if("DEFERRED".equals(directive.state))deferred.add(step);}}
+            ctx.allSteps.removeAll(deferred);ctx.uniqueAisleCodes.clear();ctx.allSteps.stream().filter(step->step.aisle!=null&&!"TOTE".equals(step.sourceKind)).forEach(step->ctx.uniqueAisleCodes.add(step.aisle));
             StorePickingRoutePlanner.Result planned = storeRoutePlanner == null ? null
                     : storeRoutePlanner.plan(ctx.building, ctx.allSteps, startNode);
             PickingPlanResponse buildingPlan;
@@ -149,10 +172,14 @@ public class PickingPlanService {
                 List<String> optimizedAisles = getOptimizedAisleSequence(ctx.building, startNode, ctx.uniqueAisleCodes);
                 int distance = calculateRouteDistance(ctx.building, startNode, optimizedAisles);
                 List<RouteGroupDTO> routeGroups = buildOptimizedRouteGroups(ctx.allSteps, optimizedAisles);
+                var prioritySteps=routeGroups.stream().flatMap(g->g.steps.stream()).sorted(Comparator.comparingInt((RouteStepDTO step)->step.priority).reversed()).toList();
+                routeGroups=new ArrayList<>();
+                for(var step:prioritySteps){RouteGroupDTO group=routeGroups.isEmpty()?null:routeGroups.getLast();if(group==null||!Objects.equals(group.aisleCode,step.aisle)){group=new RouteGroupDTO();group.aisleCode=step.aisle;group.area=step.area;group.steps=new ArrayList<>();routeGroups.add(group);}group.steps.add(step);}
                 int number = 1;
                 for (RouteGroupDTO group : routeGroups) for (RouteStepDTO step : group.steps) step.stepNumber = number++;
                 buildingPlan = buildResponse(routeGroups, ctx, distance);
             }
+            buildingPlan.deferred=deferred;
             buildingPlan.buildingId = ctx.building.id;
             buildingPlan.buildingCode = ctx.building.buildingCode;buildingPlan.buildingType=ctx.building.getBuildingType();
 
@@ -223,8 +250,8 @@ public class PickingPlanService {
      */
     private void addStepToContext(Map<Long, BuildingPlanContext> contexts, LotLine line, BaseHandlingOrder order, int stepNumber, Building building) {
         if (building == null) return;
-        BigDecimal remaining=PickingExecution.remainingToCollect(line);
-        if(remaining.signum()==0)return;
+        BigDecimal remaining=line.quantity==null?null:PickingExecution.remainingToCollect(line);
+        if(remaining!=null&&remaining.signum()==0)return;
         BuildingPlanContext ctx = contexts.computeIfAbsent(building.id, k -> new BuildingPlanContext(building));
         RouteStepDTO step = mapToStepDTO(line, order, stepNumber);step.quantity=remaining;
         ctx.allSteps.add(step);
@@ -331,7 +358,7 @@ public class PickingPlanService {
      */
     private RouteStepDTO mapToStepDTO(LotLine line, BaseHandlingOrder order, int stepNumber) {
         RouteStepDTO step = new RouteStepDTO();
-        step.pickedItemId = line.id;
+        step.pickedItemId = line.id;step.lotLineId=line.id;
         step.stepNumber = stepNumber;
         step.productId=line.product==null?null:line.product.id;step.productEan=line.product==null?null:line.product.ean;
         step.productName = (line.product != null) ? line.product.name : "Unknown";
@@ -358,13 +385,13 @@ public class PickingPlanService {
      */
     private RouteStepDTO mapToStepDTO(PickedItem item, BaseHandlingOrder order, int stepNumber) {
         RouteStepDTO step = new RouteStepDTO();
-        step.pickedItemId = item.id;
+        step.pickedItemId = item.id;step.lotLineId=item.lotLine.id;
         step.stepNumber = stepNumber;
         step.productId=item.product==null?null:item.product.id;step.productEan=item.product==null?null:item.product.ean;
         step.productName = (item.product != null) ? item.product.name : "Unknown";
         step.quantity = item.quantity;
         step.productType=item.product==null || item.product.productType==null?null:item.product.productType.name();
-        step.unitLabel=item.product.productType==com.intermarche.backoffice.domain.order.ProductType.WEIGHT?"kg":item.product.productType==com.intermarche.backoffice.domain.order.ProductType.VOLUME?"L":item.product.unitName==null?"pcs":item.product.unitName;
+        step.unitLabel=item.product==null?null:item.product.productType==com.intermarche.backoffice.domain.order.ProductType.WEIGHT?"kg":item.product.productType==com.intermarche.backoffice.domain.order.ProductType.VOLUME?"L":item.product.unitName==null?"pcs":item.product.unitName;
         step.temperatureZone = (item.product != null) ? item.product.temperatureZone : null;
         step.sourceOrderId = order.id;
         step.sourceOrderCode = order.code;
@@ -433,6 +460,7 @@ public class PickingPlanService {
         public String buildingCode,buildingType;
         public PlanSummaryDTO summary;
         public List<RouteGroupDTO> route;
+        public List<RouteStepDTO> deferred=List.of();
         public CapacityDTO capacity;
         public StorePickingRoutePlanner.Geometry mapRoute;
         public List<SheetTotePreparation.Requirement> totePreparation = List.of();
@@ -461,7 +489,10 @@ public class PickingPlanService {
     public static class RouteStepDTO {
         public StorePickingRoutePlanner.Point mapPoint;
         public StorePickingRoutePlanner.Point shelfPoint;
-        public Long pickedItemId,productId;
+        public Long pickedItemId,productId,lotLineId;
+        public String lineState="READY",instruction="";
+        public int priority;
+        public long instructionVersion;
         public String productEan;
         public int stepNumber;
         public String planNodeCode;

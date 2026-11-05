@@ -39,8 +39,11 @@ import com.intermarche.backoffice.domain.store.TemperatureZone;
  * Covers order listing/reservation, tote management, item picking operations,
  * and execution conclusion.
  */
+@io.quarkus.test.junit.TestProfile(HandlingOrderServiceTest.Isolated.class)
 @QuarkusTest
 public class HandlingOrderServiceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_HandlingOrderServiceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     @Inject
     HandlingOrderService handlingOrderService;
@@ -184,8 +187,15 @@ public class HandlingOrderServiceTest {
         Lot lot = createLot(store, customer, fulfillment, chunk);
         Product product = createProduct(prefix, prefix + "-EAN1");
         StoreShelfLocation location = createLocation(product, "AMBIENT", "A01");
+        StoreBuilding building = new StoreBuilding();building.buildingCode=prefix+"-SOURCE";building.persist();store.buildings.add(building);building.locations.add(location);chunk.building=building;
         createLotLine(lot, product, location);
         return createCollectingOrder(store, prefix, lot);
+    }
+
+    private void allowSubstitution(Store store,PickedItem item,Product replacement){
+        var allowed=new com.intermarche.backoffice.domain.executing.ProductSubstitution();allowed.store=store;allowed.requested=item.product;allowed.replacement=replacement;allowed.persist();
+        var source=StoreShelfLocation.<StoreShelfLocation>findById(item.lotLine.location.id);var target=createLocation(replacement,source.area,source.aisle);target.position="2";
+        com.intermarche.backoffice.domain.store.BaseLocation.findBuildingsByLocations(List.of(source)).getFirst().locations.add(target);
     }
 
     private Tote createTote(Store store, String prefix) {
@@ -474,7 +484,7 @@ public class HandlingOrderServiceTest {
         handlingOrderService.addTote(dto.id, tote.code, TemperatureZone.AMBIENT);
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(dto.id);
         PickedItem item = execution.itemsToPick.iterator().next();
-        Product substitute = createProduct("HS15", "HS15-EAN-SUB");
+        Product substitute = createProduct("HS15", "HS15-EAN-SUB");allowSubstitution(store,item,substitute);
 
         handlingOrderService.addItemToTote(dto.id, tote.code, item.id, null, substitute.id);
 
@@ -599,7 +609,7 @@ public class HandlingOrderServiceTest {
         HandlingOrderService.HandlingExecutionDTO dto = handlingOrderService.reserveOrder(order.id, employee.badgeId);
         PickingExecution execution = (PickingExecution) HandlingExecution.findById(dto.id);
         PickedItem item = execution.itemsToPick.iterator().next();
-        Product substitute = createProduct("HS21", "HS21-EAN-SUB");
+        Product substitute = createProduct("HS21", "HS21-EAN-SUB");allowSubstitution(store,item,substitute);
 
         handlingOrderService.substituteProduct(dto.id, item.id, substitute.id);
 

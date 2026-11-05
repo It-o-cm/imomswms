@@ -29,6 +29,8 @@ import java.util.NoSuchElementException;
 @ApplicationScoped
 @RunOnVirtualThread
 public class ToteResource implements GraphQLTrait {
+    @jakarta.inject.Inject com.intermarche.backoffice.engine.fieldops.SupportCatalog supportCatalog;
+
 
     private static final Logger LOGGER = Logger.getLogger(ToteResource.class);
 
@@ -198,7 +200,9 @@ public class ToteResource implements GraphQLTrait {
             }
             tote.store = store;
 
+            if(tote.volume==null||tote.volume.signum()<=0||tote.toteType==null)throw new IllegalArgumentException("Volume positif et type de bac requis");
             tote.persist();
+            supportCatalog.register(tote);
 
             LOGGER.info("Exiting method createTote. Created ID: " + tote.id);
             return tote;
@@ -268,6 +272,7 @@ public class ToteResource implements GraphQLTrait {
                 tote.store = store;
             }
 
+            supportCatalog.register(tote);
             LOGGER.info("Exiting method updateTote");
             return tote;
         }, ToteResource.class, "updateTote");

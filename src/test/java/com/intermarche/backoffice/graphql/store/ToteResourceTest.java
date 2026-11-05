@@ -35,6 +35,7 @@ class ToteResourceTest {
     private ToteResource newResource() {
         ToteResource resource = new ToteResource();
         resource.identity = mock(SecurityIdentity.class);
+        resource.supportCatalog = mock(com.intermarche.backoffice.engine.fieldops.SupportCatalog.class);
         return resource;
     }
 

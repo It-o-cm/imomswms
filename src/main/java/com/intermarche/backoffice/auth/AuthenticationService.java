@@ -198,14 +198,12 @@ public class AuthenticationService {
      * @param token       the reset token.
      * @param newPassword the new plain text password.
      * @return the JWT access token for the authenticated session.
-     * @throws IllegalArgumentException if the new password is null.
+     * @throws IllegalArgumentException if the new password does not meet the password policy.
      * @throws SecurityException if the token is invalid or expired.
      */
     @Transactional
     public String resetPassword(String token, String newPassword) {
-        if (newPassword == null) {
-            throw new IllegalArgumentException("New password cannot be null");
-        }
+        checkPasswordPolicy(newPassword);
         if ("dev".equals(profile)) {
             return resetPasswordDev(token, newPassword);
         } else {
@@ -228,10 +226,10 @@ public class AuthenticationService {
     private String authenticateDev(String username, String password) {
         Account account = findAccountByUsername(username);
         if (account == null || !account.isEnabled()) {
-            throw new SecurityException("Invalid credentials: " + ((account==null) ? null : account.isEnabled()));
+            throw new SecurityException("Invalid credentials");
         }
         if (!org.mindrot.jbcrypt.BCrypt.checkpw(password, account.getPassword())) {
-            throw new SecurityException("Invalid credentials: wrong password");
+            throw new SecurityException("Invalid credentials");
         }
         return tokenService.generateToken(account);
     }
@@ -249,7 +247,8 @@ public class AuthenticationService {
         }
         String token = UUID.randomUUID().toString();
         LocalDateTime expiry = LocalDateTime.now().plusMinutes(TOKEN_VALIDITY_MINUTES);
-        account.setPasswordResetToken(token);
+        // Only the digest is stored: a leaked database row cannot be used to reset the password
+        account.setPasswordResetToken(digest(token));
         account.setPasswordResetTokenExpiry(expiry);
         persistAccount(account);
         sendResetEmail(account, token);
@@ -265,12 +264,14 @@ public class AuthenticationService {
      */
     private String resetPasswordDev(String token, String newPassword) {
         Account account = findAccountByToken(token);
-        if (account == null || account.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
+        if (account == null || account.getPasswordResetTokenExpiry() == null || account.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
             throw new SecurityException("Invalid or expired token");
         }
         account.setPassword(org.mindrot.jbcrypt.BCrypt.hashpw(newPassword, org.mindrot.jbcrypt.BCrypt.gensalt()));
         account.setPasswordResetToken(null);
         account.setPasswordResetTokenExpiry(null);
+        // Sessions opened with the former password end now
+        account.setCredentialsChangedAt(java.time.Instant.now().getEpochSecond());
         persistAccount(account);
         // Automatically authenticate the user
         return tokenService.generateToken(account);
@@ -348,7 +349,9 @@ public class AuthenticationService {
      */
     private String resetPasswordProd(String token, String newPassword) {
         Account account = findAccountByToken(token);
-        if (account == null) throw new SecurityException("Invalid token");
+        if (account == null || account.getPasswordResetTokenExpiry() == null || account.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new SecurityException("Invalid or expired token");
+        }
         try {
             String adminToken = getAdminToken();
             String userId = findUserIdByKeycloak(adminToken, account.getUsername());
@@ -480,7 +483,7 @@ public class AuthenticationService {
      */
     private void sendResetEmail(Account account, String token) {
         String link = String.format("%s/reset-password/%s", frontendUrl, token);
-        String htmlContent = "<p>Hello " + account.getFullName() + ",</p>"
+        String htmlContent = "<p>Hello " + escapeHtml(account.getFullName()) + ",</p>"
                 + "<p>Click the link below to reset your password:</p>"
                 + "<p><a href=\"" + link + "\">Reset Password</a></p>";
         mailer.send(Mail.withHtml(account.getEmail(), "Password Reset Request", htmlContent));
@@ -494,9 +497,70 @@ public class AuthenticationService {
      * @return the Account or null.
      */
     private Account findAccountByToken(String token) {
-        Administrative admin = Administrative.find("passwordResetToken", token).firstResult();
+        if (token == null || token.isBlank()) return null;
+        String stored = digest(token);
+        Administrative admin = Administrative.find("passwordResetToken", stored).firstResult();
         if (admin != null) return admin;
-        return Employee.find("passwordResetToken", token).firstResult();
+        return Employee.find("passwordResetToken", stored).firstResult();
+    }
+
+    /**
+     * Minimum length of a password or PIN code.
+     */
+    static final int PASSWORD_MIN_LENGTH = 4;
+
+    /**
+     * Maximum length of a password.
+     */
+    static final int PASSWORD_MAX_LENGTH = 100;
+
+    /**
+     * Checks a new password: not blank, between {@link #PASSWORD_MIN_LENGTH} and {@link #PASSWORD_MAX_LENGTH}
+     * characters (employees use PIN codes of four digits).
+     *
+     * @param password the new password
+     * @throws IllegalArgumentException if the password does not meet the policy
+     */
+    public static void checkPasswordPolicy(String password) {
+        if (password == null || password.isBlank() || password.length() < PASSWORD_MIN_LENGTH || password.length() > PASSWORD_MAX_LENGTH) {
+            throw new IllegalArgumentException("Le mot de passe doit compter de " + PASSWORD_MIN_LENGTH + " à " + PASSWORD_MAX_LENGTH + " caractères.");
+        }
+    }
+
+    /**
+     * Computes the stored form of a reset token.
+     *
+     * @param token the token sent by mail
+     * @return its SHA-256 digest, in hexadecimal
+     */
+    public static String digest(String token) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * Escapes a text inserted in an HTML mail.
+     *
+     * @param text the text, possibly null
+     * @return the escaped text
+     */
+    static String escapeHtml(String text) {
+        if (text == null) return "";
+        StringBuilder out = new StringBuilder(text.length());
+        for (char c : text.toCharArray()) {
+            switch (c) {
+                case '<' -> out.append("&lt;");
+                case '>' -> out.append("&gt;");
+                case '&' -> out.append("&amp;");
+                case '"' -> out.append("&quot;");
+                case '\'' -> out.append("&#39;");
+                default -> out.append(c);
+            }
+        }
+        return out.toString();
     }
 
     /**

@@ -26,10 +26,33 @@ public class AuthenticationServiceTest {
     @Inject
     AuthenticationService authenticationService;
 
+    @Inject
+    io.quarkus.mailer.MockMailbox mailbox;
+
+    /**
+     * Reads the reset token sent by mail to an address: the database only holds its digest.
+     *
+     * @param address the recipient
+     * @return the token of the last mail
+     */
+    private String mailedToken(String address) {
+        var mails = mailbox.getMailsSentTo(address);
+        assertFalse(mails.isEmpty(), "A reset mail must be sent");
+        java.util.regex.Matcher link = java.util.regex.Pattern.compile("/reset-password/([0-9a-f-]{36})").matcher(mails.get(mails.size() - 1).getHtml());
+        assertTrue(link.find());
+        return link.group(1);
+    }
+
     // --------------------------------------------------
     // Fixture Helpers
     // --------------------------------------------------
 
+    /**
+     * Builds store.
+     *
+     * @param prefix the prefix
+     * @return the built value
+     */
     private Store createStore(String prefix) {
         Store store = new Store();
         store.code = prefix + "-S";
@@ -43,6 +66,14 @@ public class AuthenticationServiceTest {
         return store;
     }
 
+    /**
+     * Builds employee.
+     *
+     * @param store the store
+     * @param prefix the prefix
+     * @param rawPassword the raw password
+     * @return the built value
+     */
     private Employee createEmployee(Store store, String prefix, String rawPassword) {
         Employee emp = new Employee();
         emp.firstName = "John";
@@ -56,6 +87,13 @@ public class AuthenticationServiceTest {
         return emp;
     }
 
+    /**
+     * Builds admin.
+     *
+     * @param prefix the prefix
+     * @param rawPassword the raw password
+     * @return the built value
+     */
     private Administrative createAdmin(String prefix, String rawPassword) {
         Administrative admin = new Administrative();
         admin.username = prefix + "-admin";
@@ -71,6 +109,9 @@ public class AuthenticationServiceTest {
     // findAccountByUsername Tests
     // --------------------------------------------------
 
+    /**
+     * Checks find account by username: should return administrative.
+     */
     @Test
     @TestTransaction
     void findAccountByUsername_shouldReturnAdministrative() {
@@ -83,6 +124,9 @@ public class AuthenticationServiceTest {
         assertEquals("AS01-admin", account.getUsername());
     }
 
+    /**
+     * Checks find account by username: should return employee by badge id.
+     */
     @Test
     @TestTransaction
     void findAccountByUsername_shouldReturnEmployeeByBadgeId() {
@@ -96,12 +140,18 @@ public class AuthenticationServiceTest {
         assertEquals("AS02-BADGE", account.getUsername());
     }
 
+    /**
+     * Checks find account by username: should return null, when unknown.
+     */
     @Test
     @TestTransaction
     void findAccountByUsername_shouldReturnNull_whenUnknown() {
         assertNull(authenticationService.findAccountByUsername("NO-SUCH-USER"));
     }
 
+    /**
+     * Checks find account by username: should prefer administrative over employee.
+     */
     @Test
     @TestTransaction
     void findAccountByUsername_shouldPreferAdministrativeOverEmployee() {
@@ -128,6 +178,9 @@ public class AuthenticationServiceTest {
     // authenticate Tests (database path)
     // --------------------------------------------------
 
+    /**
+     * Checks authenticate: should return jwt, for valid employee credentials.
+     */
     @Test
     @TestTransaction
     void authenticate_shouldReturnJwt_forValidEmployeeCredentials() {
@@ -142,6 +195,9 @@ public class AuthenticationServiceTest {
         assertEquals(3, token.split("\\.").length);
     }
 
+    /**
+     * Checks authenticate: should return jwt, for valid admin credentials.
+     */
     @Test
     @TestTransaction
     void authenticate_shouldReturnJwt_forValidAdminCredentials() {
@@ -153,6 +209,9 @@ public class AuthenticationServiceTest {
         assertFalse(token.isBlank());
     }
 
+    /**
+     * Checks authenticate: should throw, for wrong password.
+     */
     @Test
     @TestTransaction
     void authenticate_shouldThrow_forWrongPassword() {
@@ -163,6 +222,9 @@ public class AuthenticationServiceTest {
                 () -> authenticationService.authenticate("AS07-BADGE", "wrong"));
     }
 
+    /**
+     * Checks authenticate: should throw, for unknown user.
+     */
     @Test
     @TestTransaction
     void authenticate_shouldThrow_forUnknownUser() {
@@ -170,6 +232,9 @@ public class AuthenticationServiceTest {
                 () -> authenticationService.authenticate("NO-SUCH-USER", "1234"));
     }
 
+    /**
+     * Checks authenticate: should throw, for disabled account.
+     */
     @Test
     @TestTransaction
     void authenticate_shouldThrow_forDisabledAccount() {
@@ -185,20 +250,31 @@ public class AuthenticationServiceTest {
     // initiatePasswordReset Tests
     // --------------------------------------------------
 
+    /**
+     * Checks initiate password reset: should set token and expiry.
+     */
     @Test
     @TestTransaction
     void initiatePasswordReset_shouldSetTokenAndExpiry() {
         Store store = createStore("AS10");
         Employee emp = createEmployee(store, "AS10", "1234");
 
+        mailbox.clear();
         authenticationService.initiatePasswordReset("AS10-BADGE");
 
         assertNotNull(emp.getPasswordResetToken());
         assertFalse(emp.getPasswordResetToken().isBlank());
+        // Only the digest of the mailed token is stored
+        String mailed = mailedToken("AS10@test.com");
+        assertNotEquals(mailed, emp.getPasswordResetToken());
+        assertEquals(AuthenticationService.digest(mailed), emp.getPasswordResetToken());
         assertNotNull(emp.getPasswordResetTokenExpiry());
         assertTrue(emp.getPasswordResetTokenExpiry().isAfter(LocalDateTime.now()));
     }
 
+    /**
+     * Checks initiate password reset: should do nothing, for unknown user.
+     */
     @Test
     @TestTransaction
     void initiatePasswordReset_shouldDoNothing_forUnknownUser() {
@@ -209,14 +285,19 @@ public class AuthenticationServiceTest {
     // resetPassword Tests
     // --------------------------------------------------
 
+    /**
+     * Checks reset password: should update password clear token and return jwt.
+     */
     @Test
     @TestTransaction
     void resetPassword_shouldUpdatePasswordClearTokenAndReturnJwt() {
         Store store = createStore("AS11");
         Employee emp = createEmployee(store, "AS11", "old-pin");
+        mailbox.clear();
         authenticationService.initiatePasswordReset("AS11-BADGE");
-        String token = emp.getPasswordResetToken();
-        assertNotNull(token);
+        String token = mailedToken("AS11@test.com");
+        assertThrows(SecurityException.class, () -> authenticationService.resetPassword(emp.getPasswordResetToken(), "new-pin"),
+                "The stored digest must not work as a token");
 
         String jwt = authenticationService.resetPassword(token, "new-pin");
 
@@ -229,8 +310,13 @@ public class AuthenticationServiceTest {
         assertDoesNotThrow(() -> authenticationService.authenticate("AS11-BADGE", "new-pin"));
         assertThrows(SecurityException.class,
                 () -> authenticationService.authenticate("AS11-BADGE", "old-pin"));
+        // Sessions opened before the change are revoked
+        assertNotNull(emp.getCredentialsChangedAt());
     }
 
+    /**
+     * Checks reset password: should throw, for invalid token.
+     */
     @Test
     @TestTransaction
     void resetPassword_shouldThrow_forInvalidToken() {
@@ -238,30 +324,55 @@ public class AuthenticationServiceTest {
                 () -> authenticationService.resetPassword("not-a-real-token", "new-pin"));
     }
 
+    /**
+     * Checks reset password: should throw, for expired token.
+     */
     @Test
     @TestTransaction
     void resetPassword_shouldThrow_forExpiredToken() {
         Store store = createStore("AS13");
         Employee emp = createEmployee(store, "AS13", "1234");
-        emp.setPasswordResetToken("expired-token");
+        emp.setPasswordResetToken(AuthenticationService.digest("expired-token"));
         emp.setPasswordResetTokenExpiry(LocalDateTime.now().minusMinutes(1));
 
         assertThrows(SecurityException.class,
                 () -> authenticationService.resetPassword("expired-token", "new-pin"));
     }
 
+    /**
+     * Checks reset password: should work for administrative account.
+     */
     @Test
     @TestTransaction
     void resetPassword_shouldWorkForAdministrativeAccount() {
         Administrative admin = createAdmin("AS14", "old-secret");
+        mailbox.clear();
         authenticationService.initiatePasswordReset("AS14-admin");
-        String token = admin.getPasswordResetToken();
-        assertNotNull(token);
+        String token = mailedToken("AS14-admin@test.com");
 
         String jwt = authenticationService.resetPassword(token, "new-secret");
 
         assertNotNull(jwt);
         assertTrue(BCrypt.checkpw("new-secret", admin.getPassword()));
         assertDoesNotThrow(() -> authenticationService.authenticate("AS14-admin", "new-secret"));
+    }
+
+    /**
+     * Checks reset password: should refuse apassword outside the policy, and keep the token.
+     */
+    @Test
+    @TestTransaction
+    void resetPassword_shouldRefuseAPasswordOutsideThePolicy_andKeepTheToken() {
+        Store store = createStore("AS15");
+        Employee emp = createEmployee(store, "AS15", "1234");
+        mailbox.clear();
+        authenticationService.initiatePasswordReset("AS15-BADGE");
+        String token = mailedToken("AS15@test.com");
+
+        assertThrows(IllegalArgumentException.class, () -> authenticationService.resetPassword(token, ""));
+        assertThrows(IllegalArgumentException.class, () -> authenticationService.resetPassword(token, "12"));
+
+        assertNotNull(emp.getPasswordResetToken());
+        assertDoesNotThrow(() -> authenticationService.authenticate("AS15-BADGE", "1234"));
     }
 }

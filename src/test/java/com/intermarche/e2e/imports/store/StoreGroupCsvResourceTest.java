@@ -32,8 +32,11 @@ import java.util.Set;
  * Tests the CSV import endpoint for StoreGroups, covering creation, updates, hierarchical linking,
  * and error handling under the simplified logic (assumes sorted CSV).
  */
+@io.quarkus.test.junit.TestProfile(StoreGroupCsvResourceTest.Isolated.class)
 @QuarkusTest
 public class StoreGroupCsvResourceTest {
+ public static class Isolated implements io.quarkus.test.junit.QuarkusTestProfile {public java.util.Map<String,String> getConfigOverrides(){return java.util.Map.of("quarkus.datasource.jdbc.url","jdbc:h2:mem:isolated_StoreGroupCsvResourceTest;DB_CLOSE_DELAY=-1","quarkus.scheduler.enabled","false","imomswms.demo-data.enabled","false","imomswms.embeddings.enabled","false");}}
+
 
     /**
      * The StoreGroup CSV resource under test.

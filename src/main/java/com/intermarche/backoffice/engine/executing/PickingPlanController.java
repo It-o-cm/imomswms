@@ -16,10 +16,27 @@ import java.util.List;
  */
 @Path("/handling-orders/planning")
 @Produces(MediaType.APPLICATION_JSON)
+@jakarta.annotation.security.RolesAllowed({"ADMIN", "MANAGER", "PICKER"})
 public class PickingPlanController {
 
     @Inject
     PickingPlanService planService;
+
+    /**
+     * Security identity of the caller, whose store bounds the orders it may plan.
+     */
+    @Inject
+    io.quarkus.security.identity.SecurityIdentity identity;
+
+    /**
+     * Tells whether the caller may read the given orders: administrators for any store, others for their store.
+     *
+     * @param orderIds the orders
+     * @return true when every order belongs to the store of the caller
+     */
+    boolean mayRead(List<Long> orderIds) {
+        return identity.hasRole("ADMIN") || planService.allInStoreOf(orderIds, identity.getPrincipal().getName());
+    }
 
     /**
      * GET /handling-orders/planning/mergeable/{primaryOrderId}
@@ -37,6 +54,9 @@ public class PickingPlanController {
             @PathParam("primaryOrderId") Long primaryOrderId,
             @QueryParam("search") String search) {
 
+        if (!mayRead(List.of(primaryOrderId))) {
+            return Response.status(Response.Status.FORBIDDEN).build();
+        }
         try {
             List<PickingPlanService.MergedOrderDTO> mergeableOrders = planService.findMergeableOrders(primaryOrderId, search);
             return Response.ok(mergeableOrders).build();
@@ -65,6 +85,9 @@ public class PickingPlanController {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("At least one order ID is required.")
                     .build();
+        }
+        if (!mayRead(orderIds)) {
+            return Response.status(Response.Status.FORBIDDEN).build();
         }
 
         try {
