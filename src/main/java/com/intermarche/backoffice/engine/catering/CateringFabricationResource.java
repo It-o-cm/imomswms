@@ -39,6 +39,8 @@ public class CateringFabricationResource implements GraphQLTrait {
     CateringValidationService validation;
     @Inject
     com.intermarche.backoffice.engine.stock.TemporalStockService stocks;
+    @Inject
+    com.fasterxml.jackson.databind.ObjectMapper mapper;
 
     /**
      * Returns the security identity.
@@ -227,6 +229,130 @@ public class CateringFabricationResource implements GraphQLTrait {
             result.add(row);
         }
         return result;
+    }
+
+    /**
+     * Serves the printable fabrication sheet of a day (§ 8.2, T2.059): the validated orders of the
+     * day (optionally of one station), their lines grouped by article, variant and configuration,
+     * with the planned quantity, the compositions, the allergens and the per-order comments.
+     *
+     * @param storeId   the store id.
+     * @param date      the production day (ISO local date).
+     * @param stationId an optional station filter.
+     * @return the sheet rows, one per fabrication line, ordered by station then article.
+     */
+    @GET
+    @Path("/fabrication/sheet")
+    public List<Map<String, Object>> sheet(@QueryParam("storeId") Long storeId,
+                                            @QueryParam("date") String date, @QueryParam("stationId") Long stationId) {
+        Store store = scope(storeId);
+        if (date == null || date.isBlank()) {
+            throw new BadRequestException("Date requise");
+        }
+        java.time.LocalDate day = java.time.LocalDate.parse(date);
+        StringBuilder query = new StringBuilder("store = ?1 and productionDate = ?2 and proposalState = ?3");
+        var params = new java.util.ArrayList<Object>();
+        params.add(store);
+        params.add(day);
+        params.add(com.intermarche.backoffice.domain.wms.handling.FabricationOrder.FabricationProposalState.VALIDATED);
+        if (stationId != null) {
+            query.append(" and station.id = ?").append(params.size() + 1);
+            params.add(stationId);
+        }
+        query.append(" order by station.id, id");
+        List<Map<String, Object>> rows = new java.util.ArrayList<>();
+        for (var order : com.intermarche.backoffice.domain.wms.handling.FabricationOrder.<com.intermarche.backoffice.domain.wms.handling.FabricationOrder>list(
+                query.toString(), params.toArray())) {
+            for (var line : com.intermarche.backoffice.domain.catering.FabricationLine.<com.intermarche.backoffice.domain.catering.FabricationLine>list("order", order)) {
+                rows.add(sheetRow(order, line));
+            }
+        }
+        return rows;
+    }
+
+    /**
+     * Builds one fabrication-sheet row from a line and its units.
+     *
+     * @param order the fabrication order.
+     * @param line  the fabrication line.
+     * @return the row.
+     */
+    private Map<String, Object> sheetRow(com.intermarche.backoffice.domain.wms.handling.FabricationOrder order,
+                                         com.intermarche.backoffice.domain.catering.FabricationLine line) {
+        Product product = Hibernate.unproxy(
+                Hibernate.unproxy(line.item, com.intermarche.backoffice.domain.catering.CateringItem.class).product, Product.class);
+        var allergens = new java.util.LinkedHashSet<String>();
+        var compositions = new java.util.LinkedHashSet<String>();
+        var units = new java.util.ArrayList<Map<String, Object>>();
+        for (FabricationLineUnit lineUnit : FabricationLineUnit.<FabricationLineUnit>list("line", line)) {
+            CateringUnit unit = Hibernate.unproxy(lineUnit.unit, CateringUnit.class);
+            if (unit.allergens != null && !unit.allergens.isBlank()) {
+                allergens.add(unit.allergens);
+            }
+            if (unit.ingredients != null && !unit.ingredients.isBlank()) {
+                compositions.add(unit.ingredients);
+            }
+            Order unitOrder = Hibernate.unproxy(unit.order, Order.class);
+            var unitView = new LinkedHashMap<String, Object>();
+            unitView.put("orderRef", unitOrder.orderId);
+            unitView.put("slot", unit.availableAt); // the order slot start (reception "créneau")
+            unitView.put("quantity", lineUnit.quantity);
+            unitView.put("choiceLabels", unit.choiceLabels);
+            unitView.put("comment", unit.servingAdvice);
+            unitView.put("receptionDate", receptionDate(unitOrder));
+            unitView.put("guests", guests(unitOrder));
+            units.add(unitView);
+        }
+        var row = new LinkedHashMap<String, Object>();
+        row.put("orderCode", order.code);
+        row.put("stationId", order.station == null ? null : order.station.id);
+        row.put("itemId", Hibernate.unproxy(line.item, com.intermarche.backoffice.domain.catering.CateringItem.class).id);
+        row.put("productName", product.name);
+        row.put("variantId", line.variantId);
+        row.put("configurationKey", line.configurationKey);
+        row.put("plannedQuantity", line.plannedQuantity);
+        row.put("allergens", new java.util.ArrayList<>(allergens));
+        row.put("compositions", new java.util.ArrayList<>(compositions));
+        row.put("units", units);
+        return row;
+    }
+
+    /**
+     * Extracts the reception date (`catering.reception.date`) from an order payload (T2.059).
+     *
+     * @param order the order.
+     * @return the reception date, or null when none was transmitted.
+     */
+    private String receptionDate(Order order) {
+        if (order.specification == null) {
+            return null;
+        }
+        try {
+            com.fasterxml.jackson.databind.JsonNode date = mapper.readTree(order.specification)
+                    .path("catering").path("reception").path("date");
+            return date.isTextual() && !date.asText().isBlank() ? date.asText() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Extracts the guest count (`catering.reception.guests`) from an order payload (T2.059).
+     *
+     * @param order the order.
+     * @return the guest count, or null when none was transmitted.
+     */
+    private Integer guests(Order order) {
+        if (order.specification == null) {
+            return null;
+        }
+        try {
+            com.fasterxml.jackson.databind.JsonNode guests = mapper.readTree(order.specification)
+                    .path("catering").path("reception").path("guests");
+            return guests.isInt() ? guests.asInt() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

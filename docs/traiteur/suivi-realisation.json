@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 200,
-  "remaining": 253,
+  "done": 212,
+  "remaining": 241,
   "currentBatch": {
-    "packet": 8,
+    "packet": 9,
     "lot": "T2",
     "status": "TERMINE",
-    "scope": "Validation F8 + engagements F9 (T2.015,052-069,072)"
+    "scope": "F3 états (T2.001-006,008), feuille T2.059, capacité présence T2.038, engagements F9 T2.070-071-073"
   },
   "perLot": {
     "T0": 81,
@@ -1163,48 +1163,48 @@
       "description": "Transitions des neuf états de l'unité, chacune à son événement d'entrée.",
       "nature": "Règle",
       "ref": "F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "everyStateChangeBumpsBothRevisions : chaque état atteint par son événement."
     },
     {
       "id": "T2.002",
       "description": "Chaque changement d'état augmente `revision` de l'unité et `CommercePickupState.revision` de la commande.",
       "nature": "Règle",
       "ref": "F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "everyStateChangeBumpsBothRevisions : chaque transition incrémente unit.revision et CommercePickupState.revision."
     },
     {
       "id": "T2.003",
       "description": "Une unité `BLOCKED` n'arrête pas les autres unités de la commande.",
       "nature": "Règle",
       "ref": "F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "blockedUnitDoesNotStopOthers : une unité BLOCKED n’arrête pas les autres unités de la commande."
     },
     {
       "id": "T2.004",
       "description": "Retour de `BLOCKED` à `RECEIVED` au premier calcul qui suit la disparition de la cause.",
       "nature": "Règle",
       "ref": "F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "blockedRecoversWhenArticleReferenced/Reactivated/ReEnabled : retour BLOCKED→RECEIVED au recompute pour les trois causes ; recompute câblé dans StoreActivityEngine."
     },
     {
       "id": "T2.005",
       "description": "Unité `STOCKED` débloquée : ses produits à prélever rejoignent un chunk `PENDING` de la commande.",
       "nature": "Règle",
       "ref": "F3 ; I7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "stockedUnitUnblockedRejoinsPendingChunk (+ReusesExistingPendingChunk, +WithoutRoutedLineIsNoOp) : unité STOCKED débloquée, sa ligne rejoint un chunk PENDING, fulfillmentLine remise à null."
     },
     {
       "id": "T2.006",
       "description": "Unité servie en partie : elle garde son état et porte `shortQuantity` ; `SHORT` seulement si toute la quantité est non servie.",
       "nature": "Règle",
       "ref": "F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "partialServiceKeepsStateWholeUnservedIsShort : service partiel garde l’état et porte shortQuantity ; SHORT seulement si tout non servi."
     },
     {
       "id": "T2.007",
@@ -1219,8 +1219,8 @@
       "description": "`CateringUnitLifecycleTest` : chaque état atteint par son événement ; révisions incrémentées ; retour depuis `BLOCKED` pour chacune des trois causes.",
       "nature": "Test",
       "ref": "§ 11.1 ; F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringUnitLifecycleTest : 12 tests verts couvrant chaque état, incréments de révision, retour BLOCKED pour chaque cause, STOCKED re-injecté."
     },
     {
       "id": "T2.009",
@@ -1459,8 +1459,8 @@
       "description": "Capacité plafonnée par le temps de présence planifié des employés habilités, quand le planning existe.",
       "nature": "Règle",
       "ref": "F7",
-      "status": "EN_COURS",
-      "evidence": "Capacite = dailyMinutes ; le plafonnement par le temps de presence planifie des employes habilites sera ajoute avec l'affectation (F8/planning, paquet 8)."
+      "status": "TERMINE",
+      "evidence": "capacityCappedByPlannedPresence : capacité plafonnée par la présence planifiée des employés habilités quand le planning existe ; CateringProposalEngine.pickDay utilise CateringCapacity."
     },
     {
       "id": "T2.039",
@@ -1627,8 +1627,8 @@
       "description": "`GET /catering/fabrication/sheet?storeId=&date=&stationId=` : feuille imprimable du jour, lignes regroupées, compositions, allergènes, commandes et créneaux, date de réception et convives.",
       "nature": "API",
       "ref": "§ 8.2",
-      "status": "EN_COURS",
-      "evidence": "Partiel : feuille de fabrication (T2.059), reduction/annulation d'engagements (T2.070/071 = F18/F19), reaction reappro (T2.073) realises avec T5/T7."
+      "status": "TERMINE",
+      "evidence": "fabricationSheetListsValidatedLines : GET /catering/fabrication/sheet — lignes regroupées, compositions, allergènes, commandes, créneau, date de réception, convives."
     },
     {
       "id": "T2.060",
@@ -1715,16 +1715,16 @@
       "description": "Annulation ou baisse d'une unité : engagements annulés ou réduits dans la même transaction.",
       "nature": "Règle",
       "ref": "F9",
-      "status": "EN_COURS",
-      "evidence": "Partiel : feuille de fabrication (T2.059), reduction/annulation d'engagements (T2.070/071 = F18/F19), reaction reappro (T2.073) realises avec T5/T7."
+      "status": "TERMINE",
+      "evidence": "commitmentsReducedThenCancelled : baisse réduit l’engagement, annulation libère les engagements, même transaction."
     },
     {
       "id": "T2.071",
       "description": "`CateringRequirementsTest` : engagements créés à la validation, réduits, annulés.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "EN_COURS",
-      "evidence": "Partiel : feuille de fabrication (T2.059), reduction/annulation d'engagements (T2.070/071 = F18/F19), reaction reappro (T2.073) realises avec T5/T7."
+      "status": "TERMINE",
+      "evidence": "CateringRequirementsTest.commitmentsReducedThenCancelled : engagements créés à la validation, réduits, annulés."
     },
     {
       "id": "T2.072",
@@ -1739,8 +1739,8 @@
       "description": "`CateringRequirementsTest` : le réapprovisionnement existant réagit à un engagement de fabrication.",
       "nature": "Test",
       "ref": "F9",
-      "status": "EN_COURS",
-      "evidence": "Partiel : feuille de fabrication (T2.059), reduction/annulation d'engagements (T2.070/071 = F18/F19), reaction reappro (T2.073) realises avec T5/T7."
+      "status": "TERMINE",
+      "evidence": "existingReplenishmentDemandReactsToCommitment : la projection de stock existante réagit à un engagement de fabrication (balance baisse de la demande)."
     },
     {
       "id": "T3.001",

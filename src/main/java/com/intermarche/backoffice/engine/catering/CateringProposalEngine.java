@@ -39,6 +39,8 @@ public class CateringProposalEngine {
     @Inject
     FabricationWindow windows;
     @Inject
+    CateringCapacity capacity;
+    @Inject
     ObjectMapper mapper;
     @Inject
     CateringValidationService validation;
@@ -242,7 +244,9 @@ public class CateringProposalEngine {
     }
 
     /**
-     * Picks the latest admissible day whose remaining capacity suffices (F6.2, F7).
+     * Picks the latest admissible day whose remaining capacity suffices (F6.2, F7). The per-day
+     * capacity is presence-aware (T2.038): capped by the planned presence of qualified employees when
+     * a planning exists.
      *
      * @param days        the admissible days, earliest first.
      * @param station     the station.
@@ -251,11 +255,11 @@ public class CateringProposalEngine {
      * @return the chosen day, or null when no day has capacity.
      */
     private LocalDate pickDay(List<LocalDate> days, FabricationStation station, Map<String, Integer> dayLoad, int unitMinutes) {
-        int capacity = station.dailyMinutes != null ? station.dailyMinutes : 0;
         for (int i = days.size() - 1; i >= 0; i--) {
             LocalDate day = days.get(i);
+            int dayCapacity = capacity.dayCapacityMinutes(station, day);
             int load = dayLoad.getOrDefault(station.id + "|" + day, 0);
-            if (capacity == 0 || load + unitMinutes <= capacity) {
+            if (dayCapacity == 0 || load + unitMinutes <= dayCapacity) {
                 return day;
             }
         }

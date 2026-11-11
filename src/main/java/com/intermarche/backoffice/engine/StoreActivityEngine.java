@@ -73,6 +73,12 @@ public class StoreActivityEngine {
     com.intermarche.backoffice.engine.catering.CateringProposalEngine cateringProposals;
 
     /**
+     * Catering unit state machine, recomputed each cycle to recover blocked units (F3).
+     */
+    @Inject
+    com.intermarche.backoffice.engine.catering.CateringUnitStateService cateringUnitStates;
+
+    /**
      * Jackson ObjectMapper for parsing and processing JSON payloads from the database configuration.
      */
     @Inject
@@ -246,6 +252,9 @@ public class StoreActivityEngine {
                     LOGGER.infof("Applying order handler builder %s to store ID %s", builder.getClass().getSimpleName(), store.id);
                     builder.process(store);
                 }
+            }
+            if (cateringUnitStates != null) {
+                cateringUnitStates.recompute(store);
             }
             if (cateringProposals != null) {
                 cateringProposals.recompute(store);

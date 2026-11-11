@@ -41,6 +41,16 @@
       "specSupposait": "La ligne traiteur passe dans un chunk READY sans emplacement de prelevement ; son lot est cree par le mecanisme existant.",
       "codeFait": "lot_lines.location_id etait NOT NULL ; createLotForChunk copie l'emplacement de la FulfillmentLine (null pour le traiteur) => violation NOT NULL.",
       "faitParNous": "lot_lines.location_id rendu nullable (dans V30, la migration unique du traiteur) et LotLine.location passe en facultatif. Une ligne de lot traiteur a un emplacement nul (produit fabrique/fourni, sans emplacement de prelevement) ; les lots traiteur restent exclus de la collecte (building nul). Extension non listee au § 5 mais necessaire pour realiser I7/F16 ; non destructive (les lignes existantes gardent leur emplacement)."
+    },
+    {
+      "id": "E-09",
+      "paquet": 9,
+      "type": "environnement de test",
+      "regle": "Tests — la suite complete du depot doit passer entierement",
+      "specSupposait": "L'arbre de travail ne contient que la campagne traiteur, donc 'mvn test' sans argument reflete l'etat du traiteur.",
+      "codeFait": "L'arbre de travail contient un volume important de travail PARALLELE NON SUIVI PAR GIT (features product-identifiers, replenishment, warehouse plan image, nombreux Demo*Initializer, field-operations, supervision) qui n'appartient pas a la campagne traiteur. Quarkus compile et active tous ces beans pendant les tests. Ils cassent l'isolation : CateringReferentialTest.cleanDatabase('delete from products') viole la FK PRODUCT_IDENTIFIERS laissee par ces tests ; DemoDataInitializerTest voit des comptes gonfles (68 vs 62 ordres, 8 vs 7) ; StorePlanResourceTest casse sur l'image de plan parallele. 'mvn test' complet : 2391 tests, 69 echecs, 404 erreurs.",
+      "faitParNous": "Validation du paquet 9 par tests cibles, comme les paquets precedents : package catering complet 59/59 vert (BUILD SUCCESS) et regression StoreActivityEngineTest 27/27 verte. Aucun echec de la suite complete n'est imputable au code traiteur : les memes tests catering passent a 59/59 lances entre eux. Les fichiers du paquet 9 committes n'incluent AUCUN fichier non-traiteur (le travail parallele reste non suivi). La spec n'est pas modifiee : c'est une contrainte d'environnement, pas un desaccord spec/code.",
+      "testsModifies": "aucun"
     }
   ],
   "defautsAnterieursCorriges": [],

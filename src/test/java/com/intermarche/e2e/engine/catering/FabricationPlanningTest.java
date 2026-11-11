@@ -13,6 +13,9 @@ import com.intermarche.backoffice.domain.util.DateTimeProvider;
 import com.intermarche.backoffice.domain.wms.BaseHandlingOrder;
 import com.intermarche.backoffice.domain.wms.handling.FabricationOrder;
 import com.intermarche.backoffice.domain.store.Employee;
+import com.intermarche.backoffice.domain.workforce.PlanningEntry;
+import com.intermarche.backoffice.engine.catering.CateringCapacity;
+import com.intermarche.backoffice.engine.catering.CateringFabricationResource;
 import com.intermarche.backoffice.engine.catering.CateringProposalEngine;
 import com.intermarche.backoffice.engine.catering.CateringValidationService;
 import com.intermarche.backoffice.engine.operator.OperatorFailure;
@@ -20,11 +23,14 @@ import com.intermarche.backoffice.engine.policy.OperationalPolicySchemas;
 import com.intermarche.e2e.domain.util.DomainUtils;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +49,10 @@ public class FabricationPlanningTest {
     CateringProposalEngine engine;
     @Inject
     CateringValidationService validation;
+    @Inject
+    CateringCapacity capacity;
+    @Inject
+    CateringFabricationResource resource;
     @Inject
     ObjectMapper mapper;
 
@@ -407,5 +417,92 @@ public class FabricationPlanningTest {
         long visible = BaseHandlingOrder.count(
                 "store = ?1 and id not in (select fo.id from FabricationOrder fo where fo.proposalState = 'PROPOSED')", store);
         assertEquals(0, visible, "The PROPOSED order is excluded from the operator reads");
+    }
+
+    /**
+     * Persists a qualified employee of the store.
+     *
+     * @param badge the badge id.
+     * @return the employee.
+     */
+    private Employee employee(String badge) {
+        Employee employee = new Employee();
+        employee.firstName = "Chef";
+        employee.lastName = badge;
+        employee.badgeId = badge;
+        employee.email = badge + "@test.invalid";
+        employee.password = org.mindrot.jbcrypt.BCrypt.hashpw("secret", org.mindrot.jbcrypt.BCrypt.gensalt(4));
+        employee.role = Employee.EmployeeRole.PICKER;
+        employee.store = store;
+        employee.persistAndFlush();
+        return employee;
+    }
+
+    /**
+     * T2.038: when a planning exists, the station daily capacity is capped by the planned presence of
+     * its qualified employees; a day without planning keeps the configured capacity.
+     */
+    @Test
+    @TestTransaction
+    void capacityCappedByPlannedPresence() {
+        setup(480, 600);
+        Employee chef = employee("CAP-EMP");
+        FabricationStationEmployee qualified = new FabricationStationEmployee();
+        qualified.station = station;
+        qualified.employee = chef;
+        qualified.persistAndFlush();
+        LocalDate day = AVAILABLE.toLocalDate();
+        PlanningEntry entry = new PlanningEntry();
+        entry.employee = chef;
+        entry.startsAt = day.atTime(8, 0);
+        entry.endsAt = day.atTime(10, 0); // 120 minutes of presence
+        entry.cancelled = false;
+        entry.persistAndFlush();
+
+        assertEquals(120, capacity.dayCapacityMinutes(station, day), "Capped by the 120-min planned presence");
+        assertEquals(480, capacity.dayCapacityMinutes(station, day.plusDays(1)),
+                "No planning that day: the configured capacity applies");
+    }
+
+    /**
+     * T2.059: the daily fabrication sheet lists the validated lines with their planned quantity,
+     * compositions, allergens, per-order comments, slot, reception date and guest count.
+     */
+    @Test
+    @TestTransaction
+    @TestSecurity(user = "mgr", roles = {"ADMIN"})
+    void fabricationSheetListsValidatedLines() {
+        setup(0, 600);
+        recipe("16", 600);
+        CateringUnit unit = unit("O1", "16", "K1");
+        unit.allergens = "Gluten";
+        unit.ingredients = "Farine, eau";
+        unit.servingAdvice = "À déguster frais";
+        unit.persistAndFlush();
+        Order order = unit.order;
+        order.specification = "{\"catering\":{\"reception\":{\"date\":\"2026-11-21\",\"guests\":12}}}";
+        order.persistAndFlush();
+        engine.recompute(store);
+        FabricationOrder fabrication = orders().get(0);
+        var validationInput = new CateringValidationService.OrderValidation();
+        validationInput.id = fabrication.id;
+        validationInput.revision = fabrication.version;
+        validation.validate(store, List.of(validationInput), true);
+
+        LocalDate day = FabricationOrder.<FabricationOrder>findById(fabrication.id).productionDate;
+        List<Map<String, Object>> rows = resource.sheet(store.id, day.toString(), null);
+        assertEquals(1, rows.size());
+        Map<String, Object> row = rows.get(0);
+        assertEquals("16", row.get("variantId"));
+        assertTrue(((List<?>) row.get("allergens")).contains("Gluten"));
+        assertTrue(((List<?>) row.get("compositions")).contains("Farine, eau"));
+        List<?> units = (List<?>) row.get("units");
+        assertEquals(1, units.size());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> unitRow = (Map<String, Object>) units.get(0);
+        assertEquals("O1", unitRow.get("orderRef"));
+        assertEquals(AVAILABLE, unitRow.get("slot"), "The order slot (créneau) is served");
+        assertEquals("2026-11-21", unitRow.get("receptionDate"), "The reception date is served");
+        assertEquals(12, unitRow.get("guests"), "The guest count (convives) is served");
     }
 }

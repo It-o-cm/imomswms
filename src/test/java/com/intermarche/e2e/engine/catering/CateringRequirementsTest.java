@@ -43,6 +43,8 @@ public class CateringRequirementsTest {
     @Inject
     CateringValidationService validation;
     @Inject
+    com.intermarche.backoffice.engine.stock.TemporalStockService stocks;
+    @Inject
     ObjectMapper mapper;
 
     private static final LocalDateTime MONDAY = LocalDateTime.of(2026, 11, 16, 9, 0);
@@ -166,6 +168,22 @@ public class CateringRequirementsTest {
         return input;
     }
 
+    /**
+     * Returns the minimum projected stock balance across the component's availability timeline. The
+     * balance is the non-floored supply minus demand, so a fabrication commitment lowers it even when
+     * there is no on-hand stock to promise against.
+     *
+     * @param accountId  the stock account id.
+     * @param buildingId the building id.
+     * @param asOf       the reference instant.
+     * @return the minimum balance.
+     */
+    private BigDecimal minBalance(Long accountId, Long buildingId, LocalDateTime asOf) {
+        return stocks.availability(accountId, buildingId, asOf).periods.stream()
+                .map(period -> period.balance)
+                .min(java.util.Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
+    }
+
     private FabricationOrder proposed() {
         engine.recompute(store);
         return FabricationOrder.<FabricationOrder>find("store = ?1 and proposalState = ?2", store,
@@ -216,5 +234,60 @@ public class CateringRequirementsTest {
         FabricationOrder order = proposed();
         validation.validate(store, List.of(input(order)), true);
         assertEquals(1, StockCommitment.count("reference like 'FAB:%'"));
+    }
+
+    /**
+     * T2.070/T2.071: reducing a line quantity reduces its active commitment, and cancelling the order
+     * releases every active commitment, all in the same transaction.
+     */
+    @Test
+    @TestTransaction
+    void commitmentsReducedThenCancelled() {
+        setup();
+        unit("O1");
+        FabricationOrder order = proposed();
+        validation.validate(store, List.of(input(order)), true);
+        assertEquals(1, StockCommitment.count("reference like 'FAB:%' and status = ?1",
+                StockCommitment.CommitmentStatus.ACTIVE));
+        StockCommitment active = StockCommitment.find("reference like 'FAB:%' and status = ?1",
+                StockCommitment.CommitmentStatus.ACTIVE).firstResult();
+        assertEquals(0, new BigDecimal("2").compareTo(active.quantity));
+
+        FabricationLine line = FabricationLine.find("order", order).firstResult();
+        line.plannedQuantity = new BigDecimal("0.5");
+        line.persistAndFlush();
+        validation.reduceOrderCommitments(order);
+        assertEquals(1, StockCommitment.count("reference like 'FAB:%' and status = ?1",
+                StockCommitment.CommitmentStatus.ACTIVE));
+        StockCommitment reduced = StockCommitment.find("reference like 'FAB:%' and status = ?1",
+                StockCommitment.CommitmentStatus.ACTIVE).firstResult();
+        assertEquals(0, BigDecimal.ONE.compareTo(reduced.quantity), "2 x 0.5 = 1");
+
+        validation.cancelOrderCommitments(order);
+        assertEquals(0, StockCommitment.count("reference like 'FAB:%' and status = ?1",
+                StockCommitment.CommitmentStatus.ACTIVE));
+    }
+
+    /**
+     * T2.073: the existing stock projection reacts to a fabrication commitment — the component's
+     * available-to-promise at the preparation date drops by the committed quantity.
+     */
+    @Test
+    @TestTransaction
+    void existingReplenishmentDemandReactsToCommitment() {
+        Product component = setup();
+        unit("O1");
+        FabricationOrder order = proposed();
+        var account = stocks.account(store.id, component.id);
+        Long buildingId = station.building.id;
+        BigDecimal before = minBalance(account.id, buildingId, order.requestedStart);
+        assertEquals(0, StockCommitment.count("account = ?1 and status = ?2", account,
+                StockCommitment.CommitmentStatus.ACTIVE), "No fabrication demand yet");
+        validation.validate(store, List.of(input(order)), true);
+        BigDecimal after = minBalance(account.id, buildingId, order.requestedStart);
+        assertEquals(1, StockCommitment.count("account = ?1 and status = ?2", account,
+                StockCommitment.CommitmentStatus.ACTIVE), "The fabrication commitment is now visible demand");
+        assertEquals(0, before.subtract(new BigDecimal("2")).compareTo(after),
+                "The existing stock projection reacts: the balance drops by the fabrication demand");
     }
 }

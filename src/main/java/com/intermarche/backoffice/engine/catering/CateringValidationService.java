@@ -7,6 +7,7 @@ import com.intermarche.backoffice.domain.order.Order;
 import com.intermarche.backoffice.domain.order.Product;
 import com.intermarche.backoffice.domain.store.Building;
 import com.intermarche.backoffice.domain.store.Employee;
+import com.intermarche.backoffice.domain.stock.StockCommitment;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.util.DateTimeProvider;
 import com.intermarche.backoffice.domain.wms.BaseHandlingOrder.HandlingOrderStatus;
@@ -44,6 +45,10 @@ public class CateringValidationService {
     CateringRecipeResolver recipes;
     @Inject
     FabricationWindow windows;
+    @Inject
+    CateringCapacity capacity;
+    @Inject
+    CateringUnitStateService states;
     @Inject
     TemporalStockService stocks;
     @Inject
@@ -88,10 +93,11 @@ public class CateringValidationService {
             if (employee != null && FabricationStationEmployee.count("station = ?1 and employee = ?2", station, employee) == 0) {
                 throw new OperatorFailure(409, "EMPLOYEE_NOT_QUALIFIED", "Employé non habilité au poste");
             }
-            if (station.dailyMinutes != null && station.dailyMinutes > 0) {
+            int dayCapacity = capacity.dayCapacityMinutes(station, day);
+            if (dayCapacity > 0) {
                 int load = otherLoad(store, station, day, order);
                 int planned = order.plannedMinutes == null ? 0 : order.plannedMinutes;
-                if (load + planned > station.dailyMinutes) {
+                if (load + planned > dayCapacity) {
                     throw new OperatorFailure(409, "OVER_CAPACITY", "Capacité du poste dépassée");
                 }
             }
@@ -111,8 +117,7 @@ public class CateringValidationService {
                 for (FabricationLineUnit lineUnit : FabricationLineUnit.<FabricationLineUnit>list("line", line)) {
                     CateringUnit unit = Hibernate.unproxy(lineUnit.unit, CateringUnit.class);
                     if (unit.state == CateringUnitState.RECEIVED) {
-                        unit.state = CateringUnitState.PLANNED;
-                        unit.revision++;
+                        states.markPlanned(unit); // F3: increments the unit and the published order revision
                     }
                 }
             }
@@ -212,6 +217,50 @@ public class CateringValidationService {
                 } catch (IllegalArgumentException e) {
                     throw new OperatorFailure(409, "COMPONENT_SHORTAGE",
                             "Composant indisponible à la date de l'ordre : " + component.ean);
+                }
+            }
+        }
+    }
+
+    /**
+     * Cancels every active component commitment of a fabrication order in the current transaction
+     * (T2.070): a cancelled unit or order releases the stock it had reserved.
+     *
+     * @param order the fabrication order.
+     */
+    @Transactional
+    public void cancelOrderCommitments(FabricationOrder order) {
+        for (StockCommitment commitment : StockCommitment.<StockCommitment>list(
+                "reference like ?1 and status = ?2", "FAB:" + order.id + ":%",
+                StockCommitment.CommitmentStatus.ACTIVE)) {
+            stocks.cancelCommitment(commitment.id);
+        }
+    }
+
+    /**
+     * Lowers the active component commitments of an order to match its current (reduced) line
+     * quantities, in the same transaction (T2.070): each active commitment is lowered to the
+     * recipe-recomputed demand when the demand has dropped. A still-committed quantity is never
+     * raised here (a raised reference would conflict with the existing commitment).
+     *
+     * @param order the fabrication order.
+     */
+    @Transactional
+    public void reduceOrderCommitments(FabricationOrder order) {
+        Store store = Hibernate.unproxy(order.store, Store.class);
+        for (FabricationLine line : FabricationLine.<FabricationLine>list("order", order)) {
+            FabricationLineUnit anyUnit = FabricationLineUnit.find("line", line).firstResult();
+            JsonNode configuration = anyUnit == null ? null
+                    : parse(Hibernate.unproxy(anyUnit.unit, CateringUnit.class).configuration);
+            var recipe = recipes.resolve(line.item, line.variantId, configuration, line.plannedQuantity,
+                    parameters.defaultLaborSeconds(store));
+            for (var entry : recipe.components().entrySet()) {
+                String reference = "FAB:" + order.id + ":" + line.id + ":" + entry.getKey().ean;
+                StockCommitment commitment = StockCommitment.<StockCommitment>find("reference = ?1 and status = ?2",
+                        reference, StockCommitment.CommitmentStatus.ACTIVE).firstResult();
+                if (commitment != null && entry.getValue().compareTo(commitment.remainingQuantity) < 0) {
+                    commitment.quantity = entry.getValue();
+                    commitment.remainingQuantity = entry.getValue();
                 }
             }
         }

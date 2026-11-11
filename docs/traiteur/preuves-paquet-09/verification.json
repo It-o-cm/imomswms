@@ -1,0 +1,22 @@
+{
+  "packet": 9,
+  "lot": "T2",
+  "scope": "Fin du lot T2 : machine à états F3 (T2.001-006, T2.008), feuille de fabrication T2.059, capacité par présence planifiée T2.038, engagements F9 (T2.070, T2.071, T2.073).",
+  "points": {
+    "T2.001": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringUnitStateService.java", "src/main/java/com/intermarche/backoffice/domain/catering/CateringUnitState.java"], "tests": ["CateringUnitLifecycleTest.everyStateChangeBumpsBothRevisions"]},
+    "T2.002": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringUnitStateService.java"], "tests": ["CateringUnitLifecycleTest.everyStateChangeBumpsBothRevisions"]},
+    "T2.003": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringUnitStateService.java"], "tests": ["CateringUnitLifecycleTest.blockedUnitDoesNotStopOthers"]},
+    "T2.004": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringUnitStateService.java", "src/main/java/com/intermarche/backoffice/engine/StoreActivityEngine.java"], "tests": ["CateringUnitLifecycleTest.blockedRecoversWhenArticleReferenced", "CateringUnitLifecycleTest.blockedRecoversWhenDatasheetReactivated", "CateringUnitLifecycleTest.blockedRecoversWhenCateringReEnabled"]},
+    "T2.005": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringUnitStateService.java"], "tests": ["CateringUnitLifecycleTest.stockedUnitUnblockedRejoinsPendingChunk", "CateringUnitLifecycleTest.stockedUnitUnblockedReusesExistingPendingChunk", "CateringUnitLifecycleTest.stockedUnitUnblockedWithoutRoutedLineIsNoOp"]},
+    "T2.006": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringUnitStateService.java"], "tests": ["CateringUnitLifecycleTest.partialServiceKeepsStateWholeUnservedIsShort"]},
+    "T2.008": {"files": ["src/test/java/com/intermarche/e2e/engine/catering/CateringUnitLifecycleTest.java"], "tests": ["CateringUnitLifecycleTest (12 cas)"]},
+    "T2.038": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringCapacity.java", "src/main/java/com/intermarche/backoffice/engine/catering/CateringProposalEngine.java"], "tests": ["FabricationPlanningTest.capacityCappedByPlannedPresence"]},
+    "T2.059": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationResource.java"], "tests": ["FabricationPlanningTest.fabricationSheetListsValidatedLines"]},
+    "T2.070": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringValidationService.java"], "tests": ["CateringRequirementsTest.commitmentsReducedThenCancelled"]},
+    "T2.071": {"files": ["src/test/java/com/intermarche/e2e/engine/catering/CateringRequirementsTest.java"], "tests": ["CateringRequirementsTest.commitmentsReducedThenCancelled"]},
+    "T2.073": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringValidationService.java"], "tests": ["CateringRequirementsTest.existingReplenishmentDemandReactsToCommitment"]}
+  },
+  "cateringSuite": {"command": "mvn test -Dtest=CateringUnitLifecycleTest,CateringRequirementsTest,FabricationPlanningTest,FabricationWindowTest,CateringRecipeTest,CateringReferentialTest,CateringParametersTest", "testsRun": 59, "failures": 0, "errors": 0, "skipped": 0, "result": "BUILD SUCCESS"},
+  "regression": {"command": "mvn test -Dtest=StoreActivityEngineTest", "testsRun": 27, "failures": 0, "errors": 0, "result": "BUILD SUCCESS"},
+  "fullSuite": {"testsRun": 2391, "failures": 69, "errors": 404, "note": "Echecs non imputables au paquet 9 : ils proviennent du travail parallèle NON SUIVI PAR GIT present dans l'arbre de travail (features product-identifiers, replenishment, warehouse plan image, demos). Cause racine du cascade catering : CateringReferentialTest.cleanDatabase fait 'delete from products' qui viole la FK PRODUCT_IDENTIFIERS laissee par les tests de ces features ; cette table n'existe pas dans l'arbre traiteur committe. Les memes tests catering passent a 59/59 quand ils sont lances entre eux (cf. cateringSuite) et a l'identique au baseline. StorePlanResourceTest/DemoDataInitializerTest cassent pour la meme raison de co-residence."}
+}
