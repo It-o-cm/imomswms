@@ -110,6 +110,30 @@ public class Order extends BaseEntity {
     public String specification;
 
     // --------------------------------------------------
+    // Payment (at-pickup settlement, catering § 4.1 / F17)
+    // --------------------------------------------------
+
+    /** Payment method: {@code ONLINE} or {@code AT_PICKUP}; null is treated as ONLINE. */
+    @Column(name = "payment_method", length = 20)
+    public String paymentMethod;
+
+    /** Payment state: {@code DUE} or {@code COLLECTED}. */
+    @Column(name = "payment_state", length = 20)
+    public String paymentState;
+
+    /** Amount due at pickup (from the last received payload). */
+    @Column(name = "payment_amount", precision = 19, scale = 2)
+    public java.math.BigDecimal paymentAmount;
+
+    /** Instant the at-pickup settlement was acknowledged by the operator (F17). */
+    @Column(name = "payment_acknowledged_at")
+    public LocalDateTime paymentAcknowledgedAt;
+
+    /** Author of the settlement acknowledgement. */
+    @Column(name = "payment_acknowledged_by", length = 100)
+    public String paymentAcknowledgedBy;
+
+    // --------------------------------------------------
     // Helpers
     // --------------------------------------------------
 

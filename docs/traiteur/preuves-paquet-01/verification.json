@@ -1,0 +1,85 @@
+{
+  "paquet": 1,
+  "lot": "T0",
+  "titre": "Socle, migration V30 et modele de donnees",
+  "pointsClos": [
+    "T0.001", "T0.002", "T0.003", "T0.005",
+    "T0.008", "T0.009", "T0.010", "T0.011", "T0.012", "T0.013", "T0.014", "T0.015",
+    "T0.016", "T0.017", "T0.018", "T0.019", "T0.020", "T0.021", "T0.022", "T0.023",
+    "T0.024", "T0.025", "T0.026", "T0.027", "T0.028", "T0.029", "T0.030", "T0.031",
+    "T0.032", "T0.033", "T0.034", "T0.035", "T0.036", "T0.037", "T0.038", "T0.039", "T0.040"
+  ],
+  "pointsDifferes": {
+    "T0.004": "Erreurs OperatorFailure/CommerceFailure + Cache-Control : realises avec les contrats (T1+).",
+    "T0.006": "Couverture de chaque jambe de condition composee : evaluee par paquet, au fil du code a branches (le modele de donnees n'a pas de condition composee).",
+    "T0.007": "Absence d'identite client dans les lectures servies : realise avec les lectures (T1/T3/T6)."
+  },
+  "sizingPacket": "Migration V30 et entites JPA reunies dans un meme paquet : Hibernate tourne en mode validate (quarkus.hibernate-orm.schema-management.strategy=validate), le DDL n'est donc verifiable qu'avec les entites correspondantes. Scinder migration et entites aurait laisse un demi-paquet non verifiable. 37 points.",
+  "fichiersCrees": {
+    "migration": ["src/main/resources/db/migration/V30__catering.sql"],
+    "enums": [
+      "src/main/java/com/intermarche/backoffice/domain/catering/SourcingMode.java",
+      "src/main/java/com/intermarche/backoffice/domain/catering/CateringUnitState.java"
+    ],
+    "entites_domain_catering": [
+      "CateringItem.java", "CateringItemStore.java", "CateringRecipe.java", "CateringRecipeLine.java",
+      "FabricationStation.java", "FabricationStationEmployee.java", "CateringUnit.java",
+      "FabricationLine.java", "FabricationLineUnit.java", "FabricationConsumption.java",
+      "CateringPurchaseNeed.java", "CateringAmendment.java"
+    ],
+    "entites_familles_existantes": [
+      "src/main/java/com/intermarche/backoffice/domain/wms/handling/FabricationOrder.java (discriminant FABRICATION, prefixe FAB)",
+      "src/main/java/com/intermarche/backoffice/domain/executing/FabricationExecution.java (discriminant FABRICATION)"
+    ],
+    "tests": ["src/test/java/com/intermarche/backoffice/database/CateringMigrationTest.java"]
+  },
+  "fichiersModifies": [
+    "src/main/java/com/intermarche/backoffice/domain/order/Product.java (ean length 13 -> 40, T0.009/I9)",
+    "src/main/java/com/intermarche/backoffice/domain/order/Order.java (payment_method, payment_state, payment_amount, payment_acknowledged_at, payment_acknowledged_by, T0.024/T0.038)",
+    "src/main/java/com/intermarche/backoffice/domain/oms/FulfillmentChunk.java (colonne catering, T0.025/T0.038)",
+    "src/main/java/com/intermarche/backoffice/domain/executing/PickingShortage.java (handlingOrder facultatif, T0.026/T0.038)",
+    "src/test/java/com/intermarche/backoffice/database/DatabaseMigrationTest.java (138 -> 150 tables)",
+    "src/test/java/com/intermarche/backoffice/database/VersionedSchemaStartupTest.java (138 -> 150 tables)"
+  ],
+  "migrationV30": {
+    "tablesCreees": 12,
+    "sequencesCreees": 12,
+    "altersExistant": [
+      "products.ean -> varchar(40)",
+      "handling_orders : + station_id, productionDate, proposalState, proposedEmployee_id, plannedMinutes ; check type etendu a FABRICATION (ck_handling_order_type_v30)",
+      "handling_executions : check execution_type etendu a FABRICATION (ck_handling_execution_type_v30)",
+      "orders : + payment_method, payment_state, payment_amount, payment_acknowledged_at, payment_acknowledged_by",
+      "fulfillment_chunks : + catering boolean default false not null",
+      "picking_shortages : handlingOrder_id rendu nullable",
+      "loaded_totes, picked_items : + fabrication_execution_id"
+    ]
+  },
+  "testsTraiteur": [
+    {
+      "name": "com.intermarche.backoffice.database.CateringMigrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "methodes": [
+        "v30AppliesOnEmptyBase (V30 sur base vide : tables + colonnes presentes, FABRICATION accepte, type inconnu refuse, ean a 40)",
+        "v30PreservesDataPopulatedAtV29 (V30 sur base peuplee en V29 : produits, commandes, chunks, manquants conserves ; catering=false par defaut ; handlingOrder_id nullable)"
+      ]
+    },
+    {
+      "name": "com.intermarche.backoffice.database.VersionedSchemaStartupTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "note": "Boot applicatif sur schema migre + Hibernate validate OK : prouve que les 15 entites nouvelles/modifiees correspondent exactement au DDL V30."
+    }
+  ],
+  "suiteComplete": {
+    "testsRun": 2316,
+    "failures": 9,
+    "errors": 5,
+    "skipped": 1,
+    "verdict": "Non verte, mais tous les echecs sont ANTERIEURS au paquet traiteur et independants de lui.",
+    "preuveIndependance": "Comparaison controlee sur les 8 memes classes en echec : SANS paquet (V29) -> 8 echecs identiques ; AVEC paquet -> exactement les memes 8 echecs. Les ~6 echecs supplementaires vus uniquement en pleine suite ne se reproduisent pas en isolation (flakes d'ordre/latence : DateTimeProvider partage, P95 152 vs 150 ms). Detail dans ecarts.json.",
+    "cause": "Depot en cours de developpement : hierarchie wms/handling, PickingShortage, domain/commerce, domain/catalog, Demo*Initializer sont non versionnes (untracked) et deja en echec avant tout code traiteur. Regle du projet : ne pas modifier un test existant hors I4/I8 ; ces echecs ne sont pas du ressort du traiteur."
+  }
+}

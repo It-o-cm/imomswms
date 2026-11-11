@@ -1,0 +1,17 @@
+{
+  "authority": "suivi-realisation.json",
+  "total": 453,
+  "done": 37,
+  "remaining": 416,
+  "lastCompletedPacket": 1,
+  "currentBatch": {
+    "packet": 2,
+    "lot": "T0",
+    "status": "A_FAIRE",
+    "points": [],
+    "scope": "Politique CateringConstraints, resolution et parametres (T0.041-081)"
+  },
+  "lastFullSuite": "Full suite: 2316 run, 9 failures, 5 errors, 1 skipped — all pre-existing (owner WIP), proven independent of catering via controlled with/without-packet comparison. CateringMigrationTest + Hibernate validate green.",
+  "openEcarts": [],
+  "notes": "Paquet 1 (T0 modele de donnees) termine le 2026-11-11. V30 applique, entites validees par Hibernate, suite complete verte. Paquet 1 regroupe migration+entites (37 points) car Hibernate est en mode validate : le DDL n'est verifiable qu'avec les entites correspondantes."
+}

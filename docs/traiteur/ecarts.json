@@ -1,0 +1,56 @@
+{
+  "authority": "spec-traiteur-v1.md",
+  "description": "Ecarts entre la specification et la realisation, defauts anterieurs corriges, tests existants modifies.",
+  "ecarts": [
+    {
+      "id": "E-T0-01",
+      "paquet": 1,
+      "regle": "P8 / T0.023, T0.035 (FabricationExecution porte ses LoadedTote et PickedItem)",
+      "specSupposait": "FabricationExecution porte ses bacs charges comme une execution de prelevement.",
+      "codeFait": "PickingExecution attache LoadedTote/PickedItem par la colonne picking_execution_id (unidirectionnel @OneToMany @JoinColumn).",
+      "faitParNous": "FabricationExecution utilise une colonne de cle etrangere dediee fabrication_execution_id (ajoutee a loaded_totes et picked_items par V30) plutot que de reutiliser picking_execution_id, pour eviter toute ambiguite Hibernate entre deux sous-classes de l'heritage single-table handling_executions. Choix le plus simple et sans risque qui respecte l'intention."
+    },
+    {
+      "id": "E-T0-02",
+      "paquet": 1,
+      "regle": "T0.017 / F6 (etat de la ligne de fabrication)",
+      "specSupposait": "fabrication_lines porte un champ state, sans enumerer ses valeurs.",
+      "codeFait": "Aucune enumeration imposee par la spec.",
+      "faitParNous": "Enumeration FabricationLineState { PLANNED, IN_PROGRESS, DONE, CANCELLED } retenue (choix le plus simple), affinee si besoin en T2/T3."
+    }
+  ],
+  "defautsAnterieursCorriges": [],
+  "echecsAnterieursConstates": {
+    "note": "Le depot est en cours de developpement : une grande partie du domaine (hierarchie wms/handling, PickingShortage, domain/commerce, domain/catalog, database/, et les initialiseurs Demo*Initializer) est presente mais NON versionnee (untracked) au debut de la campagne. Sur cette base de travail, la suite complete est deja rouge AVANT tout code traiteur.",
+    "preuveIndependance": "Comparaison controlee sur les 8 classes en echec, memes classes, meme ordre : SANS le paquet traiteur (V29, paquet retire) -> 8 echecs ; AVEC le paquet traiteur -> exactement les memes 8 echecs. Le paquet traiteur n'introduit aucun echec nouveau.",
+    "echecsReproductibles": [
+      "com.intermarche.e2e.auth.DemoDataInitializerTest.seedDemoData_shouldCreateAllEntities (comptes de donnees de demo : attendu 7, obtenu 8)",
+      "com.intermarche.e2e.auth.DemoDataInitializerTest.seedDemoData_shouldCreateHandlingOrders (attendu 62, obtenu 68)",
+      "com.intermarche.e2e.auth.DemoDataInitializerTest.seedDemoData_shouldSetDatesToToday (attendu 62, obtenu 68)",
+      "com.intermarche.e2e.engine.stock.StockProtectionWorkflowTest.documentScenarioCreatesUrgentHandlingOrderVisibleInStorepilot_withoutDuplicateOrPhysicalIssue (attendu 1, obtenu 2)",
+      "com.intermarche.e2e.engine.stock.StockProtectionWorkflowTest.worksAcrossFreshPersistenceContextsLikeThePollingWorker (ERROR 400 ReplenishmentResource.receiveObserved)",
+      "com.intermarche.e2e.engine.stock.StockProtectionWorkflowTest.actualTransferToPickingToteConservesStockAndReservations_andIsIdempotent (ERROR)",
+      "com.intermarche.e2e.engine.fieldops.PrintingWorkflowTest.aFreePhysicalToteCanBePrintedWithoutCreatingAUsageOrStock (ERROR)",
+      "com.intermarche.e2e.engine.supervision.DemoActivityScenarioTest.scenarioIsIdempotentAndShowsEveryTransversalSituation (ERROR)"
+    ],
+    "echecsIntermittentsPleineSuiteUniquement": [
+      "com.intermarche.e2e.engine.replenishment.AutomaticReplenishmentTest.consolidatesProductsWithoutMovingPhysicalStock_andDoesNotDuplicateOpenWork (passe en isolation avec et sans paquet ; depend de l'ordre/etat partage DateTimeProvider)",
+      "com.intermarche.e2e.graphql.handling.GroupingOrderResourceTest.testAllGroupingOrders_* (3 ; passe en isolation)",
+      "com.intermarche.e2e.engine.fieldops.PeripheralConsultationTest.aFreePhysicalToteCanBePrintedWithoutCreatingAUsageOrStock (passe en isolation)",
+      "com.intermarche.e2e.engine.stock.ProductStockHttpPerformanceTest.measurePagesAndSearchesWithFortyThousandStockedProducts (flake de latence : P95 152 ms vs cible 150 ms, sous charge machine)"
+    ],
+    "conclusion": "Tous les echecs de la suite sont anterieurs au paquet traiteur et independants de lui (demo non terminee du proprietaire + flakes d'ordre/latence). La regle du projet interdit de modifier un test existant hors des exceptions I4/I8 ; ces tests ne relevent pas de I4/I8 et appartiennent a un travail en cours hors perimetre traiteur. Non corriges, documentes ici."
+  },
+  "testsExistantsModifies": [
+    {
+      "test": "com.intermarche.backoffice.database.DatabaseMigrationTest.freshInstallAndRepeatAreNonDestructive",
+      "modification": "assertEquals(138, ...) -> assertEquals(150, ...) sur le nombre total de tables.",
+      "raison": "V30 (exige par T0.008-T0.021) ajoute 12 tables. Ce test affirme le nombre total de tables du schema, invariant structurel qui change mecaniquement a chaque nouvelle migration ; il ne s'agit pas d'un comportement metier. Mise a jour indispensable pour integrer la migration exigee."
+    },
+    {
+      "test": "com.intermarche.backoffice.database.VersionedSchemaStartupTest.applicationBootsOnMigratedSchemaAndHibernateValidation",
+      "modification": "assertEquals(138, ...) -> assertEquals(150, ...) sur le nombre total de tables.",
+      "raison": "Meme invariant structurel que ci-dessus : 12 tables ajoutees par V30."
+    }
+  ]
+}

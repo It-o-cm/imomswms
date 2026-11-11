@@ -69,6 +69,15 @@ public class FulfillmentChunk extends BaseEntity {
     public String label;
 
     /**
+     * Whether this chunk carries catering lines (I7).
+     * <p>
+     * False by default; a catering chunk is READY without a picking location and is
+     * excluded from the collecting, grouping and packing order factories (F16).
+     */
+    @Column(name = "catering", nullable = false)
+    public boolean catering = false;
+
+    /**
      * The scheduled delivery date and time for the items in this chunk.
      * <p>
      * This field is used to prioritize chunks for preparation or to group deliveries

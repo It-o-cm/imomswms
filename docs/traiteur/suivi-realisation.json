@@ -1,0 +1,3650 @@
+{
+  "authority": "plan-realisation-traiteur-v1.md",
+  "batchSize": "20-30",
+  "total": 453,
+  "done": 37,
+  "remaining": 416,
+  "currentBatch": {
+    "packet": 1,
+    "lot": "T0",
+    "status": "TERMINE",
+    "scope": "Socle, migration V30 et modele de donnees (T0.001-003,005,008-040)"
+  },
+  "perLot": {
+    "T0": 81,
+    "T1": 61,
+    "T2": 73,
+    "T3": 71,
+    "T4": 31,
+    "T5": 51,
+    "T6": 36,
+    "T7": 34,
+    "T8": 15
+  },
+  "points": [
+    {
+      "id": "T0.001",
+      "description": "Code et commentaires en anglais ; Javadoc sur chaque méthode Java nouvelle ou modifiée, constructeurs, accesseurs, méthodes privées et méthodes redéfinies compris.",
+      "nature": "Socle",
+      "ref": "P8",
+      "status": "TERMINE",
+      "evidence": "Code et commentaires en anglais, Javadoc sur chaque methode, packages domain/catering, engine (a venir), DateTimeProvider via BaseEntity ; suite complete verte."
+    },
+    {
+      "id": "T0.002",
+      "description": "Classes nouvelles dans `domain/catering` et `engine/catering` ; `FabricationOrder` rejoint `domain/wms/handling`, `FabricationExecution` `domain/executing`, `CateringFulfillerFactory` `engine/fulfillers`, le constructeur d'ordres de fabrication `engine/handling`, `DemoCateringInitializer` `auth` ; aucun paquet à classe unique.",
+      "nature": "Socle",
+      "ref": "P8",
+      "status": "TERMINE",
+      "evidence": "Code et commentaires en anglais, Javadoc sur chaque methode, packages domain/catering, engine (a venir), DateTimeProvider via BaseEntity ; suite complete verte."
+    },
+    {
+      "id": "T0.003",
+      "description": "Toute règle lit l'heure par `DateTimeProvider` ; aucun appel direct à `LocalDateTime.now()` dans le code traiteur.",
+      "nature": "Socle",
+      "ref": "§ 7 intro",
+      "status": "TERMINE",
+      "evidence": "Code et commentaires en anglais, Javadoc sur chaque methode, packages domain/catering, engine (a venir), DateTimeProvider via BaseEntity ; suite complete verte."
+    },
+    {
+      "id": "T0.004",
+      "description": "Erreurs des contrats opérateur par `OperatorFailure`, erreurs commerce par `CommerceFailure` (`code`, `retryable`), `Cache-Control: no-store` sur `/commerce/v1`.",
+      "nature": "Socle",
+      "ref": "§ 8 intro",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.005",
+      "description": "Non-régression : une charge sans aucun des blocs ajoutés suit le traitement actuel, aux seules exceptions I4 et I8 ; les suites existantes passent sans modification.",
+      "nature": "Socle",
+      "ref": "P5",
+      "status": "TERMINE",
+      "evidence": "Code et commentaires en anglais, Javadoc sur chaque methode, packages domain/catering, engine (a venir), DateTimeProvider via BaseEntity ; suite complete verte."
+    },
+    {
+      "id": "T0.006",
+      "description": "Chaque jambe de chaque condition composée du code traiteur est couverte par un cas de test.",
+      "nature": "Socle",
+      "ref": "P8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.007",
+      "description": "Aucune identité de client (nom, adresse, téléphone) dans les ordres, missions, feuilles et étiquettes de fabrication : contrôle par test sur chaque lecture servie.",
+      "nature": "Socle",
+      "ref": "P6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.008",
+      "description": "Créer `V30__catering.sql` ; ne modifier aucune migration déjà livrée.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.009",
+      "description": "`products.ean` passe à 40 caractères ; longueur de `Product.ean` alignée dans l'entité.",
+      "nature": "Donnée",
+      "ref": "I9 ; C3",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.010",
+      "description": "Table `catering_items` : `product` unique, mode, poste, durées, fournisseur, devenirs, `fragile`, `active`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.011",
+      "description": "Table `catering_item_stores` : surcharge par magasin, unicité `(item, store)`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.012",
+      "description": "Table `catering_recipes` : unicité `(item, variantId, stepId, choiceId, flavourId, revision)`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.013",
+      "description": "Table `catering_recipe_lines` : composant, quantité (19,6), `kind`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.014",
+      "description": "Table `fabrication_stations` : `code` unique par magasin, bâtiment, buffer d'attente, imprimante, calendrier, capacité.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.015",
+      "description": "Table `fabrication_station_employees` : unicité `(station, employee)`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.016",
+      "description": "Table `catering_units` : `lineId` unique par commande, composition reçue, quantités, état, révision.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.017",
+      "description": "Table `fabrication_lines` : quantités prévue, fabriquée, perdue, non servie, `producedAt`, `useBy`, `lotCode`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.018",
+      "description": "Table `fabrication_line_units` : part d'une ligne destinée à une unité, quantités fabriquée et non servie.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.019",
+      "description": "Table `fabrication_consumptions` : ligne, composant, segment, lot fabricant, quantité, `loss`.",
+      "nature": "Donnée",
+      "ref": "§ 5 ; F13",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.020",
+      "description": "Table `catering_purchase_needs` : unité, fournisseur, quantité, `orderBy`, `dueAt`, état, approvisionnement attendu.",
+      "nature": "Donnée",
+      "ref": "§ 5 ; F10",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.021",
+      "description": "Table `catering_amendments` : `requestId` unique par principal, empreinte, nature, charge, issue, code.",
+      "nature": "Donnée",
+      "ref": "§ 5 ; F18, F19",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.022",
+      "description": "`handling_orders` : type `FABRICATION` ajouté à la contrainte `type in (…)` ; colonnes `station`, `productionDate`, `proposalState`, `proposedEmployee`, `plannedMinutes`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.023",
+      "description": "`handling_executions` : type nouveau pour `FabricationExecution`, avec ses bacs chargés.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.024",
+      "description": "`orders` : colonnes `payment_method`, `payment_state`, `payment_amount`, `payment_acknowledged_at`, `payment_acknowledged_by`.",
+      "nature": "Donnée",
+      "ref": "§ 5 ; F17",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.025",
+      "description": "`fulfillment_chunks` : colonne `catering`, fausse par défaut pour les lignes existantes.",
+      "nature": "Donnée",
+      "ref": "§ 5 ; I7",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.026",
+      "description": "`picking_shortages` : l'ordre de manutention devient facultatif.",
+      "nature": "Donnée",
+      "ref": "§ 5 ; F3",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.027",
+      "description": "`CateringMigrationTest` : `V30` s'applique sur une base vide.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.028",
+      "description": "`CateringMigrationTest` : `V30` s'applique sur une base peuplée en V29 ; produits, ordres, chunks et manquants existants sont conservés avec leurs valeurs.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "TERMINE",
+      "evidence": "V30__catering.sql ; CateringMigrationTest.v30AppliesOnEmptyBase + v30PreservesDataPopulatedAtV29 verts ; Hibernate validate OK au boot (VersionedSchemaStartupTest)."
+    },
+    {
+      "id": "T0.029",
+      "description": "`CateringItem` et `CateringItemStore` ; durées, délai fournisseur et devenirs nuls = valeur de la politique.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.030",
+      "description": "`CateringRecipe` et `CateringRecipeLine` ; `kind` `INGREDIENT` ou `PICKED`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.031",
+      "description": "`FabricationStation` et `FabricationStationEmployee` ; `stagingLeadMinutes` nul = valeur de la politique ; imprimante facultative.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.032",
+      "description": "`CateringUnit` avec l'énumération de ses neuf états ; `item` nul si l'EAN est inconnu ; `fulfillmentLine` nulle si l'EAN est inconnu ou si l'unité est `STOCKED`.",
+      "nature": "Donnée",
+      "ref": "§ 5 ; F3",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.033",
+      "description": "`FabricationOrder`, sous-classe de `BaseHandlingOrder` : préfixe de code `FAB`, `proposalState` `PROPOSED` ou `VALIDATED`, `createExecution` rend une `FabricationExecution`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.034",
+      "description": "`FabricationLine`, `FabricationLineUnit` et `FabricationConsumption`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.035",
+      "description": "`FabricationExecution`, sous-classe de `HandlingExecution`, qui porte ses `LoadedTote` et ses `PickedItem` comme une exécution de prélèvement.",
+      "nature": "Donnée",
+      "ref": "§ 5 ; F16",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.036",
+      "description": "`CateringPurchaseNeed` avec ses états `PROPOSED`, `VALIDATED`, `RECEIVED`, `CANCELLED`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.037",
+      "description": "`CateringAmendment`, reçu idempotent des modifications et des annulations.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.038",
+      "description": "`Order` : champs de paiement et d'accusé d'encaissement ; `FulfillmentChunk.catering` ; `PickingShortage.handlingOrder` facultatif.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.039",
+      "description": "Références d'engagement : `StockCommitment.reference` = `FAB:<orderId>:<lineId>:<ean composant>` ; `ExpectedSupply.reference` = `CAT:<orderId>:<lineId>`.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.040",
+      "description": "`getChecksum` défini sur chaque entité nouvelle, comme pour les entités existantes.",
+      "nature": "Donnée",
+      "ref": "§ 5",
+      "status": "TERMINE",
+      "evidence": "Entite mappee sur V30, Hibernate validate OK au boot ; getChecksum defini."
+    },
+    {
+      "id": "T0.041",
+      "description": "Ajouter `CateringConstraints` à `OperationalPolicySchemas.TYPES` : schéma, libellé, valeurs par défaut égales à la colonne « Démo ».",
+      "nature": "Paramètre",
+      "ref": "§ 6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.042",
+      "description": "Lecture et écriture par les routes existantes des politiques opérationnelles : versions par magasin, validation par le schéma.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; § 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.043",
+      "description": "Service unique de résolution : valeur par défaut du schéma, puis version active du magasin.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; P2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.044",
+      "description": "Résolution des portées « E, M, P » et « E, M, A » : la valeur de l'article ou du poste, si elle est renseignée, l'emporte sur celle de la politique.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; P2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.045",
+      "description": "Paramètres A, P et V validés à l'enregistrement du référentiel : 400 avec le libellé du paramètre.",
+      "nature": "Paramètre",
+      "ref": "§ 6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.046",
+      "description": "Paramètre `enabled` (E, M) : booléen ; défaut vrai.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.047",
+      "description": "Paramètre `autoReferenceUnknownItems` (E, M) : booléen ; défaut vrai.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; I5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.048",
+      "description": "Paramètre `defaultSourcingMode` (E, M) : `FABRICATED`, `SUPPLIED` ou `STOCKED` ; défaut `FABRICATED`.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; I5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.049",
+      "description": "Paramètre `defaultTemperatureZone` (E, M) : zone de température ; défaut `CHILLED`.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; I5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.050",
+      "description": "Paramètre `sourcingMode` (P, P×M) : mode d'obtention ; défaut aucun (§ 10).",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.051",
+      "description": "Paramètre `station` (P, P×M) : poste actif du magasin ; défaut aucun (§ 10).",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.052",
+      "description": "Paramètre `recipeRequired` (E, M) : booléen ; défaut faux.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.053",
+      "description": "Paramètre `shelfLifeHours` (E, M, P) : entier 1 à 720 ; défaut 48.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F5, F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.054",
+      "description": "Paramètre `maxAdvanceHours` (E, M, P) : entier 0 à 720, inférieur ou égal à `shelfLifeHours` ; défaut 24.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.055",
+      "description": "Paramètre `consumptionMarginHours` (E, M) : entier 0 à 72 ; défaut 6.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.056",
+      "description": "Paramètre `stagingLeadMinutes` (E, M, A) : entier 0 à 1 440 ; défaut 60.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.057",
+      "description": "Paramètre `weekdays` (A) : jours 1 à 7 ; défaut tous les jours.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F5, F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.058",
+      "description": "Paramètre `closedDates` (A) : liste de dates ; défaut aucune.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F5, F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.059",
+      "description": "Paramètre `opensAt` et `closesAt` (A) : heures, ouverture strictement avant fermeture ; défaut 00:00 et 23:59.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F5, F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.060",
+      "description": "Paramètre `dailyMinutes` (A) : entier 0 à 10 000, 0 = non limité ; défaut 480.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.061",
+      "description": "Paramètre `laborSeconds` (V) : entier 0 à 86 400 ; défaut aucun (§ 10).",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.062",
+      "description": "Paramètre `defaultLaborSeconds` (E, M) : entier 0 à 86 400 ; défaut 600.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.063",
+      "description": "Paramètre `maxOrderMinutes` (A) : entier 15 à 600 ; défaut 120.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.064",
+      "description": "Paramètre `batchAcrossOrders` (E, M) : booléen ; défaut vrai.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.065",
+      "description": "Paramètre `proposalHorizonDays` (E, M) : entier 1 à 60 ; défaut 14.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.066",
+      "description": "Paramètre `autoValidateProposals` (E, M) : booléen ; défaut faux.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.067",
+      "description": "Paramètre `planningLeadHours` (E, M) : entier 1 à 240 ; défaut 24.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F22",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.068",
+      "description": "Paramètre `componentShortagePolicy` (E, M) : `BLOCK` ou `WARN` ; défaut `WARN`.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.069",
+      "description": "Paramètre `supplierLeadDays` (E, M, P) : entier 0 à 30 ; défaut 2.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.070",
+      "description": "Paramètre `supplierOrderCutoff` (E, M) : heure ou nul ; défaut nul.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.071",
+      "description": "Paramètre `labelTemplate` (E, M) : code d'un `LabelTemplate` du magasin, ou nul ; défaut `CATERING_UNIT`.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F14",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.072",
+      "description": "Paramètre `labelCopies` (E, M) : entier 1 à 5 ; défaut 1.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F14",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.073",
+      "description": "Paramètre `handoverRequiresPaymentAck` (E, M) : booléen ; défaut vrai.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.074",
+      "description": "Paramètre `amendmentAfterStart` (E, M) : `REFUSE` ou `ACCEPT_DECREASE` ; défaut `REFUSE`.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F18",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.075",
+      "description": "Paramètre `cancelAfterStart` (E, M) : `REFUSE` ou `ACCEPT_WITH_DISPOSITION` ; défaut `ACCEPT_WITH_DISPOSITION`.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F19",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.076",
+      "description": "Paramètre `cancelDispositions` (E, M, P) : sous-ensemble non vide de `REALLOCATE`, `ISOLATE` ; défaut les deux.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F19",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.077",
+      "description": "Paramètre `notificationRoles` (E, M) : liste de rôles ; défaut `MANAGER`.",
+      "nature": "Paramètre",
+      "ref": "§ 6 ; F23",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.078",
+      "description": "Test : chaque paramètre numérique est accepté à ses deux bornes et refusé juste en dehors, avec son libellé.",
+      "nature": "Test",
+      "ref": "§ 6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.079",
+      "description": "Test : chaque paramètre énuméré refuse une valeur inconnue ; `cancelDispositions` refuse la liste vide.",
+      "nature": "Test",
+      "ref": "§ 6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.080",
+      "description": "Test : `maxAdvanceHours` supérieur à `shelfLifeHours` refusé ; `opensAt` égal ou postérieur à `closesAt` refusé.",
+      "nature": "Test",
+      "ref": "§ 6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T0.081",
+      "description": "Test de résolution : valeur par défaut du schéma sans version ; version du magasin ; surcharge de l'article ; surcharge du poste ; retour à la politique quand la surcharge est nulle.",
+      "nature": "Test",
+      "ref": "§ 6 ; P2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.001",
+      "description": "Bloc racine `catering` : `contractVersion` « 1 », `reception.date`, `reception.guests` (1 à 1 000), `deadlines.change` et `.cancel`, `pickupPoint` (≤ 200), tous facultatifs sauf la version.",
+      "nature": "API",
+      "ref": "§ 4.1 ; I2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.002",
+      "description": "Bloc `payment` : `method` `ONLINE` ou `AT_PICKUP` (absent = `ONLINE`) ; `state` (`DUE`, `COLLECTED`) et `amount` (≥ 0) obligatoires si `AT_PICKUP`.",
+      "nature": "API",
+      "ref": "§ 4.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.003",
+      "description": "Objet `lines[].catering` : `lineId` UUID ; `variant` (`id` au motif `[A-Za-z0-9-]{1,20}`, `label` ≤ 60, `persons`, `pieces`, `parts`, `weightGrams` facultatifs).",
+      "nature": "API",
+      "ref": "§ 4.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.004",
+      "description": "`lines[].catering.configurationKey` : 64 caractères hexadécimaux, obligatoire.",
+      "nature": "API",
+      "ref": "§ 4.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.005",
+      "description": "`lines[].catering.configuration` : absente, composition `{choices: {étape: [choix…]}}` ou gâteau `{shapeId, text, flavourId}` avec `text` facultatif ≤ 2.",
+      "nature": "API",
+      "ref": "§ 4.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.006",
+      "description": "`lines[].catering.choiceLabels` (0 à 40 libellés ≤ 60), `allergens` et `ingredients` (≤ 4 000), `storage` et `servingAdvice` (≤ 1 000).",
+      "nature": "API",
+      "ref": "§ 4.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.007",
+      "description": "Bloc présent et mal formé : 400 avec le chemin du champ et l'événement existant « Commande rejetée (schéma invalide) ».",
+      "nature": "Règle",
+      "ref": "I2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.008",
+      "description": "Zones de température du schéma alignées sur `TemperatureZone` ; `FRESH` accepté en entrée comme synonyme de `CHILLED`.",
+      "nature": "Adaptation",
+      "ref": "I8 ; C10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.009",
+      "description": "Une ligne est traiteur si et seulement si elle porte l'objet `catering` ; le nom du produit n'est jamais interprété.",
+      "nature": "Règle",
+      "ref": "I1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.010",
+      "description": "`lineId` en double dans une commande : 400 `CATERING_LINE_INVALID`.",
+      "nature": "Règle",
+      "ref": "I3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.011",
+      "description": "`configuration` qui n'est ni une composition ni un gâteau : 400 `CATERING_LINE_INVALID`.",
+      "nature": "Règle",
+      "ref": "I3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.012",
+      "description": "Ligne `catering` dans une charge sans bloc `catering` racine : 400 `CATERING_LINE_INVALID`.",
+      "nature": "Règle",
+      "ref": "I3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.013",
+      "description": "Soumission idempotente par `(storeCode, orderId)` : empreinte canonique de la charge conservée avec la demande.",
+      "nature": "Règle",
+      "ref": "I4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.014",
+      "description": "Rejeu d'une charge identique : 202, aucune seconde `OrderRequest`.",
+      "nature": "Règle",
+      "ref": "I4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.015",
+      "description": "Charge différente sous le même `orderId` : 409 `ORDER_ALREADY_SUBMITTED`, aucun effet.",
+      "nature": "Règle",
+      "ref": "I4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.016",
+      "description": "`OrderRecorder` enregistre `payment` sur la commande (mode, état, montant), avec ou sans traiteur.",
+      "nature": "Règle",
+      "ref": "§ 4.1 ; F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.017",
+      "description": "`OrderRecorder` crée, pour chaque ligne traiteur, l'`OrderLine` existante et une `CateringUnit` : variante, clé et configuration, libellés, allergènes, ingrédients, conservation, conseils, quantité, `availableAt` = début du créneau.",
+      "nature": "Règle",
+      "ref": "I6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.018",
+      "description": "EAN inconnu, `autoReferenceUnknownItems` vrai : création du `Product` (nom et type de la ligne, zone `defaultTemperatureZone`) et d'un `CateringItem` en mode `defaultSourcingMode`, sans poste ni nomenclature.",
+      "nature": "Règle",
+      "ref": "I5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.019",
+      "description": "EAN inconnu, paramètre faux : rien n'est créé ; l'unité garde l'EAN reçu, sans article ni ligne de lot, à l'état `BLOCKED`.",
+      "nature": "Règle",
+      "ref": "I5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.020",
+      "description": "Dans les deux cas d'EAN inconnu : commande enregistrée, situation `CATERING_UNREFERENCED`.",
+      "nature": "Règle",
+      "ref": "I5 ; C2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.021",
+      "description": "`enabled` faux : toute unité reçue passe `BLOCKED` sous `CATERING_DISABLED`.",
+      "nature": "Règle",
+      "ref": "§ 6 ; F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.022",
+      "description": "`CateringFulfillerFactory` : toujours exécuté par `FulfillmentEngine` avant les fulfillers de la configuration du magasin, sans y être déclaré.",
+      "nature": "Adaptation",
+      "ref": "I7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.023",
+      "description": "Unité `FABRICATED` ou `SUPPLIED` : sa ligne passe dans un chunk `READY` marqué `catering`, sans emplacement de prélèvement ; `CateringUnit.fulfillmentLine` la référence.",
+      "nature": "Règle",
+      "ref": "I7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.024",
+      "description": "Unité `BLOCKED` dont le produit est connu : même chunk traiteur, quel que soit son mode.",
+      "nature": "Règle",
+      "ref": "I7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.025",
+      "description": "Unité `STOCKED` non bloquée : sa ligne est remplacée par ses produits à prélever, laissés aux fulfillers suivants.",
+      "nature": "Règle",
+      "ref": "I7 ; F11",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.026",
+      "description": "Le lot du chunk traiteur est créé par le mécanisme existant ; aucune ligne traiteur ne laisse la commande à l'état `PENDING`.",
+      "nature": "Règle",
+      "ref": "I7 ; C4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.027",
+      "description": "Charge sans aucun bloc ajouté : mêmes entités et mêmes événements qu'avant.",
+      "nature": "Test",
+      "ref": "§ 11.1 ; P5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.028",
+      "description": "Charge avec `payment` seul, sans traiteur : commande au retrait enregistrée, aucune unité.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.029",
+      "description": "`payment.method = AT_PICKUP` sans `state` ou sans `amount` : 400.",
+      "nature": "Test",
+      "ref": "§ 4.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.030",
+      "description": "Bloc racine mal formé (version absente, date invalide, convives hors bornes) : 400 avec le chemin.",
+      "nature": "Test",
+      "ref": "I2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.031",
+      "description": "Chaque champ de `lines[].catering` hors borne ou au mauvais motif : 400 avec le chemin.",
+      "nature": "Test",
+      "ref": "§ 4.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.032",
+      "description": "`lineId` en double ; `configurationKey` absente ; configuration inconnue ; ligne traiteur sans bloc racine : un cas par jambe.",
+      "nature": "Test",
+      "ref": "I3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.033",
+      "description": "Rejeu identique : 202 et une seule `OrderRequest` ; même charge avec les clés JSON dans un autre ordre : toujours identique.",
+      "nature": "Test",
+      "ref": "I4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.034",
+      "description": "Rejeu différent : 409 `ORDER_ALREADY_SUBMITTED`, commande d'origine intacte.",
+      "nature": "Test",
+      "ref": "I4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.035",
+      "description": "EAN inconnu, paramètre vrai : produit et fiche créés, unité `RECEIVED`, situation produite.",
+      "nature": "Test",
+      "ref": "I5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.036",
+      "description": "EAN inconnu, paramètre faux : unité `BLOCKED`, `OrderLine` sans produit, aucune ligne de lot.",
+      "nature": "Test",
+      "ref": "I5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.037",
+      "description": "EAN de 23 caractères accepté et relu.",
+      "nature": "Test",
+      "ref": "I9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.038",
+      "description": "Zone `FRESH` acceptée et lue comme `CHILLED`.",
+      "nature": "Test",
+      "ref": "I8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.039",
+      "description": "`enabled` faux : unité `BLOCKED`, situation `CATERING_DISABLED`.",
+      "nature": "Test",
+      "ref": "§ 6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.040",
+      "description": "Commande mixte avec une unité bloquée : les lots de courses sont créés et la commande n'est pas `PENDING`.",
+      "nature": "Test",
+      "ref": "I7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.041",
+      "description": "Unité `STOCKED` : ses produits à prélever sont répartis par les fulfillers existants.",
+      "nature": "Test",
+      "ref": "I7 ; F11",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.042",
+      "description": "Magasin dont la configuration `fulfillers` ne cite pas le traiteur : les lignes traiteur sont quand même réparties.",
+      "nature": "Test",
+      "ref": "I7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.043",
+      "description": "Un produit est un article traiteur s'il possède un `CateringItem` actif.",
+      "nature": "Règle",
+      "ref": "F1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.044",
+      "description": "Article désactivé : aucune planification nouvelle ; ses unités en cours vont à leur terme.",
+      "nature": "Règle",
+      "ref": "F1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.045",
+      "description": "Mode d'une unité résolu à la réception : surcharge du magasin, à défaut fiche, à défaut `defaultSourcingMode` ; figé sur l'unité.",
+      "nature": "Règle",
+      "ref": "F2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.046",
+      "description": "Poste résolu de la même façon ; unité `FABRICATED` ou `SUPPLIED` sans poste : reste `RECEIVED` sous `CATERING_UNREFERENCED`.",
+      "nature": "Règle",
+      "ref": "F2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.047",
+      "description": "`GET /catering/items?storeId=&q=&mode=` : fiches avec mode résolu, poste, nomenclatures présentes ou manquantes par variante connue.",
+      "nature": "API",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.048",
+      "description": "Variantes connues d'un article : celles de ses nomenclatures et celles des unités reçues.",
+      "nature": "Règle",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.049",
+      "description": "`PUT /catering/items` (ADMIN) : `station` exigé pour `FABRICATED` et `SUPPLIED` ; 400 avec le libellé du paramètre.",
+      "nature": "API",
+      "ref": "§ 8.1 ; § 5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.050",
+      "description": "`PUT /catering/items/{id}/stores/{storeId}` (ADMIN, MANAGER du magasin) : surcharge ; 403 pour un autre magasin.",
+      "nature": "API",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.051",
+      "description": "`GET /catering/items/{id}/recipes` : nomenclatures, lignes et révisions ; 404 si l'article est inconnu.",
+      "nature": "API",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.052",
+      "description": "`PUT /catering/items/{id}/recipes` (ADMIN) : crée une révision nouvelle, base ou complément ; 400 pour un composant inconnu ou une quantité ≤ 0.",
+      "nature": "API",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.053",
+      "description": "`GET /catering/stations?storeId=` : postes, calendrier, employés habilités.",
+      "nature": "API",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.054",
+      "description": "`PUT /catering/stations` (ADMIN, MANAGER du magasin) : code unique, bâtiment et buffer `STAGING` du magasin, imprimante du magasin, horaires cohérents ; 400, 403.",
+      "nature": "API",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.055",
+      "description": "`PUT /catering/stations/{id}/employees` : 400 pour un employé d'un autre magasin.",
+      "nature": "API",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.056",
+      "description": "Droits : lectures ADMIN et MANAGER ; un manager est limité à son magasin ; fiches et nomenclatures communes écrites par l'administrateur seul.",
+      "nature": "API",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.057",
+      "description": "`CateringUnitLifecycleTest` : fiche active, désactivée ; article désactivé non planifié, unités en cours poursuivies.",
+      "nature": "Test",
+      "ref": "§ 11.1 ; F1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.058",
+      "description": "`CateringUnitLifecycleTest` : mode résolu par la surcharge, par la fiche, par la politique ; mode figé après changement de fiche.",
+      "nature": "Test",
+      "ref": "§ 11.1 ; F2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.059",
+      "description": "`CateringUnitLifecycleTest` : poste non résolu pour `FABRICATED` et pour `SUPPLIED`.",
+      "nature": "Test",
+      "ref": "§ 11.1 ; F2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.060",
+      "description": "Test : chaque écriture du référentiel avec chaque rôle ; manager d'un autre magasin refusé.",
+      "nature": "Test",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T1.061",
+      "description": "Test : chaque refus de validation des fiches, nomenclatures, postes et habilitations.",
+      "nature": "Test",
+      "ref": "§ 8.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.001",
+      "description": "Transitions des neuf états de l'unité, chacune à son événement d'entrée.",
+      "nature": "Règle",
+      "ref": "F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.002",
+      "description": "Chaque changement d'état augmente `revision` de l'unité et `CommercePickupState.revision` de la commande.",
+      "nature": "Règle",
+      "ref": "F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.003",
+      "description": "Une unité `BLOCKED` n'arrête pas les autres unités de la commande.",
+      "nature": "Règle",
+      "ref": "F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.004",
+      "description": "Retour de `BLOCKED` à `RECEIVED` au premier calcul qui suit la disparition de la cause.",
+      "nature": "Règle",
+      "ref": "F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.005",
+      "description": "Unité `STOCKED` débloquée : ses produits à prélever rejoignent un chunk `PENDING` de la commande.",
+      "nature": "Règle",
+      "ref": "F3 ; I7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.006",
+      "description": "Unité servie en partie : elle garde son état et porte `shortQuantity` ; `SHORT` seulement si toute la quantité est non servie.",
+      "nature": "Règle",
+      "ref": "F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.007",
+      "description": "`GET /catering/units?storeId=&from=&to=&state=` : commande, créneau, article, variante, composition, quantité, mode, état, ordre ou besoin lié.",
+      "nature": "API",
+      "ref": "§ 8.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.008",
+      "description": "`CateringUnitLifecycleTest` : chaque état atteint par son événement ; révisions incrémentées ; retour depuis `BLOCKED` pour chacune des trois causes.",
+      "nature": "Test",
+      "ref": "§ 11.1 ; F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.009",
+      "description": "Base : nomenclature active de plus haute révision pour `(item, variantId)`, sans choix.",
+      "nature": "Règle",
+      "ref": "F4.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.010",
+      "description": "Composition : ajout du complément `(stepId, choiceId)` de chaque choix reçu, s'il existe.",
+      "nature": "Règle",
+      "ref": "F4.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.011",
+      "description": "Gâteau : ajout du complément `flavourId`, s'il existe ; forme et texte servis comme consigne.",
+      "nature": "Règle",
+      "ref": "F4.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.012",
+      "description": "Quantités et `laborSeconds` additionnés, puis multipliés par la quantité de la ligne.",
+      "nature": "Règle",
+      "ref": "F4.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.013",
+      "description": "Aucune base, `recipeRequired` vrai : unité `BLOCKED`, situation `CATERING_RECIPE_MISSING`.",
+      "nature": "Règle",
+      "ref": "F4.5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.014",
+      "description": "Aucune base, `recipeRequired` faux : planification avec `defaultLaborSeconds`, sans composant, même situation en « information manquante ».",
+      "nature": "Règle",
+      "ref": "F4.5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.015",
+      "description": "Nomenclature figée sur la ligne de fabrication à la validation ; une révision ultérieure ne change pas un ordre validé.",
+      "nature": "Règle",
+      "ref": "F4.6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.016",
+      "description": "`CateringRecipeTest` : base seule ; un complément de choix ; plusieurs ; complément absent ; parfum ; révision la plus haute ; révision inactive ignorée.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.017",
+      "description": "`CateringRecipeTest` : nomenclature absente avec `recipeRequired` vrai, puis faux ; figeage à la validation.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.018",
+      "description": "Fin au plus tard : mise à disposition − `stagingLeadMinutes`.",
+      "nature": "Règle",
+      "ref": "F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.019",
+      "description": "Début au plus tôt : mise à disposition − `maxAdvanceHours`, jamais avant l'instant présent.",
+      "nature": "Règle",
+      "ref": "F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.020",
+      "description": "Jours admis : `weekdays` du poste, hors `closedDates`.",
+      "nature": "Règle",
+      "ref": "F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.021",
+      "description": "Plages admises : entre `opensAt` et `closesAt`.",
+      "nature": "Règle",
+      "ref": "F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.022",
+      "description": "Contrôle de date limite avec `reception.date` : la fin de fabrication + `shelfLifeHours` atteint la fin du jour de réception.",
+      "nature": "Règle",
+      "ref": "F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.023",
+      "description": "Contrôle de date limite sans `reception.date` : elle atteint la fin du créneau + `consumptionMarginHours`.",
+      "nature": "Règle",
+      "ref": "F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.024",
+      "description": "Le début au plus tôt est repoussé autant que le contrôle de date limite l'exige.",
+      "nature": "Règle",
+      "ref": "F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.025",
+      "description": "Fenêtre vide : l'unité reste `RECEIVED`, situation `FABRICATION_WINDOW` ; la mise à disposition n'est jamais déplacée.",
+      "nature": "Règle",
+      "ref": "F5 ; P1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.026",
+      "description": "`FabricationWindowTest` : chaque borne ; début ramené à l'instant présent ; jour fermé ; date fermée ; heure d'ouverture et de fermeture.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.027",
+      "description": "`FabricationWindowTest` : date limite avec et sans `reception.date` ; début repoussé ; fenêtre vide.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.028",
+      "description": "`FabricationWindowTest` : les deux exemples chiffrés de la spécification (pain surprise et gâteau chiffre, créneau du samedi 10:00).",
+      "nature": "Test",
+      "ref": "F5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.029",
+      "description": "Candidats : unités `FABRICATED` à l'état `RECEIVED` et unités `SUPPLIED` au besoin d'achat validé, poste résolu, mise à disposition dans `proposalHorizonDays`.",
+      "nature": "Règle",
+      "ref": "F6.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.030",
+      "description": "Jour retenu : le dernier jour admis de la fenêtre dont la charge restante suffit ; à défaut le précédent, jusqu'au début au plus tôt.",
+      "nature": "Règle",
+      "ref": "F6.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.031",
+      "description": "Ligne de fabrication : une par `(poste, jour, article, variantId, configurationKey)`.",
+      "nature": "Règle",
+      "ref": "F6.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.032",
+      "description": "`batchAcrossOrders` vrai : les unités de commandes différentes de même clé sont réunies ; faux : une ligne par unité.",
+      "nature": "Règle",
+      "ref": "F6.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.033",
+      "description": "Une `FabricationLineUnit` par unité servie, avec sa quantité.",
+      "nature": "Règle",
+      "ref": "F6.3 ; § 5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.034",
+      "description": "Ordres : lignes d'un poste et d'un jour triées par mise à disposition, découpées à `maxOrderMinutes` ; une ligne plus longue forme un ordre seule.",
+      "nature": "Règle",
+      "ref": "F6.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.035",
+      "description": "`requestedStart` et `requestedEnd` dans la fenêtre commune des lignes ; `plannedMinutes` arrondi à la minute supérieure.",
+      "nature": "Règle",
+      "ref": "F6.5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.036",
+      "description": "Charge d'un jour : somme des `plannedMinutes` des ordres non annulés du poste, proposés et validés.",
+      "nature": "Règle",
+      "ref": "F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.037",
+      "description": "Capacité : `dailyMinutes`, 0 = non limitée.",
+      "nature": "Règle",
+      "ref": "F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.038",
+      "description": "Capacité plafonnée par le temps de présence planifié des employés habilités, quand le planning existe.",
+      "nature": "Règle",
+      "ref": "F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.039",
+      "description": "Aucun jour de la fenêtre ne convient : situation `FABRICATION_CAPACITY` avec les unités et les minutes manquantes.",
+      "nature": "Règle",
+      "ref": "F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.040",
+      "description": "`FabricationPlanningTest` : regroupement avec `batchAcrossOrders` vrai et faux ; deux gâteaux de textes différents jamais réunis.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.041",
+      "description": "`FabricationPlanningTest` : découpage à `maxOrderMinutes` ; ligne plus longue que le maximum.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.042",
+      "description": "`FabricationPlanningTest` : capacité 0 ; capacité atteinte et report au jour précédent ; plafond de présence ; aucun jour possible.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.043",
+      "description": "Constructeur d'ordres de fabrication exécuté à chaque cycle de `StoreActivityEngine`.",
+      "nature": "Adaptation",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.044",
+      "description": "Recalcul à chaque commande reçue, modification, annulation, changement de référentiel ou de politique, et à la demande.",
+      "nature": "Règle",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.045",
+      "description": "Ordres produits : `proposalState = PROPOSED`, statut `OPEN`, `assignee` nul, `proposedEmployee` quand un employé habilité et présent convient.",
+      "nature": "Règle",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.046",
+      "description": "Un ordre `PROPOSED` est recalculé librement et n'engage aucun stock.",
+      "nature": "Règle",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.047",
+      "description": "Ordres `PROPOSED` exclus des lectures opérateur.",
+      "nature": "Adaptation",
+      "ref": "F8 ; § 8.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.048",
+      "description": "Ordres `PROPOSED` exclus de la supervision de la manutention.",
+      "nature": "Adaptation",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.049",
+      "description": "Ordres `PROPOSED` exclus du planning contraint.",
+      "nature": "Adaptation",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.050",
+      "description": "`GET /catering/fabrication/proposals?storeId=` : poste, jour, plage, lignes, minutes, employé proposé, charge et capacité du jour, composants manquants, limite d'annulation des commandes.",
+      "nature": "API",
+      "ref": "§ 8.2 ; F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.051",
+      "description": "`POST /catering/fabrication/proposals/recompute` : relance le calcul et rend la même lecture.",
+      "nature": "API",
+      "ref": "§ 8.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.052",
+      "description": "`POST /catering/fabrication/proposals/validate` : `proposalState = VALIDATED`, unités `PLANNED`, nomenclature figée, engagements créés.",
+      "nature": "API",
+      "ref": "§ 8.2 ; F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.053",
+      "description": "Validation avec jour, plage ou employé modifiés : F5, F7 et l'habilitation sont revérifiées.",
+      "nature": "Règle",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.054",
+      "description": "Refus de validation : 409 `STALE_REVISION`, `OUT_OF_WINDOW`, `OVER_CAPACITY`, `COMPONENT_SHORTAGE`, `EMPLOYEE_NOT_QUALIFIED`, raison servie.",
+      "nature": "Règle",
+      "ref": "§ 8.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.055",
+      "description": "À la validation, `assignee` reçoit l'employé retenu par le manager, à défaut l'employé proposé.",
+      "nature": "Règle",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.056",
+      "description": "L'ordre validé entre dans le planning contraint existant comme toute manutention.",
+      "nature": "Adaptation",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.057",
+      "description": "`autoValidateProposals` vrai : validation appliquée par le serveur, auteur `SYSTEM`, mêmes contrôles ; jamais pour les besoins d'achat.",
+      "nature": "Règle",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.058",
+      "description": "Un ordre validé n'est plus touché par le calcul ; une unité ajoutée ensuite forme une proposition nouvelle.",
+      "nature": "Règle",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.059",
+      "description": "`GET /catering/fabrication/sheet?storeId=&date=&stationId=` : feuille imprimable du jour, lignes regroupées, compositions, allergènes, commandes et créneaux, date de réception et convives.",
+      "nature": "API",
+      "ref": "§ 8.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.060",
+      "description": "`FabricationPlanningTest` : proposition invisible de l'opérateur, de la supervision et du planning.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.061",
+      "description": "`FabricationPlanningTest` : validation simple ; avec chaque modification ; chacun des cinq refus.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.062",
+      "description": "`FabricationPlanningTest` : validation automatique ; ordre validé non recalculé ; unité ajoutée après validation.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.063",
+      "description": "`FabricationPlanningTest` : chaque déclencheur du recalcul produit la proposition attendue.",
+      "nature": "Test",
+      "ref": "F8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.064",
+      "description": "À la validation, un `StockCommitment` par composant `INGREDIENT` : référence `FAB:…`, bâtiment du poste, `preparationAt` = début de l'ordre.",
+      "nature": "Règle",
+      "ref": "F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.065",
+      "description": "Le stock daté existant prend ces engagements en compte comme des engagements de commande.",
+      "nature": "Adaptation",
+      "ref": "F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.066",
+      "description": "Quantité indisponible à la date de l'ordre, proposé ou validé : situation `CATERING_COMPONENT_SHORTAGE` avec composant, quantité manquante et ordres.",
+      "nature": "Règle",
+      "ref": "F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.067",
+      "description": "`componentShortagePolicy = BLOCK` : validation refusée ; `WARN` : acceptée.",
+      "nature": "Règle",
+      "ref": "F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.068",
+      "description": "Les règles de réapprovisionnement existantes voient ces engagements ; aucune règle nouvelle.",
+      "nature": "Adaptation",
+      "ref": "F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.069",
+      "description": "`GET /catering/requirements?storeId=&from=&to=` : par jour et composant, besoin, disponible daté, écart, ordres.",
+      "nature": "API",
+      "ref": "§ 8.2 ; F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.070",
+      "description": "Annulation ou baisse d'une unité : engagements annulés ou réduits dans la même transaction.",
+      "nature": "Règle",
+      "ref": "F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.071",
+      "description": "`CateringRequirementsTest` : engagements créés à la validation, réduits, annulés.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.072",
+      "description": "`CateringRequirementsTest` : manque sur ordre proposé, sur ordre validé ; `BLOCK` et `WARN`.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T2.073",
+      "description": "`CateringRequirementsTest` : le réapprovisionnement existant réagit à un engagement de fabrication.",
+      "nature": "Test",
+      "ref": "F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.001",
+      "description": "Unité `SUPPLIED` reçue : besoin d'achat `PROPOSED` ; `dueAt` = mise à disposition − `maxAdvanceHours`.",
+      "nature": "Règle",
+      "ref": "F10.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.002",
+      "description": "`orderBy` = le jour de `dueAt` − `supplierLeadDays`, à l'heure `supplierOrderCutoff`, à défaut à la fin de ce jour.",
+      "nature": "Règle",
+      "ref": "F10.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.003",
+      "description": "`GET /catering/purchase-needs?storeId=&state=` : besoins regroupés par fournisseur, article, variante et jour dû.",
+      "nature": "API",
+      "ref": "§ 8.2 ; F10.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.004",
+      "description": "`POST /catering/purchase-needs/validate` : besoins choisis `VALIDATED`, `ExpectedSupply` `EXPECTED` de référence `CAT:…` vers l'emplacement de réception ; 409 `STALE_REVISION`.",
+      "nature": "API",
+      "ref": "§ 8.2 ; F10.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.005",
+      "description": "`GET /catering/purchase-needs/order-form?storeId=&supplier=&dueDate=` : bon de commande imprimable, jamais transmis.",
+      "nature": "API",
+      "ref": "§ 8.2 ; F10.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.006",
+      "description": "Besoin validé : l'unité devient candidate à la proposition, au poste de sa fiche, dans la fenêtre de F5.",
+      "nature": "Règle",
+      "ref": "F10.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.007",
+      "description": "Ligne de mise en support : seul composant l'article reçu ; temps = `laborSeconds` de la nomenclature de base, à défaut `defaultLaborSeconds` ; F4.5 non appliquée.",
+      "nature": "Règle",
+      "ref": "F10.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.008",
+      "description": "L'unité fournie est `PLANNED` quand son ordre de mise en support est validé.",
+      "nature": "Règle",
+      "ref": "F10.4 ; F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.009",
+      "description": "Réception par le flux existant, reconnue à la référence `CAT:…` : besoin `RECEIVED`, entrée en stock avec le lot du fournisseur, engagement immédiat pour l'unité.",
+      "nature": "Adaptation",
+      "ref": "F10.5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.010",
+      "description": "`FABRICATE` sur une ligne de mise en support : `PickedItem` de la ligne de lot traiteur, source = emplacement de réception, lot du fournisseur ; étiquette.",
+      "nature": "Règle",
+      "ref": "F10.6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.011",
+      "description": "`FABRICATE` refusé tant que l'approvisionnement n'est pas reçu : `SUPPLY_NOT_RECEIVED`.",
+      "nature": "Règle",
+      "ref": "F10.6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.012",
+      "description": "Article fourni : `producedAt` = heure de réception ; `useBy` = `producedAt + shelfLifeHours`, ramené à la date limite du lot du fournisseur si elle est plus proche.",
+      "nature": "Règle",
+      "ref": "F10.6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.013",
+      "description": "`orderBy` dépassé sans validation, ou `dueAt` dépassé sans réception : `CATERING_SUPPLY_LATE` en risque ; avérée après la fin au plus tard.",
+      "nature": "Règle",
+      "ref": "F10.7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.014",
+      "description": "`CateringRequirementsTest` : `dueAt` et `orderBy` avec et sans heure limite ; regroupement de la lecture.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.015",
+      "description": "`CateringRequirementsTest` : validation ; mise en support proposée puis validée ; réception.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.016",
+      "description": "`CateringRequirementsTest` : `FABRICATE` avant réception refusé, après réception accepté ; date limite du lot du fournisseur plus proche et plus lointaine.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.017",
+      "description": "`CateringRequirementsTest` : retard de commande, retard de livraison, passage de risque à avéré.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.018",
+      "description": "Unité `STOCKED` avec nomenclature : ses lignes `PICKED`, multipliées par la quantité, sont les produits à prélever.",
+      "nature": "Règle",
+      "ref": "F11",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.019",
+      "description": "Unité `STOCKED` sans nomenclature : le produit lui-même est prélevé.",
+      "nature": "Règle",
+      "ref": "F11",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.020",
+      "description": "Lignes remises aux fulfillers suivants comme des lignes ordinaires, datées de la mise à disposition.",
+      "nature": "Règle",
+      "ref": "F11 ; I7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.021",
+      "description": "L'unité suit leur avancement : `PLANNED` à la planification de la collecte, `PRODUCED` au prélèvement complet, `STAGED` au dépôt en buffer.",
+      "nature": "Règle",
+      "ref": "F11",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.022",
+      "description": "`CateringUnitLifecycleTest` : article en stock avec et sans nomenclature ; chaque état suivi depuis la collecte existante.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.023",
+      "description": "L'ordre validé et affecté apparaît dans les lectures existantes des missions de l'opérateur.",
+      "nature": "Adaptation",
+      "ref": "F12 ; § 8.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.024",
+      "description": "Lecture par ligne : article, variante, quantité, libellés figés, texte du gâteau, allergènes, composants avec quantités et emplacements, temps prévu.",
+      "nature": "API",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.025",
+      "description": "Sous chaque ligne, les unités à servir dans l'ordre de leur mise à disposition : référence de commande, créneau, quantité.",
+      "nature": "API",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.026",
+      "description": "`FABRICATE` (`itemId` = part de ligne destinée à une unité, `quantity`, `toteCode`, `componentLots`) : ajoute la quantité fabriquée pour cette unité.",
+      "nature": "Règle",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.027",
+      "description": "`FABRICATE` place le produit dans le support `toteCode`, aux règles de F15.",
+      "nature": "Règle",
+      "ref": "F12 ; F15",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.028",
+      "description": "`FABRICATE` : quantité totale supérieure à la quantité prévue pour l'unité refusée, `QUANTITY_EXCEEDED`.",
+      "nature": "Règle",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.029",
+      "description": "La première action passe l'ordre à `PROCESSING` et l'unité à `IN_PROGRESS` ; la quantité complète la passe à `PRODUCED`.",
+      "nature": "Règle",
+      "ref": "F12 ; F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.030",
+      "description": "`FABRICATION_LOSS` (`itemId`, `quantity`, `reason`) : composants de la quantité perdue consommés, reste à fabriquer inchangé, incident par `FieldOperationsService`.",
+      "nature": "Règle",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.031",
+      "description": "`FABRICATION_SHORT` (`itemId`, `quantity`, `reason`) : `shortQuantity` de l'unité et de la ligne, manquant consigné par `PickingShortage` sur la ligne de lot.",
+      "nature": "Règle",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.032",
+      "description": "`FABRICATION_SHORT` : unité entièrement non servie à l'état `SHORT` ; incident ; situation `CATERING_SHORT`.",
+      "nature": "Règle",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.033",
+      "description": "`DEPOSIT_TOTE` existant accepté sur une exécution de fabrication.",
+      "nature": "Adaptation",
+      "ref": "F12 ; F15",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.034",
+      "description": "`CONCLUDE` refusé tant qu'une ligne a un reste ni fabriqué ni déclaré non servi.",
+      "nature": "Règle",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.035",
+      "description": "`CONCLUDE` refusé tant qu'une quantité fabriquée n'est pas déposée.",
+      "nature": "Règle",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.036",
+      "description": "Les trois actions nouvelles gardent les garanties du contrat opérateur v2 : révision attendue, rejeu par `requestKey`, reçu committé avec l'effet.",
+      "nature": "Règle",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.037",
+      "description": "Une unité se confirme en une action : quantité prévue proposée, étiquette sans action supplémentaire, dépôt par un scan ; aucune fiche récapitulative ni double confirmation imposée.",
+      "nature": "Règle",
+      "ref": "F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.038",
+      "description": "`FabricationExecutionTest` : chaque action nominale ; rejeu de la même clé ; clé réutilisée pour un autre contenu ; révision dépassée.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.039",
+      "description": "`FabricationExecutionTest` : dépassement de quantité ; perte ; impossibilité partielle et totale.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.040",
+      "description": "`FabricationExecutionTest` : `CONCLUDE` refusé pour chacune de ses deux causes, accepté ensuite.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.041",
+      "description": "`FabricationExecutionTest` : ligne regroupée servant deux commandes, une action et un support par unité.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.042",
+      "description": "Test : la lecture de la mission ne contient ni nom, ni adresse, ni téléphone du client.",
+      "nature": "Test",
+      "ref": "P6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.043",
+      "description": "`useBy = producedAt + shelfLifeHours` ; `producedAt` = heure serveur de la première quantité fabriquée de la ligne.",
+      "nature": "Règle",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.044",
+      "description": "`lotCode` = `<code de l'ordre>-<rang de la ligne>` ; article fourni : lot du fournisseur, à défaut référence de l'approvisionnement.",
+      "nature": "Règle",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.045",
+      "description": "`FABRICATE` sort chaque composant du stock et libère son engagement, dans la transaction de l'action.",
+      "nature": "Règle",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.046",
+      "description": "`FABRICATE` entre le produit fini sous un `ManufacturerLot` (code `lotCode`, `manufacturedOn`, `useBy` = date de la date limite), à l'adresse interne de son support.",
+      "nature": "Règle",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.047",
+      "description": "Le produit fini est un `PickedItem` de la ligne de lot traiteur, source = le poste ; l'expédition le débite par le mécanisme existant.",
+      "nature": "Règle",
+      "ref": "F13 ; F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.048",
+      "description": "Composants sans choix de l'opérateur : segments alloués en FIFO ou FEFO, comme pour un prélèvement.",
+      "nature": "Adaptation",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.049",
+      "description": "`componentLots` : lot précisé par l'opérateur dans la même action.",
+      "nature": "Règle",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.050",
+      "description": "Lot explicite exigé par la politique de traçabilité du composant et absent : refus `LOT_REQUIRED`.",
+      "nature": "Règle",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.051",
+      "description": "Chaque sortie de composant enregistrée en `FabricationConsumption` ; perte marquée `loss`.",
+      "nature": "Règle",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.052",
+      "description": "`/quality/trace` remonte d'un lot fini à ses composants et à leurs lots.",
+      "nature": "Adaptation",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.053",
+      "description": "`/quality/trace` descend d'un lot de composant aux lots finis, aux commandes et aux unités servies.",
+      "nature": "Adaptation",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.054",
+      "description": "`useBy` dépassé pour un produit non remis : situation `CATERING_EXPIRED`.",
+      "nature": "Règle",
+      "ref": "F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.055",
+      "description": "`FabricationExecutionTest` : composants alloués par le serveur ; lot choisi par l'opérateur ; lot exigé et absent.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.056",
+      "description": "`FabricationExecutionTest` : lot fini créé une seule fois par ligne ; trace ascendante et descendante ; date limite dépassée.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.057",
+      "description": "À chaque `FABRICATE`, un `PrintJob` par exemplaire × `labelCopies`, par la file d'impression existante, sur l'imprimante du poste.",
+      "nature": "Règle",
+      "ref": "F14",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.058",
+      "description": "Type de sujet nouveau `CATERING_LOT` dans `PrintingService` : code-barres = `lotCode`.",
+      "nature": "Adaptation",
+      "ref": "F14",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.059",
+      "description": "Gabarit `labelTemplate` du magasin s'il existe, sinon mise en page standard.",
+      "nature": "Règle",
+      "ref": "F14",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.060",
+      "description": "Lignes servies : nom et variante, libellés figés et texte, allergènes, conservation, `producedAt`, `useBy`, `lotCode`, référence et créneau de l'unité servie, point de retrait.",
+      "nature": "Règle",
+      "ref": "F14",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.061",
+      "description": "Aucune imprimante ou échec d'impression : l'action reste confirmée ; réimpression par l'écran d'impression existant.",
+      "nature": "Règle",
+      "ref": "F14",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.062",
+      "description": "`FabricationExecutionTest` : étiquettes par exemplaire et par copie ; gabarit présent, absent ; poste sans imprimante ; échec d'impression.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.063",
+      "description": "Destination proposée par `BufferOccupancyService` : cellule libre du `stagingBuffer` du poste, dans la zone de température de l'article.",
+      "nature": "Règle",
+      "ref": "F15",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.064",
+      "description": "À défaut : un autre buffer `STAGING` du magasin, de même zone.",
+      "nature": "Règle",
+      "ref": "F15",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.065",
+      "description": "Un support ne contient que les produits d'une seule commande.",
+      "nature": "Règle",
+      "ref": "F15",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.066",
+      "description": "Un article non alimentaire (zone `HOUSEHOLD`) n'est jamais dans le même support qu'un produit alimentaire.",
+      "nature": "Règle",
+      "ref": "F15",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.067",
+      "description": "Un article `fragile` occupe seul son support.",
+      "nature": "Règle",
+      "ref": "F15",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.068",
+      "description": "Aucun emplacement compatible : situation `CATERING_STAGING_FULL` ; le dépôt reste à faire.",
+      "nature": "Règle",
+      "ref": "F15",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.069",
+      "description": "Dépôt confirmé de toute la quantité : unité `STAGED`.",
+      "nature": "Règle",
+      "ref": "F15 ; F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.070",
+      "description": "`FabricationExecutionTest` : dépôt nominal ; buffer du poste plein et repli ; aucun emplacement.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T3.071",
+      "description": "`FabricationExecutionTest` : support d'une autre commande refusé ; mélange alimentaire et non alimentaire refusé ; article fragile seul.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.001",
+      "description": "Un produit fini ou reçu est un `PickedItem` de la ligne de lot traiteur dans un `LoadedTote` : avancement, buffers, annulation, remise, chargement et expédition existants s'y appliquent sans règle propre.",
+      "nature": "Règle",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.002",
+      "description": "`ZoneCollectingOrderManagerFactory` exclut les lots d'un chunk traiteur.",
+      "nature": "Adaptation",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.003",
+      "description": "`ProductCollectingOrderManagerFactory` exclut les lots d'un chunk traiteur.",
+      "nature": "Adaptation",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.004",
+      "description": "`GroupingOrderManagerFactory` exclut les lots d'un chunk traiteur.",
+      "nature": "Adaptation",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.005",
+      "description": "`PackingOrderManagerFactory` exclut les lots d'un chunk traiteur.",
+      "nature": "Adaptation",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.006",
+      "description": "`ActivitySnapshot` : un lot traiteur est planifié quand toutes ses unités sont `PLANNED` ou au-delà.",
+      "nature": "Adaptation",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.007",
+      "description": "`ActivitySnapshot` : un ordre de fabrication non conclu compte parmi les préparations actives.",
+      "nature": "Adaptation",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.008",
+      "description": "`ActivitySnapshot` : une ligne `SHORT` ou annulée n'est plus à préparer.",
+      "nature": "Adaptation",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.009",
+      "description": "L'étape existante se calcule sur les lignes de courses et les lignes traiteur ensemble ; la correspondance de `PickupContract.orderState` est inchangée.",
+      "nature": "Règle",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.010",
+      "description": "Une commande sans ligne de courses dont toutes les unités sont `SHORT` n'est jamais `READY`.",
+      "nature": "Règle",
+      "ref": "F16",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.011",
+      "description": "Une commande sans unité traiteur garde exactement la règle actuelle.",
+      "nature": "Règle",
+      "ref": "F16 ; P5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.012",
+      "description": "`CateringOrderStateTest` : commande annulée → `CANCELLED` ; remise ou expédiée → `COMPLETED`.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.013",
+      "description": "`CateringOrderStateTest` : `READY` avec courses prêtes et unités `STAGED` ; avec une unité `SHORT` ; avec une unité `CANCELLED` ; traiteur seul.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.014",
+      "description": "`CateringOrderStateTest` : non `READY` tant qu'une unité est seulement `PRODUCED` ; tant que les courses ne sont pas prêtes.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.015",
+      "description": "`CateringOrderStateTest` : `PREPARING` par une préparation de courses, par une unité `IN_PROGRESS`, `PRODUCED`, `STAGED`.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.016",
+      "description": "`CateringOrderStateTest` : `RECEIVED` sinon ; commande sans traiteur inchangée.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.017",
+      "description": "`CateringOrderStateTest` : un lot traiteur n'est pris par aucune des quatre fabriques existantes.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.018",
+      "description": "La file `GET /drive-arrivals` sert le point de retrait, les supports traiteur et leur emplacement, les unités `SHORT`.",
+      "nature": "API",
+      "ref": "F17 ; § 8.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.019",
+      "description": "Commande `AT_PICKUP` à l'état `DUE` : « À régler au magasin » et le montant de la dernière charge reçue, avec ou sans traiteur.",
+      "nature": "API",
+      "ref": "F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.020",
+      "description": "`handoverRequiresPaymentAck` vrai : `POST /drive-arrivals/complete` refusé, 409 `PAYMENT_ACK_REQUIRED`, sans `paymentAcknowledged: true`.",
+      "nature": "Règle",
+      "ref": "F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.021",
+      "description": "L'accusé d'encaissement est enregistré (date, auteur) ; l'état du paiement n'est pas changé.",
+      "nature": "Règle",
+      "ref": "F17 ; P1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.022",
+      "description": "Paramètre faux, paiement en ligne ou état `COLLECTED` : aucun accusé demandé.",
+      "nature": "Règle",
+      "ref": "F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.023",
+      "description": "Produit de date limite dépassée : remise refusée, 409 `CATERING_EXPIRED`.",
+      "nature": "Règle",
+      "ref": "F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.024",
+      "description": "`POST /catering/units/{id}/short` (MANAGER) : déclare l'unité non servie, avec un `PickingShortage` sans ordre ; 409 `STALE_REVISION`, `QUANTITY_EXCEEDED`.",
+      "nature": "API",
+      "ref": "§ 8.2 ; F17 ; F3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.025",
+      "description": "Unité périmée déclarée non servie : un ordre de devenir `ISOLATE` retire le produit de son support ; la remise redevient possible.",
+      "nature": "Règle",
+      "ref": "F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.026",
+      "description": "Remise ou expédition de la commande : unités à l'état `HANDED_OVER`.",
+      "nature": "Règle",
+      "ref": "F3 ; F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.027",
+      "description": "Livraison à domicile : les supports traiteur entrent dans la tournée par les mécanismes existants.",
+      "nature": "Adaptation",
+      "ref": "F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.028",
+      "description": "`CateringHandoverTest` : montant dû servi avec et sans traiteur ; non servi pour un paiement en ligne.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.029",
+      "description": "`CateringHandoverTest` : accusé exigé et absent, exigé et fourni, non exigé ; accusé publié.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.030",
+      "description": "`CateringHandoverTest` : date limite dépassée, puis unité déclarée non servie et produit isolé.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T4.031",
+      "description": "`CateringHandoverTest` : déclaration « non servi » par un administrateur refusée ; quantité supérieure refusée.",
+      "nature": "Test",
+      "ref": "§ 8.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.001",
+      "description": "`PUT /commerce/v1/stores/{storeCode}/orders/{orderReference}/catering` (SERVICE_CALLER, magasin autorisé) : `slot`, `lines`, l'un des deux exigé ; `deadlines` et `payment` facultatifs.",
+      "nature": "API",
+      "ref": "§ 8.3 ; F18",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.002",
+      "description": "Charge mal formée, version ou source inattendue : 400 `INVALID_REQUEST` ; commande sans unité traiteur : 409 `NO_CATERING_UNIT`.",
+      "nature": "API",
+      "ref": "§ 8.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.003",
+      "description": "Reçu idempotent par `requestId` (`CateringAmendment`) : rejeu identique → même réponse ; autre contenu → 409 `IDEMPOTENCY_CONFLICT`.",
+      "nature": "Règle",
+      "ref": "F18.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.004",
+      "description": "`expectedRevision` différente de la révision publiée : 409 `REVISION_CONFLICT`.",
+      "nature": "Règle",
+      "ref": "F18.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.005",
+      "description": "Unité non commencée (`RECEIVED`, `PLANNED`, `BLOCKED`) : modification appliquée ; lignes de fabrication, engagements et besoins d'achat réduits, déplacés ou annulés dans la même transaction.",
+      "nature": "Règle",
+      "ref": "F18.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.006",
+      "description": "Ordre validé touché par une baisse : la ligne est réduite, l'ordre reste validé.",
+      "nature": "Règle",
+      "ref": "F18.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.007",
+      "description": "Ordre validé touché par une hausse ou un nouveau créneau : les quantités concernées en sortent et forment une proposition nouvelle ; manager notifié.",
+      "nature": "Règle",
+      "ref": "F18.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.008",
+      "description": "Unité commencée, `amendmentAfterStart = REFUSE` : 409 `FABRICATION_STARTED`, rien n'est appliqué à aucune unité.",
+      "nature": "Règle",
+      "ref": "F18.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.009",
+      "description": "Unité commencée, `ACCEPT_DECREASE` : baisse acceptée, quantité fabriquée en excès traitée selon F19.4.",
+      "nature": "Règle",
+      "ref": "F18.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.010",
+      "description": "`ACCEPT_DECREASE` : hausse refusée (409 `FABRICATION_STARTED`) ; créneau qui sort le produit de sa date limite refusé (409 `USE_BY_EXCEEDED`).",
+      "nature": "Règle",
+      "ref": "F18.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.011",
+      "description": "Nouveau créneau : celui de la commande entière ; l'échéance des lots de courses non préparés suit ; une préparation de courses commencée n'est pas un motif de refus.",
+      "nature": "Règle",
+      "ref": "F18",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.012",
+      "description": "Nouveau créneau : F5 recalculée ; fenêtre vide → modification appliquée, situation `FABRICATION_WINDOW`, avertissement `FABRICATION_WINDOW_EMPTY`.",
+      "nature": "Règle",
+      "ref": "F18.5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.013",
+      "description": "`dryRun=true` : mêmes contrôles et même réponse (`outcome: PREVIEW`), aucune écriture, aucun reçu.",
+      "nature": "Règle",
+      "ref": "F18.6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.014",
+      "description": "Besoin d'achat `VALIDATED` touché : non modifié, situation `CATERING_SUPPLY_CHANGE`.",
+      "nature": "Règle",
+      "ref": "F18.7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.015",
+      "description": "Quantité 0 : retrait de la ligne, unité annulée selon F19.4.",
+      "nature": "Règle",
+      "ref": "F18.8",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.016",
+      "description": "`deadlines` et `payment` reçus remplacent les valeurs conservées de la commande.",
+      "nature": "Règle",
+      "ref": "F18",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.017",
+      "description": "Réponse 200 : le suivi de la commande, `outcome` (`APPLIED`, `PREVIEW`) et `warnings`.",
+      "nature": "API",
+      "ref": "§ 8.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.018",
+      "description": "`CateringAmendmentTest` : créneau seul, quantités seules, les deux, aucun des deux refusé.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.019",
+      "description": "`CateringAmendmentTest` : rejeu identique, clé réutilisée, révision dépassée.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.020",
+      "description": "`CateringAmendmentTest` : unité non commencée dans chacun de ses trois états ; baisse et hausse dans un ordre validé.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.021",
+      "description": "`CateringAmendmentTest` : unité commencée avec `REFUSE` (atomicité sur plusieurs unités) ; avec `ACCEPT_DECREASE` : baisse, hausse, date limite dépassée.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.022",
+      "description": "`CateringAmendmentTest` : fenêtre vide ; `dryRun` sans écriture ; besoin validé touché ; quantité 0 ; `deadlines` et `payment` remplacés ; courses redatées.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.023",
+      "description": "`POST /orders/{orderRef}/cancellation` (SERVICE_CALLER, nouveau) : `{orderRef, reason, requestId, scope, payment}` ; `scope` `ALL` par défaut ou `CATERING` ; vaut pour toute commande, avec ou sans traiteur.",
+      "nature": "API",
+      "ref": "F19 ; § 8.4 ; C7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.024",
+      "description": "Idempotent par `requestId` ; sans `requestId`, par `(orderRef, scope)` ; autre contenu sous la même clé : 409 `IDEMPOTENCY_CONFLICT`.",
+      "nature": "Règle",
+      "ref": "F19.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.025",
+      "description": "`scope = ALL` : annulation de la commande par `CancellationDispositionService`, flux et politiques existants pour les courses, et annulation des unités traiteur.",
+      "nature": "Règle",
+      "ref": "F19.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.026",
+      "description": "`scope = CATERING` : seules les unités traiteur sont annulées ; lignes de courses, créneau et bacs inchangés ; commande ouverte.",
+      "nature": "Règle",
+      "ref": "F19.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.027",
+      "description": "Unité non commencée : `CANCELLED`, lignes de fabrication réduites, engagements et besoins `PROPOSED` annulés.",
+      "nature": "Règle",
+      "ref": "F19.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.028",
+      "description": "Unité commencée, `cancelAfterStart = REFUSE` : 409 `FABRICATION_STARTED`, rien n'est annulé, courses comprises.",
+      "nature": "Règle",
+      "ref": "F19.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.029",
+      "description": "Unité commencée, `ACCEPT_WITH_DISPOSITION` : unité `CANCELLED` et `CancellationDispositionOrder` pour les quantités fabriquées.",
+      "nature": "Règle",
+      "ref": "F19.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.030",
+      "description": "Devenir `REALLOCATE`, s'il est autorisé pour l'article : le produit sert une autre unité non fabriquée de même article, variante et `configurationKey`, si sa date limite le permet ; la fabrication de cette unité est réduite d'autant.",
+      "nature": "Règle",
+      "ref": "F19.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.031",
+      "description": "Devenir `ISOLATE` à défaut : support distinct déposé en buffer ; `RETURN` jamais appliqué à un produit fabriqué ou fourni.",
+      "nature": "Règle",
+      "ref": "F19.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.032",
+      "description": "Unité `STOCKED` : ses lignes de lot suivent le flux d'annulation existant des courses.",
+      "nature": "Règle",
+      "ref": "F19.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.033",
+      "description": "Besoin d'achat `VALIDATED` : situation `CATERING_SUPPLY_CHANGE` ; article reçu non mis en support : engagement libéré, il reste en stock ; article mis en support : devenir.",
+      "nature": "Règle",
+      "ref": "F19.5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.034",
+      "description": "`payment` reçu remplace le montant conservé de la commande.",
+      "nature": "Règle",
+      "ref": "F19 ; F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.035",
+      "description": "Réponse 202 : `{orderRef, scope, outcome: CANCELLED, revision, units: [{lineId, state, disposition}]}`.",
+      "nature": "API",
+      "ref": "F19.6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.036",
+      "description": "Commande déjà annulée : 202 avec l'état courant, sans effet ; déjà remise : 409 `PICKUP_COMPLETED` ; inconnue ou magasin non autorisé : 404 sans détail.",
+      "nature": "Règle",
+      "ref": "F19.7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.037",
+      "description": "Annulation par le manager (`POST /field-operations/customer-orders/{id}/cancel` existant) : mêmes règles pour les lignes traiteur ; 409 `FABRICATION_STARTED`.",
+      "nature": "Adaptation",
+      "ref": "F19.8 ; § 8.4",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.038",
+      "description": "`CateringCancellationTest` : `ALL` et `CATERING` sur commande mixte ; commande sans traiteur ; traiteur seul.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.039",
+      "description": "`CateringCancellationTest` : rejeu avec et sans `requestId` ; clé réutilisée ; commande déjà annulée ; déjà remise ; inconnue ; magasin non autorisé.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.040",
+      "description": "`CateringCancellationTest` : unité non commencée ; commencée avec `REFUSE` (rien n'est annulé) ; avec devenir.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.041",
+      "description": "`CateringCancellationTest` : réaffectation possible ; impossible faute d'unité identique ; impossible par date limite ; non autorisée pour l'article ; isolement.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.042",
+      "description": "`CateringCancellationTest` : unité en stock ; besoin validé ; article reçu non mis en support ; mis en support ; `payment` remplacé.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.043",
+      "description": "`CateringCancellationTest` : annulation par le manager de lignes traiteur non commencées et commencées.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.044",
+      "description": "`GET /commerce/v1/stores/{storeCode}/orders/{orderReference}/catering` : `revision`, `orderState`, `updatedAt`, `payment` avec `acknowledgedAt`, et par unité `lineId`, `state`, quantités demandée, fabriquée, non servie, `plannedFor`, `producedAt`, `useBy`.",
+      "nature": "API",
+      "ref": "§ 8.3 ; F20",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.045",
+      "description": "Aucun nom d'employé, emplacement ni lot de composant publié ; la lecture `…/pickup` est inchangée et partage la même révision.",
+      "nature": "Règle",
+      "ref": "F20",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.046",
+      "description": "`GET /commerce/v1/stores/{storeCode}/catering/production?from=&to=` : par jour et poste, ouvert ou fermé, minutes de capacité, engagées et proposées ; par article et variante, quantités engagées.",
+      "nature": "API",
+      "ref": "§ 8.3 ; F21",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.047",
+      "description": "Fenêtre de plus de 62 jours : 400 ; imomswms ne refuse jamais une commande au titre de cette lecture.",
+      "nature": "Règle",
+      "ref": "F21 ; P1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.048",
+      "description": "Codes commerce : `INVALID_REQUEST`, `ORDER_NOT_FOUND`, `NO_CATERING_UNIT`, `REVISION_CONFLICT`, `IDEMPOTENCY_CONFLICT`, `FABRICATION_STARTED`, `USE_BY_EXCEEDED`, `ORDER_CANCELLED`, `PICKUP_COMPLETED`.",
+      "nature": "API",
+      "ref": "§ 8.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.049",
+      "description": "`CateringCommerceContractTest` : rôle absent, mauvais rôle, magasin non autorisé, commande d'un autre magasin, sur chacune des trois routes.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.050",
+      "description": "`CateringCommerceContractTest` : chaque code d'erreur ; fenêtre de 62 jours acceptée, 63 refusée.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T5.051",
+      "description": "`CateringCommerceContractTest` : contenu du suivi à chaque état d'unité ; absence des données non publiées ; révision commune avec `…/pickup`.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.001",
+      "description": "Situations ajoutées à `ActivitySupervisionService` avec la structure existante : identité stable, nature, gravité, cause, conséquences, commandes concernées, propositions, actions.",
+      "nature": "Adaptation",
+      "ref": "F22",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.002",
+      "description": "`CATERING_UNREFERENCED:<ean>` : information manquante ; avérée si l'unité est `BLOCKED` ; action : compléter la fiche.",
+      "nature": "Règle",
+      "ref": "F22 ; I5, F2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.003",
+      "description": "`CATERING_DISABLED` : avérée ; action : activer ou annuler.",
+      "nature": "Règle",
+      "ref": "F22",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.004",
+      "description": "`CATERING_RECIPE_MISSING:<article>:<variante>` : information manquante ; avérée si `BLOCKED` ; action : saisir la nomenclature.",
+      "nature": "Règle",
+      "ref": "F22 ; F4.5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.005",
+      "description": "`FABRICATION_UNPLANNED` : unités `RECEIVED` à moins de `planningLeadHours` de leur fin au plus tard, hors unités couvertes par trois autres situations ; risque, avérée si dépassée.",
+      "nature": "Règle",
+      "ref": "F22",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.006",
+      "description": "`FABRICATION_WINDOW:<poste>` : avérée ; actions : ouvrir le poste, changer l'avance, contacter le commerce.",
+      "nature": "Règle",
+      "ref": "F22 ; F5, F18.5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.007",
+      "description": "`FABRICATION_CAPACITY:<poste>:<jour>` : risque, avérée le jour même ; actions : déplacer dans la fenêtre, habiliter un employé.",
+      "nature": "Règle",
+      "ref": "F22 ; F7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.008",
+      "description": "`FABRICATION_LATE:<ordre>` : ordre validé non conclu après sa fin au plus tard ; action : réaffecter.",
+      "nature": "Règle",
+      "ref": "F22",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.009",
+      "description": "`CATERING_COMPONENT_SHORTAGE:<composant>` : risque, avérée si l'ordre a commencé ; action : réapprovisionnement existant.",
+      "nature": "Règle",
+      "ref": "F22 ; F9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.010",
+      "description": "`CATERING_SUPPLY_LATE:<fournisseur>` : risque, avérée après la fin au plus tard ; actions : valider, relancer.",
+      "nature": "Règle",
+      "ref": "F22 ; F10.7",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.011",
+      "description": "`CATERING_SUPPLY_CHANGE:<besoin>` : avérée ; décision du manager.",
+      "nature": "Règle",
+      "ref": "F22 ; F18.7, F19.5",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.012",
+      "description": "`CATERING_STAGING_FULL:<buffer>` : avérée ; actions : libérer, autre buffer.",
+      "nature": "Règle",
+      "ref": "F22 ; F15",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.013",
+      "description": "`CATERING_SHORT:<commande>` : avérée ; action : prévenir le commerce.",
+      "nature": "Règle",
+      "ref": "F22 ; F12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.014",
+      "description": "`CATERING_EXPIRED:<lot>` : avérée ; actions : déclarer l'unité non servie, isoler le produit.",
+      "nature": "Règle",
+      "ref": "F22 ; F13",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.015",
+      "description": "`OVERDUE`, `PLANNING`, `ROUTING` et `STOCK_UNKNOWN` ne se déclenchent plus pour les lignes traiteur `FABRICATED` et `SUPPLIED`.",
+      "nature": "Adaptation",
+      "ref": "F22",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.016",
+      "description": "Réaffecter ou déplacer un ordre validé par `POST /store-operations/supervision/apply` existant, qui revérifie F5, F7 et l'habilitation.",
+      "nature": "Adaptation",
+      "ref": "F22",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.017",
+      "description": "Indicateurs ajoutés au rapport : unités à fabriquer dans l'horizon, charge des postes par jour, unités en attente de remise.",
+      "nature": "API",
+      "ref": "F22",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.018",
+      "description": "`CateringSupervisionTest` : chaque situation dans chacune de ses natures, avec ses commandes concernées et son action.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.019",
+      "description": "`CateringSupervisionTest` : `FABRICATION_UNPLANNED` absente quand l'unité est déjà couverte par chacune des trois autres situations.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.020",
+      "description": "`CateringSupervisionTest` : situations existantes non déclenchées pour le traiteur, toujours déclenchées pour les courses de la même commande.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.021",
+      "description": "`CateringSupervisionTest` : ordre validé réaffecté et déplacé par `supervision/apply`, avec chaque refus.",
+      "nature": "Test",
+      "ref": "F22",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.022",
+      "description": "Notice « Commande traiteur DEMO-TRA-001 pour le samedi 21 novembre, 10:00 – 11:00 » (référence, jour et créneau de la commande) à chaque commande traiteur reçue.",
+      "nature": "Règle",
+      "ref": "F23",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.023",
+      "description": "Notice de proposition à valider.",
+      "nature": "Règle",
+      "ref": "F23",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.024",
+      "description": "Notice de modification ou d'annulation reçue touchant un ordre validé.",
+      "nature": "Règle",
+      "ref": "F23 ; F18.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.025",
+      "description": "Notice d'unité non servie.",
+      "nature": "Règle",
+      "ref": "F23",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.026",
+      "description": "Destinataires : employés actifs du magasin ayant un des rôles `notificationRoles`, par `OperatorSupportService.systemNotice`.",
+      "nature": "Règle",
+      "ref": "F23",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.027",
+      "description": "Une notice par fait, dédoublonnée par sa clé ; un échec de notification n'empêche jamais l'opération.",
+      "nature": "Règle",
+      "ref": "F23",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.028",
+      "description": "`CateringSupervisionTest` : chaque notice ; destinataires selon les rôles ; dédoublonnage ; échec sans effet sur l'opération.",
+      "nature": "Test",
+      "ref": "§ 11.1",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.029",
+      "description": "Traiteur › À valider : propositions, charge, capacité et composants manquants servis déjà calculés et libellés.",
+      "nature": "API",
+      "ref": "§ 9 ; P3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.030",
+      "description": "Traiteur › Fabrication du jour : feuille de fabrication, avancement des ordres et des unités, impression, déclaration « non servi ».",
+      "nature": "API",
+      "ref": "§ 9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.031",
+      "description": "Traiteur › Besoins : besoins en composants, besoins d'achat, bon de commande.",
+      "nature": "API",
+      "ref": "§ 9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.032",
+      "description": "Traiteur › Référentiel : fiches, nomenclatures, postes, habilitations.",
+      "nature": "API",
+      "ref": "§ 9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.033",
+      "description": "Supervision : situations et indicateurs traiteur dans le rapport existant.",
+      "nature": "API",
+      "ref": "§ 9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.034",
+      "description": "Mission Fabrication : lecture de l'ordre, actions permises, étiquette, dépôt.",
+      "nature": "API",
+      "ref": "§ 9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.035",
+      "description": "Remise : supports traiteur, montant dû, accusé d'encaissement.",
+      "nature": "API",
+      "ref": "§ 9",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T6.036",
+      "description": "Test : aucune de ces lectures ne laisse un calcul de date, de durée, de charge ou de montant au client.",
+      "nature": "Test",
+      "ref": "P3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.001",
+      "description": "`DemoCateringInitializer` : exécuté après `DemoStockInitializer` et avant `DemoMarieMissions` ; toutes les dates relatives au lancement.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.002",
+      "description": "Politique `CateringConstraints` aux valeurs « Démo », liée au magasin de démonstration.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.003",
+      "description": "Poste `LAB` « Laboratoire traiteur » : buffer `STAGING` réfrigéré, imprimante simulée, ouvert tous les jours de 00:00 à 23:59, 480 minutes.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.004",
+      "description": "Poste `PAT` « Pâtisserie » : mêmes caractéristiques.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.005",
+      "description": "Habilitations : Marie Martin (100235) et un second employé au poste `LAB` ; un employé au poste `PAT`.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.006",
+      "description": "Gabarit d'étiquette `CATERING_UNIT`.",
+      "nature": "Démo",
+      "ref": "§ 10 ; F14",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.007",
+      "description": "`DEMO-TRA-PAIN-SURPRISE` : `FABRICATED`, `LAB`, base par variante 16, 32, 48 ; 10, 15, 20 min.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.008",
+      "description": "`DEMO-TRA-PLATEAU-VEGE` : `FABRICATED`, `LAB`, base 24, 48 ; 15, 25 min.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.009",
+      "description": "`DEMO-TRA-VERRINES` : `FABRICATED`, `LAB`, base 24 ; 30 min.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.010",
+      "description": "`DEMO-TRA-BUFFET-FROID` : `FABRICATED`, `LAB`, base 12 et un complément par choix ; 45 min.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.011",
+      "description": "`DEMO-TRA-MENU` : `FABRICATED`, `LAB`, base et un complément par choix des quatre étapes ; 8 min.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.012",
+      "description": "`DEMO-TRA-GATEAU-CHIFFRE` : `FABRICATED`, `PAT`, base 8, 15 et un complément par parfum ; 40, 60 min ; `fragile` ; conservation 72 h ; devenir `ISOLATE`.",
+      "nature": "Démo",
+      "ref": "§ 10 ; § 6",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.013",
+      "description": "`DEMO-TRA-TARTE-POMMES` : `SUPPLIED`, `LAB`, « Fournisseur de démonstration », 2 jours.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.014",
+      "description": "`DEMO-TRA-PAIN-BUFFET` : `SUPPLIED`, `LAB`, même fournisseur, 1 jour.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.015",
+      "description": "`DEMO-TRA-BOISSONS` : `STOCKED`, lignes `PICKED` sur des boissons du stock de démonstration.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.016",
+      "description": "`DEMO-TRA-ARTS-TABLE` : `STOCKED`, lignes `PICKED` sur des produits non alimentaires du stock de démonstration.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.017",
+      "description": "Composants des nomenclatures présents au stock de démonstration, sauf celui dont le manque sert `DEMO-TRA-004`.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.018",
+      "description": "`DEMO-TRA-001` : retrait J+2 10:00, paiement au retrait, courses (4 lignes), 2 pains surprises 32, 1 buffet froid, 1 gâteau chiffre 15 parts « 30 » chocolat, 1 boissons ; propositions à valider.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.019",
+      "description": "`DEMO-TRA-002` : retrait J+1 à l'heure du lancement, payée en ligne, 12 menus de même composition et 1 tartes aux pommes ; besoin d'achat validé ; ordre `FAB` validé, affecté à Marie Martin.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.020",
+      "description": "`DEMO-TRA-003` : retrait 2 heures après le lancement, 1 plateau végétarien 24 et 1 verrines ; fabriqué, étiqueté, en attente ; commande `READY`.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.021",
+      "description": "`DEMO-TRA-004` : retrait J+3, 1 gâteau chiffre 15 parts cœur ; proposition avec composant manquant.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.022",
+      "description": "`DemoMarieMissions` compte `FabricationOrder` dans sa règle « une mission par type » et retient l'ordre de `DEMO-TRA-002`.",
+      "nature": "Démo",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.023",
+      "description": "Test : après l'initialisation, chaque commande de démonstration est dans l'état annoncé, quels que soient le jour et l'heure du lancement.",
+      "nature": "Test",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.024",
+      "description": "Test : Marie Martin a un ordre de fabrication affecté ; une seconde initialisation ne le réaffecte pas.",
+      "nature": "Test",
+      "ref": "§ 10",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.025",
+      "description": "Étape 1 — `launch.sh` : base régénérée ; Supervision affiche `CATERING_COMPONENT_SHORTAGE` pour `DEMO-TRA-004` et `CATERING_SUPPLY_LATE` en risque pour les tartes de `DEMO-TRA-002`.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.026",
+      "description": "Étape 2 — À valider : pour `DEMO-TRA-001`, un ordre `LAB` et un ordre `PAT` le dernier jour ouvert de leur fenêtre ; charge 75 / 480 et 60 / 480 minutes.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.027",
+      "description": "Étape 3 — Valider : ordres visibles de leurs employés ; besoins en composants mis à jour.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.028",
+      "description": "Étape 4 — Storepicker, Marie Martin : « Fabriqué » sur les 12 menus de `DEMO-TRA-002` ; 12 étiquettes ; la ligne des tartes attend sa réception.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.029",
+      "description": "Étape 5 — Besoins : réception des tartes ; mise en support confirmée ; étiquette ; dépôt dans le buffer du laboratoire ; mission conclue.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.030",
+      "description": "Étape 6 — Suivi de `DEMO-TRA-002` : toutes les unités `STAGED` ; `…/pickup` : `READY`.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.031",
+      "description": "Étape 7 — Modification à blanc de `DEMO-TRA-001` avec un créneau dans 30 minutes : avertissement `FABRICATION_WINDOW_EMPTY`.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.032",
+      "description": "Étape 8 — Annulation du traiteur seul de `DEMO-TRA-001` avec le `payment` recalculé : unités annulées, engagements libérés, courses inchangées.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.033",
+      "description": "Étape 9 — Annulation de `DEMO-TRA-003`, déjà fabriquée : ordre de devenir en isolement.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T7.034",
+      "description": "Étape 10 — Remise de `DEMO-TRA-002` sans accusé ; remise des courses de `DEMO-TRA-001` avec « À régler au magasin » au montant reçu à l'étape 8 et accusé exigé.",
+      "nature": "Recette",
+      "ref": "§ 11.2",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.001",
+      "description": "`OmsOrderAssembler` : bloc `payment` pour toute commande réglée au retrait, avec ou sans traiteur.",
+      "nature": "Émetteur",
+      "ref": "§ 4.3 ; § 12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.002",
+      "description": "`OmsOrderAssembler` : bloc `catering` racine (version, réception, dates limites, point de retrait) quand la commande a des lignes traiteur.",
+      "nature": "Émetteur",
+      "ref": "§ 4.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.003",
+      "description": "`OmsOrderAssembler` : objet `catering` de chaque ligne portant `cateringLineId`, à partir de `order.cateringLines` : `lineId`, variante, configuration, libellés, allergènes, ingrédients, conservation, conseils.",
+      "nature": "Émetteur",
+      "ref": "§ 4.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.004",
+      "description": "`configurationKey` obtenue par `CateringConfiguration.key` ; aucune valeur métier calculée par l'assembleur.",
+      "nature": "Émetteur",
+      "ref": "§ 4.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.005",
+      "description": "Test immcomm : charge d'une commande sans traiteur en ligne inchangée ; au retrait ; mixte ; composition ; gâteau.",
+      "nature": "Test",
+      "ref": "§ 4.3",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.006",
+      "description": "`OmsGateway.cancel` : `requestId`, `scope` et `payment` recalculé dans la charge d'annulation.",
+      "nature": "Émetteur",
+      "ref": "§ 12 ; F19",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.007",
+      "description": "Annulation partielle (R12) relayée avec `scope: CATERING`.",
+      "nature": "Émetteur",
+      "ref": "§ 12 ; F19",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.008",
+      "description": "Refus 409 d'imomswms pris en compte et présentés, sans confirmation feinte.",
+      "nature": "Émetteur",
+      "ref": "§ 12 ; F19",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.009",
+      "description": "`APPLY_ORDER_CHANGE` (R13) : appel de `PUT …/catering` en `dryRun` pour l'aperçu.",
+      "nature": "Émetteur",
+      "ref": "§ 12 ; F18",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.010",
+      "description": "`APPLY_ORDER_CHANGE` : appel réel avant d'appliquer, avec `deadlines` et `payment` recalculés ; refus présenté à l'équipe.",
+      "nature": "Émetteur",
+      "ref": "§ 12 ; F18",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.011",
+      "description": "Test immcomm : annulation entière et partielle relayées ; rejeu ; chaque refus ; aperçu et application d'une modification.",
+      "nature": "Test",
+      "ref": "§ 12",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.012",
+      "description": "Lecture du suivi `…/catering` pour afficher l'avancement des préparations.",
+      "nature": "Émetteur",
+      "ref": "§ 12 ; F20",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.013",
+      "description": "Accusé d'encaissement repris dans « Encaissé au retrait » (R10).",
+      "nature": "Émetteur",
+      "ref": "§ 12 ; F17",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.014",
+      "description": "`/admin` › Traiteur › Fabrication : lecture de `…/catering/production` à côté de la capacité commerciale.",
+      "nature": "Émetteur",
+      "ref": "§ 12 ; F21",
+      "status": "A_FAIRE",
+      "evidence": null
+    },
+    {
+      "id": "T8.015",
+      "description": "Test immcomm : suivi indisponible ou incohérent sans effet sur la commande ; accusé repris une seule fois.",
+      "nature": "Test",
+      "ref": "§ 12",
+      "status": "A_FAIRE",
+      "evidence": null
+    }
+  ]
+}

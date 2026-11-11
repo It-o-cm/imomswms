@@ -36,7 +36,7 @@ public class Product extends BaseEntity {
      * This is the primary identifier used for lookups at the register.
      * Unique constraint implies a database index.
      */
-    @Column(name = "ean", unique = true, nullable = false, length = 13)
+    @Column(name = "ean", unique = true, nullable = false, length = 40)
     @NotBlank(message = "EAN is mandatory")
     public String ean;
 
