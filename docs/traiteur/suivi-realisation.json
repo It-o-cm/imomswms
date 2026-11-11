@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 156,
-  "remaining": 297,
+  "done": 182,
+  "remaining": 271,
   "currentBatch": {
-    "packet": 6,
+    "packet": 7,
     "lot": "T2",
     "status": "TERMINE",
-    "scope": "Nomenclature F4 et fenetre de fabrication F5 (T2.009-012,016-028)"
+    "scope": "Proposition F6-F7 + exclusions F8 (T2.007,013-014,029-051,060)"
   },
   "perLot": {
     "T0": 81,
@@ -1211,8 +1211,8 @@
       "description": "`GET /catering/units?storeId=&from=&to=&state=` : commande, créneau, article, variante, composition, quantité, mode, état, ordre ou besoin lié.",
       "nature": "API",
       "ref": "§ 8.2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.008",
@@ -1259,16 +1259,16 @@
       "description": "Aucune base, `recipeRequired` vrai : unité `BLOCKED`, situation `CATERING_RECIPE_MISSING`.",
       "nature": "Règle",
       "ref": "F4.5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.014",
       "description": "Aucune base, `recipeRequired` faux : planification avec `defaultLaborSeconds`, sans composant, même situation en « information manquante ».",
       "nature": "Règle",
       "ref": "F4.5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.015",
@@ -1387,184 +1387,184 @@
       "description": "Candidats : unités `FABRICATED` à l'état `RECEIVED` et unités `SUPPLIED` au besoin d'achat validé, poste résolu, mise à disposition dans `proposalHorizonDays`.",
       "nature": "Règle",
       "ref": "F6.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.030",
       "description": "Jour retenu : le dernier jour admis de la fenêtre dont la charge restante suffit ; à défaut le précédent, jusqu'au début au plus tôt.",
       "nature": "Règle",
       "ref": "F6.2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.031",
       "description": "Ligne de fabrication : une par `(poste, jour, article, variantId, configurationKey)`.",
       "nature": "Règle",
       "ref": "F6.3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.032",
       "description": "`batchAcrossOrders` vrai : les unités de commandes différentes de même clé sont réunies ; faux : une ligne par unité.",
       "nature": "Règle",
       "ref": "F6.3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.033",
       "description": "Une `FabricationLineUnit` par unité servie, avec sa quantité.",
       "nature": "Règle",
       "ref": "F6.3 ; § 5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.034",
       "description": "Ordres : lignes d'un poste et d'un jour triées par mise à disposition, découpées à `maxOrderMinutes` ; une ligne plus longue forme un ordre seule.",
       "nature": "Règle",
       "ref": "F6.4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.035",
       "description": "`requestedStart` et `requestedEnd` dans la fenêtre commune des lignes ; `plannedMinutes` arrondi à la minute supérieure.",
       "nature": "Règle",
       "ref": "F6.5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.036",
       "description": "Charge d'un jour : somme des `plannedMinutes` des ordres non annulés du poste, proposés et validés.",
       "nature": "Règle",
       "ref": "F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.037",
       "description": "Capacité : `dailyMinutes`, 0 = non limitée.",
       "nature": "Règle",
       "ref": "F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.038",
       "description": "Capacité plafonnée par le temps de présence planifié des employés habilités, quand le planning existe.",
       "nature": "Règle",
       "ref": "F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Capacite = dailyMinutes ; le plafonnement par le temps de presence planifie des employes habilites sera ajoute avec l'affectation (F8/planning, paquet 8)."
     },
     {
       "id": "T2.039",
       "description": "Aucun jour de la fenêtre ne convient : situation `FABRICATION_CAPACITY` avec les unités et les minutes manquantes.",
       "nature": "Règle",
       "ref": "F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.040",
       "description": "`FabricationPlanningTest` : regroupement avec `batchAcrossOrders` vrai et faux ; deux gâteaux de textes différents jamais réunis.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.041",
       "description": "`FabricationPlanningTest` : découpage à `maxOrderMinutes` ; ligne plus longue que le maximum.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.042",
       "description": "`FabricationPlanningTest` : capacité 0 ; capacité atteinte et report au jour précédent ; plafond de présence ; aucun jour possible.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.043",
       "description": "Constructeur d'ordres de fabrication exécuté à chaque cycle de `StoreActivityEngine`.",
       "nature": "Adaptation",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.044",
       "description": "Recalcul à chaque commande reçue, modification, annulation, changement de référentiel ou de politique, et à la demande.",
       "nature": "Règle",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.045",
       "description": "Ordres produits : `proposalState = PROPOSED`, statut `OPEN`, `assignee` nul, `proposedEmployee` quand un employé habilité et présent convient.",
       "nature": "Règle",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.046",
       "description": "Un ordre `PROPOSED` est recalculé librement et n'engage aucun stock.",
       "nature": "Règle",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.047",
       "description": "Ordres `PROPOSED` exclus des lectures opérateur.",
       "nature": "Adaptation",
       "ref": "F8 ; § 8.4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.048",
       "description": "Ordres `PROPOSED` exclus de la supervision de la manutention.",
       "nature": "Adaptation",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.049",
       "description": "Ordres `PROPOSED` exclus du planning contraint.",
       "nature": "Adaptation",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.050",
       "description": "`GET /catering/fabrication/proposals?storeId=` : poste, jour, plage, lignes, minutes, employé proposé, charge et capacité du jour, composants manquants, limite d'annulation des commandes.",
       "nature": "API",
       "ref": "§ 8.2 ; F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.051",
       "description": "`POST /catering/fabrication/proposals/recompute` : relance le calcul et rend la même lecture.",
       "nature": "API",
       "ref": "§ 8.2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.052",
@@ -1635,8 +1635,8 @@
       "description": "`FabricationPlanningTest` : proposition invisible de l'opérateur, de la supervision et du planning.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine (F6-F8) : candidats FABRICATED/RECEIVED, fenetre F5, jour au plus tard avec capacite F7, regroupement (poste/jour/article/variant/configKey, batchAcrossOrders), decoupage maxOrderMinutes, ordres PROPOSED ; recalcul a chaque cycle de StoreActivityEngine et a la demande ; PROPOSED exclu des lectures operateur/supervision/planning. GET/POST /catering/fabrication/proposals ; GET /catering/units. FabricationPlanningTest (6 verts)."
     },
     {
       "id": "T2.061",

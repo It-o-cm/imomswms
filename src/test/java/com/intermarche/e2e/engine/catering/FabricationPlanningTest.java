@@ -1,0 +1,299 @@
+package com.intermarche.e2e.engine.catering;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.intermarche.backoffice.domain.catering.*;
+import com.intermarche.backoffice.domain.order.Order;
+import com.intermarche.backoffice.domain.order.OrderLine;
+import com.intermarche.backoffice.domain.order.Product;
+import com.intermarche.backoffice.domain.order.ProductType;
+import com.intermarche.backoffice.domain.policy.OperationalPolicyVersion;
+import com.intermarche.backoffice.domain.store.Store;
+import com.intermarche.backoffice.domain.util.DateTimeProvider;
+import com.intermarche.backoffice.domain.wms.BaseHandlingOrder;
+import com.intermarche.backoffice.domain.wms.handling.FabricationOrder;
+import com.intermarche.backoffice.engine.catering.CateringProposalEngine;
+import com.intermarche.backoffice.engine.policy.OperationalPolicySchemas;
+import com.intermarche.e2e.domain.util.DomainUtils;
+import io.quarkus.test.TestTransaction;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Tests the fabrication-order proposals (F6-F8): grouping with batchAcrossOrders, distinct
+ * configurations never merged, splitting at maxOrderMinutes, capacity (unlimited, reached with a
+ * report to the previous day, and no day possible), and the invisibility of PROPOSED orders.
+ */
+@QuarkusTest
+public class FabricationPlanningTest {
+
+    @Inject
+    CateringProposalEngine engine;
+    @Inject
+    ObjectMapper mapper;
+
+    private Store store;
+    private FabricationStation station;
+    private CateringItem item;
+    private int counter = 0;
+
+    /** A fixed Monday 09:00. */
+    private static final LocalDateTime MONDAY = LocalDateTime.of(2026, 11, 16, 9, 0);
+    /** Availability two days later at 10:00. */
+    private static final LocalDateTime AVAILABLE = LocalDateTime.of(2026, 11, 18, 10, 0);
+
+    /**
+     * Fixes the clock before each test.
+     */
+    @BeforeEach
+    void fixClock() {
+        DateTimeProvider.setFixedDateTime(MONDAY);
+    }
+
+    /**
+     * Clears the fixed clock after each test.
+     */
+    @AfterEach
+    void clearClock() {
+        DateTimeProvider.clear();
+    }
+
+    /**
+     * Sets up a store, a station (open every day, given capacity) and a FABRICATED article.
+     *
+     * @param dailyMinutes    the station daily capacity (0 = unlimited).
+     * @param maxOrderMinutes the station maximum order minutes.
+     */
+    private void setup(int dailyMinutes, int maxOrderMinutes) {
+        store = DomainUtils.createAndPersistStore("FP-" + (counter++), 48.0, 2.0);
+        station = new FabricationStation();
+        station.store = store;
+        station.code = "LAB";
+        station.name = "Laboratoire";
+        station.active = true;
+        station.weekdays = "1,2,3,4,5,6,7";
+        station.opensAt = LocalTime.of(0, 0);
+        station.closesAt = LocalTime.of(23, 59);
+        station.dailyMinutes = dailyMinutes;
+        station.maxOrderMinutes = maxOrderMinutes;
+        station.persist();
+        Product product = DomainUtils.createAndPersistProduct("FP-ITEM-" + counter, "Article", ProductType.UNIT);
+        item = new CateringItem();
+        item.product = product;
+        item.sourcingMode = SourcingMode.FABRICATED;
+        item.station = station;
+        item.shelfLifeHours = 240; // avoid the use-by control pushing the window
+        item.maxAdvanceHours = 24;
+        item.active = true;
+        item.persistAndFlush();
+    }
+
+    /**
+     * Persists a base recipe with a labour duration.
+     *
+     * @param variantId    the variant.
+     * @param laborSeconds the labour seconds.
+     */
+    private void recipe(String variantId, int laborSeconds) {
+        CateringRecipe recipe = new CateringRecipe();
+        recipe.item = item;
+        recipe.variantId = variantId;
+        recipe.revision = 1;
+        recipe.active = true;
+        recipe.laborSeconds = laborSeconds;
+        recipe.persistAndFlush();
+    }
+
+    /**
+     * Persists a FABRICATED unit still RECEIVED.
+     *
+     * @param orderId   the order id.
+     * @param variantId the variant.
+     * @param configKey the configuration key.
+     * @return the unit.
+     */
+    private CateringUnit unit(String orderId, String variantId, String configKey) {
+        Order order = new Order();
+        order.orderId = orderId;
+        order.orderDate = DateTimeProvider.now();
+        order.channel = "ECOMMERCE";
+        order.status = "VALIDATED";
+        order.store = store;
+        OrderLine line = new OrderLine();
+        line.lineNumber = 1;
+        line.requestedQuantity = BigDecimal.ONE;
+        line.product = item.product;
+        order.addLine(line);
+        order.persistAndFlush();
+        CateringUnit unit = new CateringUnit();
+        unit.order = order;
+        unit.orderLine = line;
+        unit.lineId = orderId + "-u";
+        unit.ean = item.product.ean;
+        unit.item = item;
+        unit.sourcingMode = SourcingMode.FABRICATED;
+        unit.variantId = variantId;
+        unit.configurationKey = configKey;
+        unit.quantity = BigDecimal.ONE;
+        unit.availableAt = AVAILABLE;
+        unit.state = CateringUnitState.RECEIVED;
+        unit.persistAndFlush();
+        return unit;
+    }
+
+    /**
+     * Persists an active CateringConstraints version overriding one value.
+     *
+     * @param key   the parameter key.
+     * @param value the boolean value.
+     */
+    private void policy(String key, boolean value) {
+        try {
+            ObjectNode spec = OperationalPolicySchemas.defaults("CateringConstraints");
+            spec.put(key, value);
+            OperationalPolicyVersion version = new OperationalPolicyVersion();
+            version.store = store;
+            version.kind = "CateringConstraints";
+            version.scopeKey = "CateringConstraints";
+            version.revisionNumber = 1;
+            version.active = true;
+            version.activatedBy = "test";
+            version.specification = mapper.writeValueAsString(spec);
+            version.persistAndFlush();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private List<FabricationOrder> orders() {
+        return FabricationOrder.list("store = ?1 and proposalState = ?2", store, FabricationOrder.FabricationProposalState.PROPOSED);
+    }
+
+    private List<FabricationLine> lines() {
+        return FabricationLine.list("order.store = ?1", store);
+    }
+
+    /**
+     * T2.040: units of different orders sharing a line key are batched together.
+     */
+    @Test
+    @TestTransaction
+    void batchAcrossOrdersGroupsUnits() {
+        setup(0, 120);
+        recipe("16", 600);
+        unit("O1", "16", "K1");
+        unit("O2", "16", "K1");
+        engine.recompute(store);
+        assertEquals(1, orders().size());
+        assertEquals(1, lines().size());
+        assertEquals(2, FabricationLineUnit.count("line", lines().get(0)));
+    }
+
+    /**
+     * T2.040: with batchAcrossOrders off, each unit forms its own line.
+     */
+    @Test
+    @TestTransaction
+    void batchOffOneLinePerUnit() {
+        setup(0, 120);
+        policy("batchAcrossOrders", false);
+        recipe("16", 600);
+        unit("O1", "16", "K1");
+        unit("O2", "16", "K1");
+        engine.recompute(store);
+        assertEquals(2, lines().size());
+    }
+
+    /**
+     * T2.040: two units with distinct configuration keys are never merged.
+     */
+    @Test
+    @TestTransaction
+    void distinctConfigurationsNotMerged() {
+        setup(0, 120);
+        recipe("16", 600);
+        unit("O1", "16", "K1");
+        unit("O2", "16", "K2");
+        engine.recompute(store);
+        assertEquals(2, lines().size());
+    }
+
+    /**
+     * T2.041: the lines of a day are split into orders of at most maxOrderMinutes; a line longer than
+     * the maximum forms an order on its own.
+     */
+    @Test
+    @TestTransaction
+    void splitByMaxOrderMinutes() {
+        setup(0, 120);
+        recipe("16", 4800); // 80 minutes per line
+        unit("O1", "16", "K1");
+        unit("O2", "16", "K2"); // distinct key -> second line, 80 + 80 = 160 > 120 -> two orders
+        engine.recompute(store);
+        assertEquals(2, orders().size());
+
+        setup(0, 120);
+        recipe("15", 9000); // 150 minutes, longer than the maximum
+        unit("O3", "15", "K3");
+        engine.recompute(store);
+        assertEquals(1, orders().size(), "A line longer than the maximum forms an order on its own");
+        assertEquals(150, orders().get(0).plannedMinutes);
+    }
+
+    /**
+     * T2.042: capacity 0 is unlimited; capacity reached reports the excess to the previous day; no
+     * admissible day leaves the unit unplanned.
+     */
+    @Test
+    @TestTransaction
+    void capacityUnlimitedReachedAndImpossible() {
+        // unlimited
+        setup(0, 600);
+        recipe("16", 6000); // 100 minutes
+        unit("A1", "16", "K1");
+        unit("A2", "16", "K1");
+        engine.recompute(store);
+        assertEquals(1, orders().size(), "With unlimited capacity both units are on the same latest day");
+
+        // capacity reached -> report to the previous day
+        setup(100, 600);
+        recipe("16", 6000); // 100 minutes each, capacity 100/day
+        unit("B1", "16", "K1");
+        unit("B2", "16", "K1");
+        engine.recompute(store);
+        var days = orders().stream().map(o -> o.productionDate).distinct().toList();
+        assertEquals(2, days.size(), "The second unit is reported to the previous day");
+
+        // no day possible
+        setup(60, 600);
+        recipe("16", 6000); // 100 minutes > 60 capacity
+        unit("C1", "16", "K1");
+        engine.recompute(store);
+        assertEquals(0, orders().size(), "A unit that exceeds the daily capacity is not placed");
+    }
+
+    /**
+     * T2.060: a PROPOSED order is excluded from the operator handling-order reads.
+     */
+    @Test
+    @TestTransaction
+    void proposedOrdersAreInvisible() {
+        setup(0, 120);
+        recipe("16", 600);
+        unit("O1", "16", "K1");
+        engine.recompute(store);
+        assertFalse(orders().isEmpty(), "A proposal exists");
+        long visible = BaseHandlingOrder.count(
+                "store = ?1 and id not in (select fo.id from FabricationOrder fo where fo.proposalState = 'PROPOSED')", store);
+        assertEquals(0, visible, "The PROPOSED order is excluded from the operator reads");
+    }
+}

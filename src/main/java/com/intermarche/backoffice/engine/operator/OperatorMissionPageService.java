@@ -1,0 +1,28 @@
+package com.intermarche.backoffice.engine.operator;
+import com.intermarche.backoffice.domain.store.Store;
+import jakarta.enterprise.context.ApplicationScoped;import jakarta.inject.Inject;import jakarta.persistence.EntityManager;import jakarta.transaction.Transactional;import jakarta.ws.rs.*;
+import java.util.*;
+/** Bounded scalar queries, including the preparation context in the page join; cards never materialize items, topology, capacities or full execution graphs. */
+@ApplicationScoped @Transactional public class OperatorMissionPageService {
+ @Inject OperatorSupportService support;@Inject EntityManager em;
+ public Object page(Long storeId,long before,int limit,String state,String assignment,String search){
+  Store store=support.store(storeId);if(limit<1||limit>100||before<0||!Set.of("ACTIVE","COMPLETED","ALL").contains(state)||!Set.of("MINE","FREE","OTHERS","ALL").contains(assignment)||search!=null&&search.length()>100)throw new BadRequestException("Filtres ou pagination de missions invalides");String actor=support.actor();
+  String own="(a.badgeId=:actor or exists(select e.id from HandlingExecution e where e.handlingOrder=o and e.employee.badgeId=:actor"+(state.equals("COMPLETED")?"":" and e.status in ('PENDING','IN_PROGRESS')")+"))";
+  var parameters=new LinkedHashMap<String,Object>();parameters.put("store",store);parameters.put("before",before);
+  String where="o.store=:store and (:before=0 or o.id<:before) and o.id not in (select fo.id from FabricationOrder fo where fo.proposalState = 'PROPOSED')";
+  if(state.equals("ACTIVE"))where+=" and o.status not in ('DONE','CANCELLED','FAILED')";else if(state.equals("COMPLETED"))where+=" and o.status in ('DONE','CANCELLED','FAILED')";
+  switch(assignment){case"MINE"->{where+=" and "+own;parameters.put("actor",actor);}case"FREE"->where+=" and o.assignee is null and o.status='SCHEDULED' and not exists(select e.id from HandlingExecution e where e.handlingOrder=o and e.status in ('PENDING','IN_PROGRESS','DONE'))";case"OTHERS"->{where+=" and not "+own+" and (o.assignee is not null or exists(select e.id from HandlingExecution e where e.handlingOrder=o and e.status in ('PENDING','IN_PROGRESS')))";parameters.put("actor",actor);}default->{}}
+  if(search!=null&&!search.isBlank()){where+=" and (lower(o.code) like :search escape '!' or lower(a.firstName) like :search escape '!' or lower(a.lastName) like :search escape '!')";parameters.put("search","%"+search.trim().toLowerCase(Locale.ROOT).replace("!","!!").replace("%","!%").replace("_","!_")+"%");}
+  var query=em.createQuery("select o.id,o.code,type(o),o.status,o.requestedStart,o.requestedEnd,a.badgeId,a.firstName,a.lastName,m.state,m.reason,c.id,c.version,c.mode,c.groupCode from BaseHandlingOrder o left join o.assignee a left join MissionOperationalState m on m.handlingOrder=o left join MissionPreparationContext c on c.handlingOrder=o and c.store=:store where "+where+" order by o.id desc",Object[].class);parameters.forEach(query::setParameter);var rows=query.setMaxResults(limit+1).getResultList();var selected=rows.stream().limit(limit).toList();var ids=selected.stream().map(r->((Number)r[0]).longValue()).toList();
+  var executions=new HashMap<Long,List<Map<String,Object>>>();var operations=new HashMap<Long,Object>();
+  if(!ids.isEmpty()){
+   for(var row:em.createQuery("select e.handlingOrder.id,e.id,type(e),e.status,p.badgeId,p.firstName,p.lastName from HandlingExecution e join e.employee p where e.handlingOrder.id in :ids order by e.id",Object[].class).setParameter("ids",ids).getResultList()){
+    var entry=new LinkedHashMap<String,Object>();entry.put("id",row[1]);entry.put("type",((Class<?>)row[2]).getSimpleName());entry.put("status",row[3]);entry.put("badgeId",row[4]);entry.put("employeeName",name(row[5],row[6]));entry.put("mine",Objects.equals(actor,row[4]));entry.put("orderId",row[0]);entry.put("summary",true);executions.computeIfAbsent(((Number)row[0]).longValue(),k->new ArrayList<>()).add(entry);
+   }
+   for(var row:em.createQuery("select r.id,r.operation from ReplenishmentOrder r where r.id in :ids",Object[].class).setParameter("ids",ids).getResultList())operations.put(((Number)row[0]).longValue(),row[1]);
+  }
+  var items=selected.stream().map(row->{Long id=((Number)row[0]).longValue();String kind=((Class<?>)row[2]).getSimpleName();var es=executions.getOrDefault(id,List.of());boolean mixed=Set.of("PackingOrder","GroupingOrder").contains(kind);es.forEach(e->e.put("mixed",mixed));var result=new LinkedHashMap<String,Object>();result.put("id",id);result.put("code",row[1]);result.put("kind",kind);result.put("preparation",row[11]==null?null:com.intermarche.backoffice.engine.fieldops.MissionPreparationService.view((Long)row[11],(Long)row[12],(String)row[13],(String)row[14]));result.put("status",row[3]);result.put("start",row[4]);result.put("end",row[5]);result.put("assigneeBadge",row[6]);result.put("assigneeName",row[6]==null?null:name(row[7],row[8]));result.put("operational",Map.of("state",row[9]==null?"ACTIVE":row[9],"reason",row[10]==null?"":row[10]));result.put("executions",es);result.put("operation",operations.get(id));result.put("summary",true);result.put("available",Objects.equals(row[3].toString(),"SCHEDULED")&&(row[9]==null||row[9].equals("ACTIVE"))&&es.stream().noneMatch(e->Set.of("PENDING","IN_PROGRESS","DONE").contains(e.get("status").toString())));return result;}).toList();
+  return Map.of("items",items,"hasMore",rows.size()>limit,"nextBefore",ids.isEmpty()?before:ids.getLast(),"limit",limit,"state",state,"assignment",assignment,"summary",true);
+ }
+ private String name(Object first,Object last){return (Objects.toString(first,"")+" "+Objects.toString(last,"")).trim();}
+}

@@ -83,7 +83,7 @@ public class HandlingOrderService {
 
     @Transactional
     public List<HandlingOrderSummaryDTO> listAvailableOrders(com.intermarche.backoffice.domain.store.Store store) {
-        return BaseHandlingOrder.<BaseHandlingOrder>list("store=?1 and id not in (select he.handlingOrder.id from HandlingExecution he)",store).stream().map(this::mapToSummaryDTO).toList();
+        return BaseHandlingOrder.<BaseHandlingOrder>list("store=?1 and id not in (select he.handlingOrder.id from HandlingExecution he) and id not in (select fo.id from FabricationOrder fo where fo.proposalState = 'PROPOSED')",store).stream().map(this::mapToSummaryDTO).toList();
     }
 
     /**

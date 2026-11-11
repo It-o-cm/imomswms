@@ -1,0 +1,17 @@
+{
+  "paquet": 7, "lot": "T2", "titre": "Moteur de proposition de fabrication (F6-F7) et invisibilité F8",
+  "pointsClos": ["T2.007","T2.013","T2.014","T2.029","T2.030","T2.031","T2.032","T2.033","T2.034","T2.035","T2.036","T2.037","T2.039","T2.040","T2.041","T2.042","T2.043","T2.044","T2.045","T2.046","T2.047","T2.048","T2.049","T2.050","T2.051","T2.060"],
+  "fichiersCrees": ["engine/catering/CateringProposalEngine.java","engine/catering/CateringFabricationResource.java","src/test/.../FabricationPlanningTest.java"],
+  "fichiersModifies": [
+    "engine/StoreActivityEngine.java (recompute des propositions à chaque cycle, avec garde null pour les tests unitaires)",
+    "5 lectures : OperatorExecutionService, OperatorMissionPageService, HandlingOrderService, GlobalPlanningService, SupervisionSnapshot (exclusion des ordres FABRICATION proposalState=PROPOSED)"
+  ],
+  "regles": {
+    "F6": "Candidats FABRICATED/RECEIVED (poste résolu, horizon) ; jour = dernier jour admis à capacité suffisante ; regroupement (poste, jour, article, variantId, configurationKey) + batchAcrossOrders ; une FabricationLineUnit par unité ; découpage à maxOrderMinutes ; plannedMinutes arrondi.",
+    "F7": "Charge = somme plannedMinutes (proposés + validés non annulés) ; capacité dailyMinutes (0 = non limitée) ; excès reporté au jour précédent ; aucun jour -> non placé.",
+    "F8": "Ordres PROPOSED (status OPEN, assignee null, proposedEmployee), recalculés librement, sans engagement ; exclus des lectures opérateur, supervision et planning (prédicat proposalState=PROPOSED). GET/POST /catering/fabrication/proposals ; recalcul au cycle de StoreActivityEngine."
+  },
+  "testsTraiteur": [{"name":"FabricationPlanningTest","tests":6,"failures":0,"errors":0,"couverture":"batch on/off, configurations distinctes, découpage maxOrderMinutes + ligne plus longue, capacité illimitée/atteinte-report/impossible, invisibilité PROPOSED."}],
+  "nonRegression": "StoreActivityEngineTest, HandlingOrderServiceTest, HandlingOrderControllerTest, StoreActivityPollingConsumerTest, OperatorConsultationWorkflowTest, StoreOperationsWorkflowTest : 0 échec.",
+  "note": "T2.038 (plafond de présence) EN_COURS, ajouté avec l'affectation F8 (paquet 8). F8 validation + engagements F9 = paquet 8. F3 états = paquet 9."
+}

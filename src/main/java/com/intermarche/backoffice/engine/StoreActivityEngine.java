@@ -67,6 +67,12 @@ public class StoreActivityEngine {
     OrderScheduler orderScheduler;
 
     /**
+     * Catering fabrication proposal engine, recomputed each cycle (F8).
+     */
+    @Inject
+    com.intermarche.backoffice.engine.catering.CateringProposalEngine cateringProposals;
+
+    /**
      * Jackson ObjectMapper for parsing and processing JSON payloads from the database configuration.
      */
     @Inject
@@ -240,6 +246,9 @@ public class StoreActivityEngine {
                     LOGGER.infof("Applying order handler builder %s to store ID %s", builder.getClass().getSimpleName(), store.id);
                     builder.process(store);
                 }
+            }
+            if (cateringProposals != null) {
+                cateringProposals.recompute(store);
             }
             orderScheduler.scheduleOpenedOrders(store);
             // Check for delays AFTER the standard builder processing is complete
