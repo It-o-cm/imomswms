@@ -34,7 +34,7 @@
       "com.intermarche.e2e.engine.supervision.DemoActivityScenarioTest.scenarioIsIdempotentAndShowsEveryTransversalSituation (ERROR)"
     ],
     "echecsIntermittentsPleineSuiteUniquement": [
-      "com.intermarche.e2e.engine.replenishment.AutomaticReplenishmentTest.consolidatesProductsWithoutMovingPhysicalStock_andDoesNotDuplicateOpenWork (passe en isolation avec et sans paquet ; depend de l'ordre/etat partage DateTimeProvider)",
+      "com.intermarche.e2e.engine.replenishment.AutomaticReplenishmentTest : flake avere (DateTimeProvider.now() sur l'horloge reelle). Sur 5 executions, l'ensemble des methodes en echec varie a chaque fois (consolidates / aucune / aucune / anticipates+temperatureSeparation / noOrderWithoutAvailableReserve), y compris en executant la classe seule. Independant du paquet traiteur (aucun lien avec le moteur de politiques).",
       "com.intermarche.e2e.graphql.handling.GroupingOrderResourceTest.testAllGroupingOrders_* (3 ; passe en isolation)",
       "com.intermarche.e2e.engine.fieldops.PeripheralConsultationTest.aFreePhysicalToteCanBePrintedWithoutCreatingAUsageOrStock (passe en isolation)",
       "com.intermarche.e2e.engine.stock.ProductStockHttpPerformanceTest.measurePagesAndSearchesWithFortyThousandStockedProducts (flake de latence : P95 152 ms vs cible 150 ms, sous charge machine)"

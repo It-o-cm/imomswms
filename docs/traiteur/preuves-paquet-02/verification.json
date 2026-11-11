@@ -1,0 +1,57 @@
+{
+  "paquet": 2,
+  "lot": "T0",
+  "titre": "Politique CateringConstraints, résolution et paramètres",
+  "pointsClos": [
+    "T0.041", "T0.042", "T0.043", "T0.044", "T0.045", "T0.046", "T0.047", "T0.048", "T0.049",
+    "T0.052", "T0.053", "T0.054", "T0.055", "T0.056", "T0.057", "T0.058", "T0.059", "T0.060",
+    "T0.061", "T0.062", "T0.063", "T0.064", "T0.065", "T0.066", "T0.067", "T0.068", "T0.069",
+    "T0.070", "T0.071", "T0.072", "T0.073", "T0.074", "T0.075", "T0.076", "T0.077",
+    "T0.078", "T0.079", "T0.080", "T0.081"
+  ],
+  "pointsEnCours": {
+    "T0.050": "sourcingMode (P, P×M) : champ CateringItem/CateringItemStore et defaut defaultSourcingMode en place ; la resolution au niveau de l'unite a la reception (F2) est realisee en T1.",
+    "T0.051": "station (P, P×M) : champ en place ; la validation « poste actif du magasin » et la resolution a la reception sont realisees en T1 (T1.049)."
+  },
+  "fichiers": {
+    "modifies": [
+      "engine/policy/OperationalPolicySchemas.java (TYPES + case CateringConstraints : 24 paramètres E/M avec bornes et défauts ; libellé « Traiteur et réceptions »)",
+      "engine/fieldops/OperationalPolicyService.java (example/evaluate CateringConstraints no-op pour l'activation par les routes existantes ; contrôle croisé maxAdvanceHours <= shelfLifeHours dans normalize)"
+    ],
+    "crees": [
+      "engine/catering/CateringParameters.java (service unique de résolution E -> M -> surcharge article/poste)",
+      "engine/catering/CateringReferentialValidation.java (validation des paramètres A/P/V avec libellé, 400 à l'enregistrement du référentiel)",
+      "src/test/java/com/intermarche/e2e/engine/catering/CateringParametersTest.java"
+    ]
+  },
+  "parametres": {
+    "schemaEM": "enabled, autoReferenceUnknownItems, defaultSourcingMode, defaultTemperatureZone, recipeRequired, shelfLifeHours, maxAdvanceHours, consumptionMarginHours, stagingLeadMinutes, defaultLaborSeconds, batchAcrossOrders, proposalHorizonDays, autoValidateProposals, planningLeadHours, componentShortagePolicy, supplierLeadDays, supplierOrderCutoff, labelTemplate, labelCopies, handoverRequiresPaymentAck, amendmentAfterStart, cancelAfterStart, cancelDispositions, notificationRoles (24).",
+    "validationAPV": "weekdays, closedDates, opensAt/closesAt, dailyMinutes, maxOrderMinutes, stagingLeadMinutes (A) ; sourcingMode, shelfLifeHours, maxAdvanceHours, supplierLeadDays, cancelDispositions (P) ; laborSeconds (V).",
+    "resolution": "E = défaut du schéma ; M = version active du magasin ; P/A = surcharge article/poste si renseignée."
+  },
+  "testsTraiteur": [
+    {
+      "name": "com.intermarche.e2e.engine.catering.CateringParametersTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "methodes": [
+        "numericPolicyParametersAreBounded (T0.078 : chaque numérique E/M aux deux bornes et juste en dehors)",
+        "enumeratedPolicyParametersRefuseUnknownValues (T0.079 : enums ; cancelDispositions et notificationRoles vides refusés)",
+        "crossFieldBoundsAreEnforced (T0.080 : maxAdvance > shelfLife refusé ; opensAt >= closesAt refusé)",
+        "referentialValidatorsHonourBoundsAndEnums (T0.078/079 A/P/V)",
+        "resolutionAppliesMostSpecificValue (T0.081 : défaut, version magasin, surcharge article, surcharge poste, repli)"
+      ]
+    }
+  ],
+  "nonRegression": [
+    "OperationalPolicyWorkflowTest : 39 tests, 0 échec (activation/simulation des politiques, nouveau type inclus).",
+    "OperatorConsultationWorkflowTest : 38 tests, 0 échec.",
+    "CateringMigrationTest : 2 ; DatabaseMigrationTest : 11 ; tous verts."
+  ],
+  "suiteComplete": {
+    "note": "Exécution packet 2 : 1917 tests unitaires 0 échec, e2e jusqu'à 169 classes avant interruption de l'environnement (reaping en fin de tour). Aucun échec nouveau : seuls échecs = pré-existants (DemoDataInitializerTest 3). Tests policy/order/fulfillment/handling tous verts (OrderRecorderTest 41, HandlingOrderServiceTest 91, PickupContractRulesTest 5, FulfillmentEngineTest 17...).",
+    "preuveIndependance": "Les changements du paquet 2 sont confinés au moteur de politiques (OPERATIONAL_POLICY) ; aucun lien avec démo, stock, supervision ou graphql. AutomaticReplenishmentTest prouvé flaky (horloge réelle) : 5 exécutions, ensembles de méthodes en échec tous différents, y compris seul. Détail dans ecarts.json.",
+    "verdict": "Aucune régression introduite par le paquet 2."
+  }
+}

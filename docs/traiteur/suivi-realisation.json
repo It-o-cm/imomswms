@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 37,
-  "remaining": 416,
+  "done": 76,
+  "remaining": 377,
   "currentBatch": {
-    "packet": 1,
+    "packet": 2,
     "lot": "T0",
     "status": "TERMINE",
-    "scope": "Socle, migration V30 et modele de donnees (T0.001-003,005,008-040)"
+    "scope": "Politique CateringConstraints, resolution et parametres (T0.041-081)"
   },
   "perLot": {
     "T0": 81,
@@ -347,328 +347,328 @@
       "description": "Ajouter `CateringConstraints` à `OperationalPolicySchemas.TYPES` : schéma, libellé, valeurs par défaut égales à la colonne « Démo ».",
       "nature": "Paramètre",
       "ref": "§ 6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.042",
       "description": "Lecture et écriture par les routes existantes des politiques opérationnelles : versions par magasin, validation par le schéma.",
       "nature": "Paramètre",
       "ref": "§ 6 ; § 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Activation par les routes existantes /operational-policies (cas example/evaluate ajoutes) ; OperationalPolicyWorkflowTest vert."
     },
     {
       "id": "T0.043",
       "description": "Service unique de résolution : valeur par défaut du schéma, puis version active du magasin.",
       "nature": "Paramètre",
       "ref": "§ 6 ; P2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringParameters (engine/catering) resout defaut schema -> version magasin -> surcharge article/poste ; CateringParametersTest.resolutionAppliesMostSpecificValue."
     },
     {
       "id": "T0.044",
       "description": "Résolution des portées « E, M, P » et « E, M, A » : la valeur de l'article ou du poste, si elle est renseignée, l'emporte sur celle de la politique.",
       "nature": "Paramètre",
       "ref": "§ 6 ; P2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringParameters (engine/catering) resout defaut schema -> version magasin -> surcharge article/poste ; CateringParametersTest.resolutionAppliesMostSpecificValue."
     },
     {
       "id": "T0.045",
       "description": "Paramètres A, P et V validés à l'enregistrement du référentiel : 400 avec le libellé du paramètre.",
       "nature": "Paramètre",
       "ref": "§ 6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringReferentialValidation (engine/catering) : bornes A/P/V + libelle, 400 a l'enregistrement du referentiel (cable en T1) ; CateringParametersTest."
     },
     {
       "id": "T0.046",
       "description": "Paramètre `enabled` (E, M) : booléen ; défaut vrai.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.047",
       "description": "Paramètre `autoReferenceUnknownItems` (E, M) : booléen ; défaut vrai.",
       "nature": "Paramètre",
       "ref": "§ 6 ; I5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.048",
       "description": "Paramètre `defaultSourcingMode` (E, M) : `FABRICATED`, `SUPPLIED` ou `STOCKED` ; défaut `FABRICATED`.",
       "nature": "Paramètre",
       "ref": "§ 6 ; I5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.049",
       "description": "Paramètre `defaultTemperatureZone` (E, M) : zone de température ; défaut `CHILLED`.",
       "nature": "Paramètre",
       "ref": "§ 6 ; I5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.050",
       "description": "Paramètre `sourcingMode` (P, P×M) : mode d'obtention ; défaut aucun (§ 10).",
       "nature": "Paramètre",
       "ref": "§ 6 ; F2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Champ et defaut en place (CateringItem/CateringItemStore, defaultSourcingMode/station) ; la resolution au niveau de l'unite a la reception (F2) et la validation « poste actif du magasin » sont realisees en T1."
     },
     {
       "id": "T0.051",
       "description": "Paramètre `station` (P, P×M) : poste actif du magasin ; défaut aucun (§ 10).",
       "nature": "Paramètre",
       "ref": "§ 6 ; F2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Champ et defaut en place (CateringItem/CateringItemStore, defaultSourcingMode/station) ; la resolution au niveau de l'unite a la reception (F2) et la validation « poste actif du magasin » sont realisees en T1."
     },
     {
       "id": "T0.052",
       "description": "Paramètre `recipeRequired` (E, M) : booléen ; défaut faux.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.053",
       "description": "Paramètre `shelfLifeHours` (E, M, P) : entier 1 à 720 ; défaut 48.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F5, F13",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.054",
       "description": "Paramètre `maxAdvanceHours` (E, M, P) : entier 0 à 720, inférieur ou égal à `shelfLifeHours` ; défaut 24.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.055",
       "description": "Paramètre `consumptionMarginHours` (E, M) : entier 0 à 72 ; défaut 6.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.056",
       "description": "Paramètre `stagingLeadMinutes` (E, M, A) : entier 0 à 1 440 ; défaut 60.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.057",
       "description": "Paramètre `weekdays` (A) : jours 1 à 7 ; défaut tous les jours.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F5, F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringReferentialValidation (engine/catering) : bornes A/P/V + libelle, 400 a l'enregistrement du referentiel (cable en T1) ; CateringParametersTest."
     },
     {
       "id": "T0.058",
       "description": "Paramètre `closedDates` (A) : liste de dates ; défaut aucune.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F5, F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringReferentialValidation (engine/catering) : bornes A/P/V + libelle, 400 a l'enregistrement du referentiel (cable en T1) ; CateringParametersTest."
     },
     {
       "id": "T0.059",
       "description": "Paramètre `opensAt` et `closesAt` (A) : heures, ouverture strictement avant fermeture ; défaut 00:00 et 23:59.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F5, F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringReferentialValidation (engine/catering) : bornes A/P/V + libelle, 400 a l'enregistrement du referentiel (cable en T1) ; CateringParametersTest."
     },
     {
       "id": "T0.060",
       "description": "Paramètre `dailyMinutes` (A) : entier 0 à 10 000, 0 = non limité ; défaut 480.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringReferentialValidation (engine/catering) : bornes A/P/V + libelle, 400 a l'enregistrement du referentiel (cable en T1) ; CateringParametersTest."
     },
     {
       "id": "T0.061",
       "description": "Paramètre `laborSeconds` (V) : entier 0 à 86 400 ; défaut aucun (§ 10).",
       "nature": "Paramètre",
       "ref": "§ 6 ; F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringReferentialValidation (engine/catering) : bornes A/P/V + libelle, 400 a l'enregistrement du referentiel (cable en T1) ; CateringParametersTest."
     },
     {
       "id": "T0.062",
       "description": "Paramètre `defaultLaborSeconds` (E, M) : entier 0 à 86 400 ; défaut 600.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.063",
       "description": "Paramètre `maxOrderMinutes` (A) : entier 15 à 600 ; défaut 120.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringReferentialValidation (engine/catering) : bornes A/P/V + libelle, 400 a l'enregistrement du referentiel (cable en T1) ; CateringParametersTest."
     },
     {
       "id": "T0.064",
       "description": "Paramètre `batchAcrossOrders` (E, M) : booléen ; défaut vrai.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.065",
       "description": "Paramètre `proposalHorizonDays` (E, M) : entier 1 à 60 ; défaut 14.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.066",
       "description": "Paramètre `autoValidateProposals` (E, M) : booléen ; défaut faux.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.067",
       "description": "Paramètre `planningLeadHours` (E, M) : entier 1 à 240 ; défaut 24.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F22",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.068",
       "description": "Paramètre `componentShortagePolicy` (E, M) : `BLOCK` ou `WARN` ; défaut `WARN`.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.069",
       "description": "Paramètre `supplierLeadDays` (E, M, P) : entier 0 à 30 ; défaut 2.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F10",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.070",
       "description": "Paramètre `supplierOrderCutoff` (E, M) : heure ou nul ; défaut nul.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F10",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.071",
       "description": "Paramètre `labelTemplate` (E, M) : code d'un `LabelTemplate` du magasin, ou nul ; défaut `CATERING_UNIT`.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F14",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.072",
       "description": "Paramètre `labelCopies` (E, M) : entier 1 à 5 ; défaut 1.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F14",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.073",
       "description": "Paramètre `handoverRequiresPaymentAck` (E, M) : booléen ; défaut vrai.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F17",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.074",
       "description": "Paramètre `amendmentAfterStart` (E, M) : `REFUSE` ou `ACCEPT_DECREASE` ; défaut `REFUSE`.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F18",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.075",
       "description": "Paramètre `cancelAfterStart` (E, M) : `REFUSE` ou `ACCEPT_WITH_DISPOSITION` ; défaut `ACCEPT_WITH_DISPOSITION`.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F19",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.076",
       "description": "Paramètre `cancelDispositions` (E, M, P) : sous-ensemble non vide de `REALLOCATE`, `ISOLATE` ; défaut les deux.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F19",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.077",
       "description": "Paramètre `notificationRoles` (E, M) : liste de rôles ; défaut `MANAGER`.",
       "nature": "Paramètre",
       "ref": "§ 6 ; F23",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringConstraints dans OperationalPolicySchemas (schema JSON, defaut, libelle) ; borne/enum validees par RuleSchemaRegistry ; CateringParametersTest."
     },
     {
       "id": "T0.078",
       "description": "Test : chaque paramètre numérique est accepté à ses deux bornes et refusé juste en dehors, avec son libellé.",
       "nature": "Test",
       "ref": "§ 6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringParametersTest (5 tests verts)."
     },
     {
       "id": "T0.079",
       "description": "Test : chaque paramètre énuméré refuse une valeur inconnue ; `cancelDispositions` refuse la liste vide.",
       "nature": "Test",
       "ref": "§ 6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringParametersTest (5 tests verts)."
     },
     {
       "id": "T0.080",
       "description": "Test : `maxAdvanceHours` supérieur à `shelfLifeHours` refusé ; `opensAt` égal ou postérieur à `closesAt` refusé.",
       "nature": "Test",
       "ref": "§ 6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringParametersTest (5 tests verts)."
     },
     {
       "id": "T0.081",
       "description": "Test de résolution : valeur par défaut du schéma sans version ; version du magasin ; surcharge de l'article ; surcharge du poste ; retour à la politique quand la surcharge est nulle.",
       "nature": "Test",
       "ref": "§ 6 ; P2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringParametersTest (5 tests verts)."
     },
     {
       "id": "T1.001",

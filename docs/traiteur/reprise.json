@@ -1,17 +1,20 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 37,
-  "remaining": 416,
-  "lastCompletedPacket": 1,
+  "done": 76,
+  "remaining": 377,
+  "lastCompletedPacket": 2,
   "currentBatch": {
-    "packet": 2,
-    "lot": "T0",
+    "packet": 3,
+    "lot": "T1",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "Politique CateringConstraints, resolution et parametres (T0.041-081)"
+    "scope": "Reception de la commande et referentiel (T1.001-061)"
   },
-  "lastFullSuite": "Full suite: 2316 run, 9 failures, 5 errors, 1 skipped — all pre-existing (owner WIP), proven independent of catering via controlled with/without-packet comparison. CateringMigrationTest + Hibernate validate green.",
-  "openEcarts": [],
-  "notes": "Paquet 1 (T0 modele de donnees) termine le 2026-11-11. V30 applique, entites validees par Hibernate, suite complete verte. Paquet 1 regroupe migration+entites (37 points) car Hibernate est en mode validate : le DDL n'est verifiable qu'avec les entites correspondantes."
+  "lastFullSuite": "Packet-2: 1917 tests unitaires 0 echec + e2e jusqu'a 169 classes ; aucun echec nouveau. Seuls echecs = pre-existants (DemoDataInitializerTest 3, etc.) ; AutomaticReplenishmentTest prouve flaky (horloge reelle). Policy/order/fulfillment/handling verts ; CateringParametersTest + OperationalPolicyWorkflowTest verts.",
+  "openEcarts": [
+    "T0.050, T0.051 EN_COURS (resolution/validation au niveau unite+poste = T1)",
+    "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil de T1+)"
+  ],
+  "notes": "Lot T0 termine a 76/81 le 2026-11-11 (T0.050/051 EN_COURS, T0.004/006/007 A_FAIRE, differes a T1+). Paquet 2 : CateringConstraints + resolution + validation referentiel. Suite complete : echecs inchanges et anterieurs (cf ecarts.json)."
 }
