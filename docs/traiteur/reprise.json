@@ -1,20 +1,20 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 100,
-  "remaining": 353,
-  "lastCompletedPacket": 3,
+  "done": 112,
+  "remaining": 341,
+  "lastCompletedPacket": "4a",
   "currentBatch": {
-    "packet": 4,
+    "packet": "4b",
     "lot": "T1",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "Unite traiteur (I6), EAN inconnu (I5), enabled, fulfiller traiteur (I7) + tests T1.035-042"
+    "scope": "Fulfiller traiteur I7 (T1.022-026) + tests T1.040-042 ; lot_lines.location nullable"
   },
   "lastFullSuite": "Intake-path regression verte (CateringIntakeTest 8, OrderResourceTest 14, OrderRecorderTest 41, OrderRequestPollingConsumerTest 11, FulfillmentEngineTest 17). Changements confines au chemin d'entree ; echecs restants anterieurs (demo/stock/supervision).",
   "openEcarts": [
     "T0.050, T0.051 EN_COURS (resolution/validation au niveau unite+poste = T1)",
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil de T1+)"
   ],
-  "notes": "Paquet 3 (T1 reception, contrat d'entree) termine le 2026-11-11. Schema+validation+idempotence+paiement ; CateringIntakeTest 8 verts ; regression intake verte (OrderResourceTest 14, OrderRecorderTest 41). Suite complete : echecs anterieurs inchanges (cf ecarts.json)."
+  "notes": "Paquet 4a (reception cote OrderRecorder : I5/I6/F2) termine le 2026-11-11. CateringIntakeTest 13 verts ; regression intake verte. Reste 4b (fulfiller I7)."
 }

@@ -1,0 +1,25 @@
+{
+  "paquet": "4a",
+  "lot": "T1",
+  "titre": "Réception côté OrderRecorder : unité traiteur (I6), EAN inconnu (I5), mode (F2), enabled",
+  "pointsClos": ["T1.017","T1.018","T1.019","T1.020","T1.021","T1.035","T1.036","T1.037","T1.038","T1.039","T1.045","T1.046"],
+  "fichiersCrees": ["engine/catering/CateringIntake.java"],
+  "fichiersModifies": [
+    "engine/OrderRecorder.java (délègue à CateringIntake : resolveProduct, recordUnits ; ligne traiteur non référencée => pas de FulfillmentLine)",
+    "src/test/.../OrderRecorderTest.java (câblage de la dépendance CateringIntake, cf ecarts)",
+    "src/test/.../CateringIntakeTest.java (+5 tests recorder-level)"
+  ],
+  "regles": {
+    "I6": "CateringIntake.createUnit crée la CateringUnit (variante, clé, config, libellés, allergènes, quantité, availableAt=début créneau) liée à l'OrderLine.",
+    "I5": "EAN inconnu : auto-référencé (Product+CateringItem en defaultSourcingMode/defaultTemperatureZone) si autoReferenceUnknownItems, sinon unité BLOCKED sans produit ni ligne de lot.",
+    "F2": "resolveMode : surcharge magasin (CateringItemStore) > fiche (CateringItem) > defaultSourcingMode ; figé sur l'unité.",
+    "enabled": "enabled faux => unité BLOCKED."
+  },
+  "testsTraiteur": [{
+    "name": "com.intermarche.e2e.engine.CateringIntakeTest",
+    "tests": 13, "failures": 0, "errors": 0,
+    "nouveaux": ["unknownEanAutoReferencedCreatesProductAndUnit (T1.035)","unknownEanNotReferencedBlocksUnit (T1.036)","longEanAcceptedAndReadBack (T1.037)","freshZoneAccepted (T1.038)","disabledCateringBlocksUnit (T1.039)"]
+  }],
+  "nonRegression": ["OrderRecorderTest 41/0","OrderRequestPollingConsumerTest 11/0","OrderResourceTest 14/0","FulfillmentEngineTest 17/0"],
+  "note": "Les situations de supervision (CATERING_UNREFERENCED, CATERING_DISABLED) sont produites en T6 ; ici seul l'état de l'unité est posé. Reste 4b : fulfiller traiteur (I7)."
+}

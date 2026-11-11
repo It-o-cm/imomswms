@@ -67,6 +67,11 @@
       "test": "com.intermarche.backoffice.database.VersionedSchemaStartupTest.applicationBootsOnMigratedSchemaAndHibernateValidation",
       "modification": "assertEquals(138, ...) -> assertEquals(150, ...) sur le nombre total de tables.",
       "raison": "Meme invariant structurel que ci-dessus : 12 tables ajoutees par V30."
+    },
+    {
+      "test": "com.intermarche.backoffice.engine.OrderRecorderTest.setUp",
+      "modification": "Ajout de recorder.cateringIntake = new CateringIntake() dans @BeforeEach.",
+      "raison": "OrderRecorder a une nouvelle dependance injectee (CateringIntake). Ce test unitaire Mockito cable les champs a la main (il faisait deja recorder.objectMapper = mapper). Cablage mecanique d'une dependance, sans changement d'assertion ni de comportement teste."
     }
   ]
 }

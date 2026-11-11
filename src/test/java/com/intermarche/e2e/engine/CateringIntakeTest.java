@@ -5,8 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.intermarche.backoffice.domain.Event;
+import com.intermarche.backoffice.domain.catering.CateringItem;
 import com.intermarche.backoffice.domain.catering.CateringUnit;
+import com.intermarche.backoffice.domain.catering.CateringUnitState;
+import com.intermarche.backoffice.domain.catering.SourcingMode;
 import com.intermarche.backoffice.domain.order.Customer;
+import com.intermarche.backoffice.domain.order.Product;
+import com.intermarche.backoffice.domain.policy.OperationalPolicyVersion;
+import com.intermarche.backoffice.engine.policy.OperationalPolicySchemas;
+import io.quarkus.test.TestTransaction;
 import com.intermarche.backoffice.domain.order.Order;
 import com.intermarche.backoffice.domain.order.OrderRequest;
 import com.intermarche.backoffice.domain.store.Store;
@@ -440,5 +447,141 @@ public class CateringIntakeTest {
         given().body(mapper.writeValueAsString(different)).contentType(ContentType.JSON)
                 .when().post("/orders").then().statusCode(409).body(containsString("ORDER_ALREADY_SUBMITTED"));
         assertEquals(1, OrderRequest.count(), "The original request must stay intact");
+    }
+
+    // --------------------------------------------------
+    // Reception-level rules (I5, I6, F2) — recorder called directly
+    // --------------------------------------------------
+
+    /**
+     * Builds a catering order with a single catering line.
+     *
+     * @param orderId   the order id.
+     * @param storeCode the store code.
+     * @param ean       the catering line EAN.
+     * @param lineId    the catering line id.
+     * @return the payload node.
+     */
+    private ObjectNode cateringOrder(String orderId, String storeCode, String ean, String lineId) {
+        ObjectNode root = baseOrder(orderId, storeCode);
+        root.set("catering", rootCatering());
+        ObjectNode line = cateringLine(1, lineId, KEY, null);
+        ((ObjectNode) line.get("product")).put("ean", ean);
+        lines(root).add(line);
+        return root;
+    }
+
+    /**
+     * Persists an active CateringConstraints version with one overridden value.
+     *
+     * @param store the store.
+     * @param key   the parameter key.
+     * @param value the value (boolean or string).
+     */
+    private void persistPolicy(Store store, String key, Object value) {
+        try {
+            ObjectNode spec = OperationalPolicySchemas.defaults("CateringConstraints");
+            if (value instanceof Boolean b) {
+                spec.put(key, b);
+            } else {
+                spec.put(key, String.valueOf(value));
+            }
+            OperationalPolicyVersion version = new OperationalPolicyVersion();
+            version.store = store;
+            version.kind = "CateringConstraints";
+            version.scopeKey = "CateringConstraints";
+            version.revisionNumber = 1;
+            version.active = true;
+            version.activatedBy = "test";
+            version.specification = mapper.writeValueAsString(spec);
+            version.persistAndFlush();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * T1.035: an unknown EAN with auto-referencing creates the product and datasheet, and the unit is RECEIVED.
+     */
+    @Test
+    @TestTransaction
+    void unknownEanAutoReferencedCreatesProductAndUnit() {
+        Store store = DomainUtils.createAndPersistStore("CAT_INTK2", 48.0, 2.0);
+        recorder.persistOrderAndFulfillmentFromJson(cateringOrder("CI-035", "CAT_INTK2", "DEMO-TRA-TEST-035", "u-035"));
+
+        Product product = Product.findByEan("DEMO-TRA-TEST-035");
+        assertNotNull(product, "The product must be auto-created");
+        assertNotNull(CateringItem.find("product", product).firstResult(), "The catering datasheet must be created");
+        CateringUnit unit = CateringUnit.find("lineId", "u-035").firstResult();
+        assertNotNull(unit);
+        assertEquals(CateringUnitState.RECEIVED, unit.state);
+        assertEquals(SourcingMode.FABRICATED, unit.sourcingMode);
+        assertEquals("32", unit.variantId);
+    }
+
+    /**
+     * T1.036: an unknown EAN without auto-referencing creates nothing, and the unit is BLOCKED with a product-less line.
+     */
+    @Test
+    @TestTransaction
+    void unknownEanNotReferencedBlocksUnit() {
+        Store store = DomainUtils.createAndPersistStore("CAT_INTK3", 48.0, 2.0);
+        persistPolicy(store, "autoReferenceUnknownItems", Boolean.FALSE);
+        recorder.persistOrderAndFulfillmentFromJson(cateringOrder("CI-036", "CAT_INTK3", "DEMO-TRA-TEST-036", "u-036"));
+
+        assertNull(Product.findByEan("DEMO-TRA-TEST-036"), "No product must be created");
+        CateringUnit unit = CateringUnit.find("lineId", "u-036").firstResult();
+        assertNotNull(unit);
+        assertEquals(CateringUnitState.BLOCKED, unit.state);
+        assertNull(unit.item, "No datasheet for an unreferenced unit");
+        assertNull(unit.orderLine.product, "The order line keeps no product");
+        assertNull(unit.fulfillmentLine, "An unreferenced unit has no lot line");
+    }
+
+    /**
+     * T1.037: an EAN of 23 characters is accepted and read back.
+     */
+    @Test
+    @TestTransaction
+    void longEanAcceptedAndReadBack() {
+        Store store = DomainUtils.createAndPersistStore("CAT_INTK4", 48.0, 2.0);
+        String ean = "DEMO-TRA-VERRINES-ABCDE"; // 23 characters
+        assertEquals(23, ean.length());
+        recorder.persistOrderAndFulfillmentFromJson(cateringOrder("CI-037", "CAT_INTK4", ean, "u-037"));
+
+        Product product = Product.findByEan(ean);
+        assertNotNull(product, "A 23-character EAN must be accepted");
+        assertEquals(ean, CateringUnit.<CateringUnit>find("lineId", "u-037").firstResult().ean);
+    }
+
+    /**
+     * T1.038: a FRESH temperature zone is accepted (synonym of CHILLED, I8).
+     */
+    @Test
+    @TestSecurity(user = "svc", roles = {"SERVICE_CALLER"})
+    void freshZoneAccepted() throws Exception {
+        createStore("CAT_INTK1");
+        ObjectNode root = baseOrder("CI-038", "CAT_INTK1");
+        ObjectNode line = groceryLine(1, "1234567890123");
+        line.putObject("logistics").put("temperatureZone", "FRESH");
+        lines(root).add(line);
+
+        given().body(mapper.writeValueAsString(root)).contentType(ContentType.JSON)
+                .when().post("/orders").then().statusCode(202);
+    }
+
+    /**
+     * T1.039: with catering disabled, a received unit is BLOCKED.
+     */
+    @Test
+    @TestTransaction
+    void disabledCateringBlocksUnit() {
+        Store store = DomainUtils.createAndPersistStore("CAT_INTK5", 48.0, 2.0);
+        persistPolicy(store, "enabled", Boolean.FALSE);
+        recorder.persistOrderAndFulfillmentFromJson(cateringOrder("CI-039", "CAT_INTK5", "DEMO-TRA-TEST-039", "u-039"));
+
+        CateringUnit unit = CateringUnit.find("lineId", "u-039").firstResult();
+        assertNotNull(unit);
+        assertEquals(CateringUnitState.BLOCKED, unit.state);
     }
 }

@@ -43,6 +43,7 @@ class OrderRecorderTest {
     void setUp() {
         recorder = new OrderRecorder();
         recorder.objectMapper = mapper;
+        recorder.cateringIntake = new com.intermarche.backoffice.engine.catering.CateringIntake();
     }
 
     private JsonNode json(String content) throws Exception {

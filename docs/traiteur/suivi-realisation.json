@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 100,
-  "remaining": 353,
+  "done": 112,
+  "remaining": 341,
   "currentBatch": {
-    "packet": 3,
+    "packet": "4a",
     "lot": "T1",
     "status": "TERMINE",
-    "scope": "Reception : schema, validation I3, idempotence I4, paiement (T1.001-016, 027-034)"
+    "scope": "Unite traiteur I6, EAN inconnu I5, mode F2, enabled (T1.017-021,035-039,045-046)"
   },
   "perLot": {
     "T0": 81,
@@ -803,40 +803,40 @@
       "description": "`OrderRecorder` crée, pour chaque ligne traiteur, l'`OrderLine` existante et une `CateringUnit` : variante, clé et configuration, libellés, allergènes, ingrédients, conservation, conseils, quantité, `availableAt` = début du créneau.",
       "nature": "Règle",
       "ref": "I6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.018",
       "description": "EAN inconnu, `autoReferenceUnknownItems` vrai : création du `Product` (nom et type de la ligne, zone `defaultTemperatureZone`) et d'un `CateringItem` en mode `defaultSourcingMode`, sans poste ni nomenclature.",
       "nature": "Règle",
       "ref": "I5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.019",
       "description": "EAN inconnu, paramètre faux : rien n'est créé ; l'unité garde l'EAN reçu, sans article ni ligne de lot, à l'état `BLOCKED`.",
       "nature": "Règle",
       "ref": "I5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.020",
       "description": "Dans les deux cas d'EAN inconnu : commande enregistrée, situation `CATERING_UNREFERENCED`.",
       "nature": "Règle",
       "ref": "I5 ; C2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.021",
       "description": "`enabled` faux : toute unité reçue passe `BLOCKED` sous `CATERING_DISABLED`.",
       "nature": "Règle",
       "ref": "§ 6 ; F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.022",
@@ -947,40 +947,40 @@
       "description": "EAN inconnu, paramètre vrai : produit et fiche créés, unité `RECEIVED`, situation produite.",
       "nature": "Test",
       "ref": "I5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.036",
       "description": "EAN inconnu, paramètre faux : unité `BLOCKED`, `OrderLine` sans produit, aucune ligne de lot.",
       "nature": "Test",
       "ref": "I5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.037",
       "description": "EAN de 23 caractères accepté et relu.",
       "nature": "Test",
       "ref": "I9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.038",
       "description": "Zone `FRESH` acceptée et lue comme `CHILLED`.",
       "nature": "Test",
       "ref": "I8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.039",
       "description": "`enabled` faux : unité `BLOCKED`, situation `CATERING_DISABLED`.",
       "nature": "Test",
       "ref": "§ 6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.040",
@@ -1027,16 +1027,16 @@
       "description": "Mode d'une unité résolu à la réception : surcharge du magasin, à défaut fiche, à défaut `defaultSourcingMode` ; figé sur l'unité.",
       "nature": "Règle",
       "ref": "F2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.046",
       "description": "Poste résolu de la même façon ; unité `FABRICATED` ou `SUPPLIED` sans poste : reste `RECEIVED` sous `CATERING_UNREFERENCED`.",
       "nature": "Règle",
       "ref": "F2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "OrderRecorder delegue a CateringIntake (engine/catering) : creation d'unite (I6), EAN inconnu auto-reference ou BLOCKED (I5), resolution du mode F2 (surcharge magasin>fiche>defaut), enabled. CateringIntakeTest (13 tests verts)."
     },
     {
       "id": "T1.047",

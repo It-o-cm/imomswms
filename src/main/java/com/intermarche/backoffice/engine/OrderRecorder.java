@@ -40,6 +40,12 @@ public class OrderRecorder {
     ObjectMapper objectMapper;
 
     /**
+     * Catering-aware part of reception (unit creation, unknown EAN, mode resolution).
+     */
+    @Inject
+    com.intermarche.backoffice.engine.catering.CateringIntake cateringIntake;
+
+    /**
      * Orchestrates the mapping and persistence of the Order aggregate and the Fulfillment.
      * <p>
      * This method coordinates the resolution of dependencies (Store, Customer),
@@ -60,11 +66,13 @@ public class OrderRecorder {
         Store store = resolveStore(header.path("store").path("code").asText());
         Customer customer = resolveOrCreateCustomer(customerNode);
         Order order = createOrder(header, root, store, customer);
-        processOrderLines(linesNode, order);
+        processOrderLines(linesNode, order, store);
         if (customer.id == null) {
             customer.persist();
         }
         order.persist();
+        LocalDateTime availableAt = parseDeliveryDate(root);
+        cateringIntake.recordUnits(order, linesNode, availableAt != null ? availableAt : order.orderDate, store);
         Fulfillment fulfillment = createFulfillmentForOrder(order, root);
     }
 
@@ -108,7 +116,9 @@ public class OrderRecorder {
             int lineNum = 1;
             for (JsonNode lineNode : linesNode) {
                 FulfillmentLine line = createFulfillmentLine(lineNode, lineNum++);
-                chunk.addLine(line);
+                if (line != null) {
+                    chunk.addLine(line);
+                }
             }
         }
         return chunk;
@@ -157,6 +167,10 @@ public class OrderRecorder {
         String ean = lineNode.path("product").path("ean").asText();
         Product product = Product.findByEan(ean);
         if (product == null) {
+            // An unreferenced catering line has no picking lot line (I5); other unknown EANs are errors.
+            if (cateringIntake.isCateringLine(lineNode)) {
+                return null;
+            }
             throw new NoSuchElementException("Product with ean " + ean + " not found for line");
         }
         line.product = product;
@@ -262,12 +276,24 @@ public class OrderRecorder {
     }
 
     /**
-     * Iterates over the JSON lines array and adds OrderLines to the Order.
+     * Iterates over the JSON lines array and adds OrderLines to the Order, using the order's store
+     * for catering EAN resolution.
      *
      * @param linesNode The JSON array of lines.
      * @param order     The parent Order entity to which lines will be added.
      */
     public void processOrderLines(JsonNode linesNode, Order order) {
+        processOrderLines(linesNode, order, order.store);
+    }
+
+    /**
+     * Iterates over the JSON lines array and adds OrderLines to the Order.
+     *
+     * @param linesNode The JSON array of lines.
+     * @param order     The parent Order entity to which lines will be added.
+     * @param store     The store the order belongs to (for catering EAN resolution).
+     */
+    public void processOrderLines(JsonNode linesNode, Order order, Store store) {
         if (!linesNode.isArray()) return;
         int lineNum = 1;
         for (JsonNode lineNode : linesNode) {
@@ -275,10 +301,11 @@ public class OrderRecorder {
             line.lineNumber = lineNode.path("lineNumber").asInt(lineNum++);
             line.requestedQuantity = new BigDecimal(lineNode.path("requestedQuantity").asText("0"));
             String ean = lineNode.path("product").path("ean").asText();
-            Product product = Product.findByEan(ean);
-            if (product == null) {
+            Product product = cateringIntake.resolveProduct(lineNode, store);
+            if (product == null && !cateringIntake.isCateringLine(lineNode)) {
                 throw new NoSuchElementException("Product with ean " + ean + " not found for line");
             }
+            // A catering line with an unknown EAN and auto-referencing off keeps a product-less line (I5).
             line.product = product;
             line.specification = lineNode.toString();
             order.addLine(line);
