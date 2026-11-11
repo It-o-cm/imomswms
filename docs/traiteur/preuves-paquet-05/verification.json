@@ -1,0 +1,22 @@
+{
+  "paquet": 5, "lot": "T1", "titre": "Référentiel traiteur (§ 8.1, F1/F2)",
+  "pointsClos": ["T1.043","T1.044","T1.047","T1.048","T1.049","T1.050","T1.051","T1.052","T1.053","T1.054","T1.055","T1.056","T1.057","T1.058","T1.059","T1.060","T1.061","T0.050","T0.051"],
+  "fichiersCrees": ["engine/catering/CateringReferentialResource.java","src/test/.../CateringReferentialTest.java","src/test/.../CateringUnitLifecycleTest.java"],
+  "endpoints": [
+    "GET /catering/items (fiches, mode résolu, variantes connues)","PUT /catering/items (ADMIN ; station exigée FABRICATED/SUPPLIED)",
+    "PUT /catering/items/{id}/stores/{storeId} (ADMIN/MANAGER du magasin)","GET /catering/items/{id}/recipes (404 si inconnu)",
+    "PUT /catering/items/{id}/recipes (ADMIN ; 400 composant inconnu / quantité<=0)","GET /catering/stations",
+    "PUT /catering/stations (ADMIN/MANAGER ; code unique, horaires cohérents)","PUT /catering/stations/{id}/employees (400 employé d'un autre magasin)"
+  ],
+  "regles": {
+    "F1": "Un produit est un article traiteur s'il a un CateringItem actif ; article désactivé => nouvelle unité BLOCKED (aucune planification nouvelle), unités en cours inchangées.",
+    "F2": "Mode résolu surcharge magasin > fiche > défaut, figé sur l'unité ; fiche FABRICATED/SUPPLIED sans poste => unité RECEIVED.",
+    "droits": "Fiches et nomenclatures communes écrites par l'ADMIN seul ; surcharge/postes/habilitations par le MANAGER de son magasin ; manager d'un autre magasin 403."
+  },
+  "testsTraiteur": [
+    {"name":"com.intermarche.e2e.engine.catering.CateringReferentialTest","tests":10,"failures":0,"errors":0},
+    {"name":"com.intermarche.e2e.engine.catering.CateringUnitLifecycleTest","tests":3,"failures":0,"errors":0}
+  ],
+  "nonRegression": "Le paquet n'ajoute qu'un nouveau resource JAX-RS et des tests ; aucun code existant modifié.",
+  "note": "Lot T1 complet (61/61). Lot T0 78/81 (T0.004/006/007 socle transverse, réalisés au fil des contrats/lectures)."
+}

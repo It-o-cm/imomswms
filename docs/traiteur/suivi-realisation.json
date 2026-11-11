@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 120,
-  "remaining": 333,
+  "done": 139,
+  "remaining": 314,
   "currentBatch": {
-    "packet": "4b",
+    "packet": 5,
     "lot": "T1",
     "status": "TERMINE",
-    "scope": "Fulfiller traiteur I7 (T1.022-026, 040-042)"
+    "scope": "Referentiel traiteur (T1.043-044,047-061) + T0.050/051"
   },
   "perLot": {
     "T0": 81,
@@ -419,16 +419,16 @@
       "description": "Paramètre `sourcingMode` (P, P×M) : mode d'obtention ; défaut aucun (§ 10).",
       "nature": "Paramètre",
       "ref": "§ 6 ; F2",
-      "status": "EN_COURS",
-      "evidence": "Champ et defaut en place (CateringItem/CateringItemStore, defaultSourcingMode/station) ; la resolution au niveau de l'unite a la reception (F2) et la validation « poste actif du magasin » sont realisees en T1."
+      "status": "TERMINE",
+      "evidence": "sourcingMode/station (P, P×M) : champs CateringItem/CateringItemStore ecrits par PUT /catering/items et /items/{id}/stores, valides (station exigee FABRICATED/SUPPLIED, poste du magasin), resolus a la reception (F2). CateringReferentialTest."
     },
     {
       "id": "T0.051",
       "description": "Paramètre `station` (P, P×M) : poste actif du magasin ; défaut aucun (§ 10).",
       "nature": "Paramètre",
       "ref": "§ 6 ; F2",
-      "status": "EN_COURS",
-      "evidence": "Champ et defaut en place (CateringItem/CateringItemStore, defaultSourcingMode/station) ; la resolution au niveau de l'unite a la reception (F2) et la validation « poste actif du magasin » sont realisees en T1."
+      "status": "TERMINE",
+      "evidence": "sourcingMode/station (P, P×M) : champs CateringItem/CateringItemStore ecrits par PUT /catering/items et /items/{id}/stores, valides (station exigee FABRICATED/SUPPLIED, poste du magasin), resolus a la reception (F2). CateringReferentialTest."
     },
     {
       "id": "T0.052",
@@ -1011,16 +1011,16 @@
       "description": "Un produit est un article traiteur s'il possède un `CateringItem` actif.",
       "nature": "Règle",
       "ref": "F1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.044",
       "description": "Article désactivé : aucune planification nouvelle ; ses unités en cours vont à leur terme.",
       "nature": "Règle",
       "ref": "F1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.045",
@@ -1043,120 +1043,120 @@
       "description": "`GET /catering/items?storeId=&q=&mode=` : fiches avec mode résolu, poste, nomenclatures présentes ou manquantes par variante connue.",
       "nature": "API",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.048",
       "description": "Variantes connues d'un article : celles de ses nomenclatures et celles des unités reçues.",
       "nature": "Règle",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.049",
       "description": "`PUT /catering/items` (ADMIN) : `station` exigé pour `FABRICATED` et `SUPPLIED` ; 400 avec le libellé du paramètre.",
       "nature": "API",
       "ref": "§ 8.1 ; § 5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.050",
       "description": "`PUT /catering/items/{id}/stores/{storeId}` (ADMIN, MANAGER du magasin) : surcharge ; 403 pour un autre magasin.",
       "nature": "API",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.051",
       "description": "`GET /catering/items/{id}/recipes` : nomenclatures, lignes et révisions ; 404 si l'article est inconnu.",
       "nature": "API",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.052",
       "description": "`PUT /catering/items/{id}/recipes` (ADMIN) : crée une révision nouvelle, base ou complément ; 400 pour un composant inconnu ou une quantité ≤ 0.",
       "nature": "API",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.053",
       "description": "`GET /catering/stations?storeId=` : postes, calendrier, employés habilités.",
       "nature": "API",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.054",
       "description": "`PUT /catering/stations` (ADMIN, MANAGER du magasin) : code unique, bâtiment et buffer `STAGING` du magasin, imprimante du magasin, horaires cohérents ; 400, 403.",
       "nature": "API",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.055",
       "description": "`PUT /catering/stations/{id}/employees` : 400 pour un employé d'un autre magasin.",
       "nature": "API",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.056",
       "description": "Droits : lectures ADMIN et MANAGER ; un manager est limité à son magasin ; fiches et nomenclatures communes écrites par l'administrateur seul.",
       "nature": "API",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.057",
       "description": "`CateringUnitLifecycleTest` : fiche active, désactivée ; article désactivé non planifié, unités en cours poursuivies.",
       "nature": "Test",
       "ref": "§ 11.1 ; F1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.058",
       "description": "`CateringUnitLifecycleTest` : mode résolu par la surcharge, par la fiche, par la politique ; mode figé après changement de fiche.",
       "nature": "Test",
       "ref": "§ 11.1 ; F2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.059",
       "description": "`CateringUnitLifecycleTest` : poste non résolu pour `FABRICATED` et pour `SUPPLIED`.",
       "nature": "Test",
       "ref": "§ 11.1 ; F2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.060",
       "description": "Test : chaque écriture du référentiel avec chaque rôle ; manager d'un autre magasin refusé.",
       "nature": "Test",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T1.061",
       "description": "Test : chaque refus de validation des fiches, nomenclatures, postes et habilitations.",
       "nature": "Test",
       "ref": "§ 8.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Referentiel traiteur CateringReferentialResource (/catering) : items, surcharge par magasin, nomenclatures, postes, habilitations ; droits ADMIN/MANAGER, manager limite a son magasin, 400 avec libelle du parametre. CateringReferentialTest (10) + CateringUnitLifecycleTest (3)."
     },
     {
       "id": "T2.001",
