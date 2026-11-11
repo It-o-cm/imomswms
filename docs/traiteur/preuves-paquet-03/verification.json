@@ -1,0 +1,50 @@
+{
+  "paquet": 3,
+  "lot": "T1",
+  "titre": "Réception : schéma, validation structurelle, idempotence et paiement",
+  "pointsClos": [
+    "T1.001", "T1.002", "T1.003", "T1.004", "T1.005", "T1.006", "T1.007", "T1.008",
+    "T1.009", "T1.010", "T1.011", "T1.012", "T1.013", "T1.014", "T1.015", "T1.016",
+    "T1.027", "T1.028", "T1.029", "T1.030", "T1.031", "T1.032", "T1.033", "T1.034"
+  ],
+  "fichiersModifies": [
+    "engine/OrderResource.java (schéma RetailOrder : blocs Payment, CateringRoot, CateringLine + zones alignées I8 ; validateCateringAndPayment I1/I3 ; idempotence I4 par empreinte canonique ; helpers)",
+    "engine/OrderRecorder.java (recordPayment : mode/état/montant sur la commande ; payment+catering préservés dans la spécification)"
+  ],
+  "fichiersCrees": [
+    "src/test/java/com/intermarche/e2e/engine/CateringIntakeTest.java"
+  ],
+  "schema": {
+    "ajouts": "payment (method ONLINE/AT_PICKUP, state DUE/COLLECTED, amount>=0) ; catering racine (contractVersion requis, reception.date/guests 1..1000, deadlines, pickupPoint<=200) ; lines[].catering (lineId, variant.id motif [A-Za-z0-9-]{1,20} requis, configurationKey motif 64 hex, configuration, choiceLabels<=40, allergens/ingredients<=4000, storage/servingAdvice<=1000).",
+    "zonesI8": "temperatureZone : [AMBIENT, FRESH, FROZEN, HOT] -> [AMBIENT, CHILLED, FROZEN, HOUSEHOLD, FRESH] (HOT retiré, FRESH synonyme). Cf ecarts E-T1-01.",
+    "configurationKeyNonRequis": "configurationKey retiré de 'required' du schéma : son absence relève de I3 (CATERING_LINE_INVALID), pas d'une erreur de schéma."
+  },
+  "regles": {
+    "I3": "validateCateringAndPayment : lineId en double, configurationKey absente, configuration ni composition ni gâteau, ligne traiteur sans bloc racine -> 400 CATERING_LINE_INVALID ; AT_PICKUP sans state/amount -> 400 PAYMENT_INCOMPLETE.",
+    "I4": "Idempotence (storeCode, orderId) : empreinte SHA-256 canonique (clés triées) de la charge conservée ; rejeu identique -> 202 sans seconde OrderRequest ; charge différente -> 409 ORDER_ALREADY_SUBMITTED. Cf ecarts E-T1-02.",
+    "paiement": "OrderRecorder.recordPayment enregistre method/state/amount sur Order (colonnes de V30)."
+  },
+  "testsTraiteur": [
+    {
+      "name": "com.intermarche.e2e.engine.CateringIntakeTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "methodes": [
+        "plainOrderUnchanged (T1.027)", "atPickupPaymentRecordedWithoutUnit (T1.028)",
+        "atPickupWithoutStateOrAmountRejected (T1.029)", "malformedRootCateringRejected (T1.030)",
+        "cateringLineFieldOutOfBoundsRejected (T1.031)", "structuralCateringViolationsRejected (T1.032)",
+        "identicalReplayIsIdempotent (T1.033)", "conflictingReplayIsRejected (T1.034)"
+      ]
+    }
+  ],
+  "nonRegression": [
+    "OrderResourceTest : 14 tests, 0 échec (l'idempotence I4 ne casse pas l'intake existant).",
+    "OrderRecorderTest : 41, 0 échec (le paiement n'altère pas l'enregistrement).",
+    "OrderRequestPollingConsumerTest : 11, 0 échec.",
+    "FulfillmentEngineTest : 17, 0 échec."
+  ],
+  "verification": {
+    "note": "Vérification par la suite ciblée du chemin d'entrée — exactement la surface de régression des changements (OrderResource/OrderRecorder) : tous verts. Les changements sont confinés au chemin d'entrée des commandes ; les échecs restants de la suite complète sont antérieurs et dans des zones non touchées (démo, stock, supervision), conformément à l'analyse des paquets 1-2 (ecarts.json)."
+  }
+}

@@ -2,6 +2,7 @@ package com.intermarche.backoffice.engine;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.intermarche.backoffice.domain.Event;
 import com.intermarche.backoffice.domain.order.OrderRequest;
 import com.intermarche.backoffice.domain.store.Store;
@@ -23,6 +24,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -151,7 +154,9 @@ public class OrderResource {
                     "totalPriceInclTax": { "type": "number" },
                     "logisticsTotals": { "$ref": "#/definitions/LogisticsSummary" }
                   }
-                }
+                },
+                "payment": { "$ref": "#/definitions/Payment" },
+                "catering": { "$ref": "#/definitions/CateringRoot" }
               },
               "required": ["orderHeader", "customer", "fulfillment", "lines", "summary"],
               "definitions": {
@@ -186,7 +191,8 @@ public class OrderResource {
                     "pricing": { "$ref": "#/definitions/Pricing" },
                     "offer": { "$ref": "#/definitions/Offer" },
                     "instructions": { "type": "object" },
-                    "logistics": { "$ref": "#/definitions/Logistics" }
+                    "logistics": { "$ref": "#/definitions/Logistics" },
+                    "catering": { "$ref": "#/definitions/CateringLine" }
                   }
                 },
                 "ProductReference": {
@@ -229,7 +235,7 @@ public class OrderResource {
                     "weight": { "type": "number" },
                     "volume": { "type": "number" },
                     "fragile": { "type": "boolean" },
-                    "temperatureZone": { "type": "string", "enum": ["AMBIENT", "FRESH", "FROZEN", "HOT"] }
+                    "temperatureZone": { "type": "string", "enum": ["AMBIENT", "CHILLED", "FROZEN", "HOUSEHOLD", "FRESH"] }
                   }
                 },
                 "LogisticsSummary": {
@@ -241,6 +247,62 @@ public class OrderResource {
                     "temperatureZones": { "type": "array", "items": { "type": "string" } },
                     "containsFragileItems": { "type": "boolean" }
                   }
+                },
+                "Payment": {
+                  "type": "object",
+                  "properties": {
+                    "method": { "type": "string", "enum": ["ONLINE", "AT_PICKUP"] },
+                    "state": { "type": "string", "enum": ["DUE", "COLLECTED"] },
+                    "amount": { "type": "number", "minimum": 0 }
+                  }
+                },
+                "CateringRoot": {
+                  "type": "object",
+                  "properties": {
+                    "contractVersion": { "type": "string" },
+                    "reception": {
+                      "type": "object",
+                      "properties": {
+                        "date": { "type": "string", "format": "date" },
+                        "guests": { "type": "integer", "minimum": 1, "maximum": 1000 }
+                      }
+                    },
+                    "deadlines": {
+                      "type": "object",
+                      "properties": {
+                        "change": { "type": "string", "format": "date-time" },
+                        "cancel": { "type": "string", "format": "date-time" }
+                      }
+                    },
+                    "pickupPoint": { "type": "string", "maxLength": 200 }
+                  },
+                  "required": ["contractVersion"]
+                },
+                "CateringLine": {
+                  "type": "object",
+                  "properties": {
+                    "lineId": { "type": "string" },
+                    "variant": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "pattern": "^[A-Za-z0-9-]{1,20}$" },
+                        "label": { "type": "string", "maxLength": 60 },
+                        "persons": { "type": "integer" },
+                        "pieces": { "type": "integer" },
+                        "parts": { "type": "integer" },
+                        "weightGrams": { "type": "number" }
+                      },
+                      "required": ["id"]
+                    },
+                    "configurationKey": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+                    "configuration": { "type": "object" },
+                    "choiceLabels": { "type": "array", "maxItems": 40, "items": { "type": "string", "maxLength": 60 } },
+                    "allergens": { "type": "string", "maxLength": 4000 },
+                    "ingredients": { "type": "string", "maxLength": 4000 },
+                    "storage": { "type": "string", "maxLength": 1000 },
+                    "servingAdvice": { "type": "string", "maxLength": 1000 }
+                  },
+                  "required": ["lineId", "variant"]
                 }
               }
             }
@@ -346,6 +408,12 @@ public class OrderResource {
             return validationResponse;
         }
 
+        // 3b. Validate catering lines and at-pickup payment (I1, I3, § 4.1)
+        Response cateringResponse = validateCateringAndPayment(rootNode, rawPayload, fallbackTarget, store);
+        if (cateringResponse != null) {
+            return cateringResponse;
+        }
+
         // 4. Process and Persist Entity (Isolated Logic)
         Response processingResponse = processOrderRequest(rootNode, rawPayload, fallbackTarget, store);
         if (processingResponse != null) {
@@ -436,6 +504,31 @@ public class OrderResource {
                     .build();
         }
 
+        // 2b. Idempotency by (storeCode, orderId) — rule I4
+        List<OrderRequest> existing = OrderRequest.list("storeCode = ?1 and orderNumber = ?2", storeCode, orderNumber);
+        if (!existing.isEmpty()) {
+            String fingerprint = canonicalFingerprint(rawPayload);
+            boolean identical = existing.stream().anyMatch(r -> fingerprint.equals(canonicalFingerprint(r.specification)));
+            if (identical) {
+                // Identical replay: accept without creating a second OrderRequest.
+                return Response.accepted()
+                        .entity("{\"message\": \"Order already submitted (idempotent replay).\"}")
+                        .build();
+            }
+            // Different payload under the same order id.
+            publishEventSafely(
+                    "Commande Rejetée (Déjà Soumise)",
+                    "Une commande différente existe déjà sous cet identifiant (storeCode=" + storeCode + ", orderId=" + orderNumber + ").\n\n--- PAYLOAD BRUT REÇU ---\n" + rawPayload,
+                    Event.UrgencyLevel.MEDIUM,
+                    store,
+                    fallbackTarget,
+                    orderNumber
+            );
+            return Response.status(Response.Status.CONFLICT)
+                    .entity("{\"error\": \"ORDER_ALREADY_SUBMITTED\"}")
+                    .build();
+        }
+
         // 3. Create and Persist Entity
         try {
             OrderRequest orderRequest = new OrderRequest(orderNumber, storeCode, rawPayload);
@@ -493,6 +586,110 @@ public class OrderResource {
             Event.publishInNewTx(label, description, urgencyLevel, store, targetEntity, targetEntityCode);
         } catch (RuntimeException e) {
             LOGGER.error("Failed to publish anomaly event '" + label + "'", e);
+        }
+    }
+
+    /**
+     * Validates the semantic rules of the catering lines and the at-pickup payment that the
+     * JSON Schema cannot express (rules I1, I3 and § 4.1).
+     * <p>
+     * A line is a catering line if and only if it carries a {@code catering} object (I1). Every
+     * catering line requires the root {@code catering} block, a unique {@code lineId}, and a
+     * {@code configuration} that is either a composition or a cake (I3). An {@code AT_PICKUP}
+     * payment requires {@code state} and {@code amount} (§ 4.1).
+     *
+     * @param root       the parsed payload.
+     * @param rawPayload the raw payload, included in the rejection event.
+     * @param target     the fallback target for the event.
+     * @param store      the associated store (may be null).
+     * @return a 400 response if a rule is violated, or null when all rules pass.
+     */
+    private Response validateCateringAndPayment(JsonNode root, String rawPayload, OrderRequest target, Store store) {
+        JsonNode payment = root.path("payment");
+        if (payment.isObject() && "AT_PICKUP".equals(payment.path("method").asText())) {
+            if (!payment.hasNonNull("state") || !payment.hasNonNull("amount")) {
+                return cateringReject(rawPayload, target, store, "PAYMENT_INCOMPLETE",
+                        "payment.state et payment.amount sont obligatoires lorsque method = AT_PICKUP");
+            }
+        }
+        boolean hasCateringLine = false;
+        Set<String> lineIds = new HashSet<>();
+        for (JsonNode line : root.path("lines")) {
+            JsonNode catering = line.path("catering");
+            if (!catering.isObject()) {
+                continue;
+            }
+            hasCateringLine = true;
+            String lineId = catering.path("lineId").asText();
+            if (!lineIds.add(lineId)) {
+                return cateringReject(rawPayload, target, store, "CATERING_LINE_INVALID",
+                        "lineId en double : " + lineId);
+            }
+            if (!catering.hasNonNull("configurationKey") || catering.path("configurationKey").asText().isBlank()) {
+                return cateringReject(rawPayload, target, store, "CATERING_LINE_INVALID",
+                        "configurationKey absente (lineId " + lineId + ")");
+            }
+            JsonNode configuration = catering.path("configuration");
+            if (configuration.isObject()) {
+                boolean composition = configuration.path("choices").isObject();
+                boolean cake = configuration.hasNonNull("shapeId");
+                if (!composition && !cake) {
+                    return cateringReject(rawPayload, target, store, "CATERING_LINE_INVALID",
+                            "configuration n'est ni une composition ni un gâteau (lineId " + lineId + ")");
+                }
+            }
+        }
+        if (hasCateringLine && !root.path("catering").isObject()) {
+            return cateringReject(rawPayload, target, store, "CATERING_LINE_INVALID",
+                    "une ligne traiteur exige le bloc catering racine");
+        }
+        return null;
+    }
+
+    /**
+     * Emits a rejection event and builds a 400 response for an invalid catering or payment block.
+     *
+     * @param rawPayload the raw payload.
+     * @param target     the event target.
+     * @param store      the associated store (may be null).
+     * @param code       the business error code.
+     * @param detail     the human-readable detail.
+     * @return a 400 response carrying the code and detail.
+     */
+    private Response cateringReject(String rawPayload, OrderRequest target, Store store, String code, String detail) {
+        publishEventSafely(
+                "Commande Rejetée (Schéma Invalide)",
+                "Bloc traiteur ou paiement invalide : " + detail + "\n\n--- PAYLOAD BRUT REÇU ---\n" + rawPayload,
+                Event.UrgencyLevel.MEDIUM,
+                store,
+                target,
+                target.orderNumber
+        );
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity("{\"error\": \"" + code + "\", \"details\": \"" + detail.replace("\"", "\\\"") + "\"}")
+                .build();
+    }
+
+    /**
+     * Computes a key-order-independent SHA-256 fingerprint of a JSON payload (rule I4).
+     * <p>
+     * The payload is parsed, re-serialized with map entries sorted by key, then hashed, so that
+     * two payloads that differ only by JSON key order produce the same fingerprint.
+     *
+     * @param payload the raw JSON payload.
+     * @return the hexadecimal fingerprint, or the raw payload if it cannot be parsed.
+     */
+    private String canonicalFingerprint(String payload) {
+        try {
+            Object tree = objectMapper.treeToValue(objectMapper.readTree(payload), Object.class);
+            String canonical = objectMapper.writer()
+                    .with(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                    .writeValueAsString(tree);
+            return java.util.HexFormat.of().formatHex(
+                    java.security.MessageDigest.getInstance("SHA-256")
+                            .digest(canonical.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            return payload == null ? "" : payload;
         }
     }
 

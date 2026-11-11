@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 76,
-  "remaining": 377,
+  "done": 100,
+  "remaining": 353,
   "currentBatch": {
-    "packet": 2,
-    "lot": "T0",
+    "packet": 3,
+    "lot": "T1",
     "status": "TERMINE",
-    "scope": "Politique CateringConstraints, resolution et parametres (T0.041-081)"
+    "scope": "Reception : schema, validation I3, idempotence I4, paiement (T1.001-016, 027-034)"
   },
   "perLot": {
     "T0": 81,
@@ -675,128 +675,128 @@
       "description": "Bloc racine `catering` : `contractVersion` « 1 », `reception.date`, `reception.guests` (1 à 1 000), `deadlines.change` et `.cancel`, `pickupPoint` (≤ 200), tous facultatifs sauf la version.",
       "nature": "API",
       "ref": "§ 4.1 ; I2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Schema RetailOrder etendu (blocs catering racine, payment, lines[].catering) ; zones alignees + FRESH (I8) ; OrderResource. CateringIntakeTest."
     },
     {
       "id": "T1.002",
       "description": "Bloc `payment` : `method` `ONLINE` ou `AT_PICKUP` (absent = `ONLINE`) ; `state` (`DUE`, `COLLECTED`) et `amount` (≥ 0) obligatoires si `AT_PICKUP`.",
       "nature": "API",
       "ref": "§ 4.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Schema RetailOrder etendu (blocs catering racine, payment, lines[].catering) ; zones alignees + FRESH (I8) ; OrderResource. CateringIntakeTest."
     },
     {
       "id": "T1.003",
       "description": "Objet `lines[].catering` : `lineId` UUID ; `variant` (`id` au motif `[A-Za-z0-9-]{1,20}`, `label` ≤ 60, `persons`, `pieces`, `parts`, `weightGrams` facultatifs).",
       "nature": "API",
       "ref": "§ 4.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Schema RetailOrder etendu (blocs catering racine, payment, lines[].catering) ; zones alignees + FRESH (I8) ; OrderResource. CateringIntakeTest."
     },
     {
       "id": "T1.004",
       "description": "`lines[].catering.configurationKey` : 64 caractères hexadécimaux, obligatoire.",
       "nature": "API",
       "ref": "§ 4.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Schema RetailOrder etendu (blocs catering racine, payment, lines[].catering) ; zones alignees + FRESH (I8) ; OrderResource. CateringIntakeTest."
     },
     {
       "id": "T1.005",
       "description": "`lines[].catering.configuration` : absente, composition `{choices: {étape: [choix…]}}` ou gâteau `{shapeId, text, flavourId}` avec `text` facultatif ≤ 2.",
       "nature": "API",
       "ref": "§ 4.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Schema RetailOrder etendu (blocs catering racine, payment, lines[].catering) ; zones alignees + FRESH (I8) ; OrderResource. CateringIntakeTest."
     },
     {
       "id": "T1.006",
       "description": "`lines[].catering.choiceLabels` (0 à 40 libellés ≤ 60), `allergens` et `ingredients` (≤ 4 000), `storage` et `servingAdvice` (≤ 1 000).",
       "nature": "API",
       "ref": "§ 4.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Schema RetailOrder etendu (blocs catering racine, payment, lines[].catering) ; zones alignees + FRESH (I8) ; OrderResource. CateringIntakeTest."
     },
     {
       "id": "T1.007",
       "description": "Bloc présent et mal formé : 400 avec le chemin du champ et l'événement existant « Commande rejetée (schéma invalide) ».",
       "nature": "Règle",
       "ref": "I2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Schema RetailOrder etendu (blocs catering racine, payment, lines[].catering) ; zones alignees + FRESH (I8) ; OrderResource. CateringIntakeTest."
     },
     {
       "id": "T1.008",
       "description": "Zones de température du schéma alignées sur `TemperatureZone` ; `FRESH` accepté en entrée comme synonyme de `CHILLED`.",
       "nature": "Adaptation",
       "ref": "I8 ; C10",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Schema RetailOrder etendu (blocs catering racine, payment, lines[].catering) ; zones alignees + FRESH (I8) ; OrderResource. CateringIntakeTest."
     },
     {
       "id": "T1.009",
       "description": "Une ligne est traiteur si et seulement si elle porte l'objet `catering` ; le nom du produit n'est jamais interprété.",
       "nature": "Règle",
       "ref": "I1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Validation structurelle dans OrderResource.validateCateringAndPayment (I1/I3) ; 400 CATERING_LINE_INVALID ; CateringIntakeTest."
     },
     {
       "id": "T1.010",
       "description": "`lineId` en double dans une commande : 400 `CATERING_LINE_INVALID`.",
       "nature": "Règle",
       "ref": "I3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Validation structurelle dans OrderResource.validateCateringAndPayment (I1/I3) ; 400 CATERING_LINE_INVALID ; CateringIntakeTest."
     },
     {
       "id": "T1.011",
       "description": "`configuration` qui n'est ni une composition ni un gâteau : 400 `CATERING_LINE_INVALID`.",
       "nature": "Règle",
       "ref": "I3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Validation structurelle dans OrderResource.validateCateringAndPayment (I1/I3) ; 400 CATERING_LINE_INVALID ; CateringIntakeTest."
     },
     {
       "id": "T1.012",
       "description": "Ligne `catering` dans une charge sans bloc `catering` racine : 400 `CATERING_LINE_INVALID`.",
       "nature": "Règle",
       "ref": "I3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Validation structurelle dans OrderResource.validateCateringAndPayment (I1/I3) ; 400 CATERING_LINE_INVALID ; CateringIntakeTest."
     },
     {
       "id": "T1.013",
       "description": "Soumission idempotente par `(storeCode, orderId)` : empreinte canonique de la charge conservée avec la demande.",
       "nature": "Règle",
       "ref": "I4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Idempotence (storeCode, orderId) par empreinte canonique (OrderResource) ; 202 rejeu identique, 409 ORDER_ALREADY_SUBMITTED ; CateringIntakeTest."
     },
     {
       "id": "T1.014",
       "description": "Rejeu d'une charge identique : 202, aucune seconde `OrderRequest`.",
       "nature": "Règle",
       "ref": "I4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Idempotence (storeCode, orderId) par empreinte canonique (OrderResource) ; 202 rejeu identique, 409 ORDER_ALREADY_SUBMITTED ; CateringIntakeTest."
     },
     {
       "id": "T1.015",
       "description": "Charge différente sous le même `orderId` : 409 `ORDER_ALREADY_SUBMITTED`, aucun effet.",
       "nature": "Règle",
       "ref": "I4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Idempotence (storeCode, orderId) par empreinte canonique (OrderResource) ; 202 rejeu identique, 409 ORDER_ALREADY_SUBMITTED ; CateringIntakeTest."
     },
     {
       "id": "T1.016",
       "description": "`OrderRecorder` enregistre `payment` sur la commande (mode, état, montant), avec ou sans traiteur.",
       "nature": "Règle",
       "ref": "§ 4.1 ; F17",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Paiement au retrait enregistre par OrderRecorder.recordPayment ; CateringIntakeTest.atPickupPaymentRecordedWithoutUnit."
     },
     {
       "id": "T1.017",
@@ -883,64 +883,64 @@
       "description": "Charge sans aucun bloc ajouté : mêmes entités et mêmes événements qu'avant.",
       "nature": "Test",
       "ref": "§ 11.1 ; P5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringIntakeTest (8 tests verts)."
     },
     {
       "id": "T1.028",
       "description": "Charge avec `payment` seul, sans traiteur : commande au retrait enregistrée, aucune unité.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringIntakeTest (8 tests verts)."
     },
     {
       "id": "T1.029",
       "description": "`payment.method = AT_PICKUP` sans `state` ou sans `amount` : 400.",
       "nature": "Test",
       "ref": "§ 4.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringIntakeTest (8 tests verts)."
     },
     {
       "id": "T1.030",
       "description": "Bloc racine mal formé (version absente, date invalide, convives hors bornes) : 400 avec le chemin.",
       "nature": "Test",
       "ref": "I2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringIntakeTest (8 tests verts)."
     },
     {
       "id": "T1.031",
       "description": "Chaque champ de `lines[].catering` hors borne ou au mauvais motif : 400 avec le chemin.",
       "nature": "Test",
       "ref": "§ 4.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringIntakeTest (8 tests verts)."
     },
     {
       "id": "T1.032",
       "description": "`lineId` en double ; `configurationKey` absente ; configuration inconnue ; ligne traiteur sans bloc racine : un cas par jambe.",
       "nature": "Test",
       "ref": "I3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringIntakeTest (8 tests verts)."
     },
     {
       "id": "T1.033",
       "description": "Rejeu identique : 202 et une seule `OrderRequest` ; même charge avec les clés JSON dans un autre ordre : toujours identique.",
       "nature": "Test",
       "ref": "I4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringIntakeTest (8 tests verts)."
     },
     {
       "id": "T1.034",
       "description": "Rejeu différent : 409 `ORDER_ALREADY_SUBMITTED`, commande d'origine intacte.",
       "nature": "Test",
       "ref": "I4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringIntakeTest (8 tests verts)."
     },
     {
       "id": "T1.035",

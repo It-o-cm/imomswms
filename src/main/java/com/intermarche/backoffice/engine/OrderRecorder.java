@@ -235,7 +235,30 @@ public class OrderRecorder {
         order.store = store;
         order.customer = customer;
         order.specification = buildOrderSpecification(root);
+        recordPayment(order, root.path("payment"));
         return order;
+    }
+
+    /**
+     * Records the payment block on the order (with or without catering, § 4.1 / F17).
+     * <p>
+     * The method, state and amount come from the received payload and are the authority of
+     * immcomm; a missing method is treated as {@code ONLINE}.
+     *
+     * @param order   the order being recorded.
+     * @param payment the {@code payment} JSON node (may be missing).
+     */
+    private void recordPayment(Order order, JsonNode payment) {
+        if (!payment.isObject()) {
+            return;
+        }
+        order.paymentMethod = payment.path("method").asText("ONLINE");
+        if (payment.hasNonNull("state")) {
+            order.paymentState = payment.path("state").asText();
+        }
+        if (payment.hasNonNull("amount")) {
+            order.paymentAmount = new BigDecimal(payment.path("amount").asText());
+        }
     }
 
     /**
@@ -276,6 +299,8 @@ public class OrderRecorder {
         if (root.has("fulfillment")) orderSpec.set("fulfillment", root.get("fulfillment"));
         if (root.has("packaging")) orderSpec.set("packaging", root.get("packaging"));
         if (root.has("summary")) orderSpec.set("summary", root.get("summary"));
+        if (root.has("payment")) orderSpec.set("payment", root.get("payment"));
+        if (root.has("catering")) orderSpec.set("catering", root.get("catering"));
         return orderSpec.toString();
     }
 
