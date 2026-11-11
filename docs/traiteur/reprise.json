@@ -1,20 +1,20 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 112,
-  "remaining": 341,
-  "lastCompletedPacket": "4a",
+  "done": 120,
+  "remaining": 333,
+  "lastCompletedPacket": "4b",
   "currentBatch": {
-    "packet": "4b",
+    "packet": 5,
     "lot": "T1",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "Fulfiller traiteur I7 (T1.022-026) + tests T1.040-042 ; lot_lines.location nullable"
+    "scope": "Referentiel traiteur : F1/F2, routes /catering (items, recipes, stations, employees), droits, CateringUnitLifecycleTest (T1.043-044, 047-061)"
   },
   "lastFullSuite": "Intake-path regression verte (CateringIntakeTest 8, OrderResourceTest 14, OrderRecorderTest 41, OrderRequestPollingConsumerTest 11, FulfillmentEngineTest 17). Changements confines au chemin d'entree ; echecs restants anterieurs (demo/stock/supervision).",
   "openEcarts": [
     "T0.050, T0.051 EN_COURS (resolution/validation au niveau unite+poste = T1)",
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil de T1+)"
   ],
-  "notes": "Paquet 4a (reception cote OrderRecorder : I5/I6/F2) termine le 2026-11-11. CateringIntakeTest 13 verts ; regression intake verte. Reste 4b (fulfiller I7)."
+  "notes": "Paquet 4b (fulfiller traiteur I7) termine le 2026-11-11. T1 reception complete (T1.001-042). CateringIntakeTest 16 verts ; regression fulfillment/collecting verte. Reste T1 referentiel (T1.043-061) = Paquet 5."
 }

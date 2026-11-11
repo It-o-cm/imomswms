@@ -33,6 +33,14 @@
       "specSupposait": "Une empreinte canonique de la charge est conservee avec la demande pour l'idempotence.",
       "codeFait": "OrderRequest conserve deja la charge brute dans specification (JSON).",
       "faitParNous": "L'empreinte (SHA-256 de la charge re-serialisee cles triees) est calculee a la volee a partir de la charge conservee (OrderRequest.specification), sans colonne supplementaire : evite une modification de la table order_requests hors V30. Comparaison insensible a l'ordre des cles JSON."
+    },
+    {
+      "id": "E-T1-03",
+      "paquet": "4b",
+      "regle": "I7 / F16 (le lot traiteur est cree par le mecanisme existant)",
+      "specSupposait": "La ligne traiteur passe dans un chunk READY sans emplacement de prelevement ; son lot est cree par le mecanisme existant.",
+      "codeFait": "lot_lines.location_id etait NOT NULL ; createLotForChunk copie l'emplacement de la FulfillmentLine (null pour le traiteur) => violation NOT NULL.",
+      "faitParNous": "lot_lines.location_id rendu nullable (dans V30, la migration unique du traiteur) et LotLine.location passe en facultatif. Une ligne de lot traiteur a un emplacement nul (produit fabrique/fourni, sans emplacement de prelevement) ; les lots traiteur restent exclus de la collecte (building nul). Extension non listee au § 5 mais necessaire pour realiser I7/F16 ; non destructive (les lignes existantes gardent leur emplacement)."
     }
   ],
   "defautsAnterieursCorriges": [],

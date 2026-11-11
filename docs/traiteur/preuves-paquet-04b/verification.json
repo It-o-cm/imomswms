@@ -1,0 +1,17 @@
+{
+  "paquet": "4b", "lot": "T1", "titre": "Fulfiller traiteur (I7)",
+  "pointsClos": ["T1.022","T1.023","T1.024","T1.025","T1.026","T1.040","T1.041","T1.042"],
+  "fichiersCrees": ["engine/fulfillers/CateringFulfillerFactory.java"],
+  "fichiersModifies": [
+    "engine/FulfillmentEngine.java (appel du fulfiller traiteur en premier, hors config)",
+    "domain/wms/LotLine.java (location facultatif) + V30 (lot_lines.location_id nullable) — cf ecarts E-T1-03",
+    "src/test/.../CateringIntakeTest.java (+3 tests fulfiller)"
+  ],
+  "regles": {
+    "I7": "FABRICATED/SUPPLIED et toute unite BLOCKED a produit connu -> chunk READY marque catering, sans emplacement ; CateringUnit.fulfillmentLine liee ; STOCKED non bloque laisse aux fulfillers suivants ; aucune ligne traiteur ne laisse la commande PENDING ; fulfiller execute avant ceux de la config, sans y etre declare."
+  },
+  "testsTraiteur": [{"name":"com.intermarche.e2e.engine.CateringIntakeTest","tests":16,"failures":0,"errors":0,
+    "nouveaux":["cateringLineRoutedToCateringReadyChunk (T1.023/042)","stockedUnitLeftForSubsequentFulfillers (T1.025/041)","mixedOrderRoutesCateringAndKeepsGrocery (T1.040)"]}],
+  "nonRegression": ["FulfillmentEngineTest 17/0","FulfillmentPollingConsumerTest, CollectingWorkflowTest, ProductCollecting/ZoneCollecting factories, CateringMigrationTest, VersionedSchemaStartupTest : 0 echec"],
+  "note": "T1 reception complete (T1.001-042). Reste le referentiel traiteur (T1.043-061)."
+}

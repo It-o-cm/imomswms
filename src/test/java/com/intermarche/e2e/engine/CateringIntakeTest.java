@@ -14,10 +14,14 @@ import com.intermarche.backoffice.domain.order.Product;
 import com.intermarche.backoffice.domain.policy.OperationalPolicyVersion;
 import com.intermarche.backoffice.engine.policy.OperationalPolicySchemas;
 import io.quarkus.test.TestTransaction;
+import com.intermarche.backoffice.domain.oms.Fulfillment;
+import com.intermarche.backoffice.domain.oms.FulfillmentChunk;
 import com.intermarche.backoffice.domain.order.Order;
 import com.intermarche.backoffice.domain.order.OrderRequest;
+import com.intermarche.backoffice.domain.order.ProductType;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.engine.OrderRecorder;
+import com.intermarche.backoffice.engine.fulfillers.CateringFulfillerFactory;
 import com.intermarche.e2e.domain.util.DomainUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -583,5 +587,92 @@ public class CateringIntakeTest {
         CateringUnit unit = CateringUnit.find("lineId", "u-039").firstResult();
         assertNotNull(unit);
         assertEquals(CateringUnitState.BLOCKED, unit.state);
+    }
+
+    // --------------------------------------------------
+    // Catering fulfiller dispatch (I7)
+    // --------------------------------------------------
+
+    /**
+     * Runs the catering fulfiller on an order and returns the reloaded fulfillment.
+     *
+     * @param orderId the order id.
+     * @return the reloaded fulfillment.
+     */
+    private Fulfillment runCateringFulfiller(String orderId) {
+        Order order = Order.find("orderId", orderId).firstResult();
+        Fulfillment fulfillment = Fulfillment.find("order", order).firstResult();
+        new CateringFulfillerFactory.CateringFulfiller().process(fulfillment);
+        Fulfillment.getEntityManager().flush();
+        return Fulfillment.findById(fulfillment.id);
+    }
+
+    /**
+     * T1.023/T1.042: a FABRICATED catering line is routed into a READY catering chunk without a
+     * picking location, the unit references its chunk line, and no catering line leaves the order pending.
+     */
+    @Test
+    @TestTransaction
+    void cateringLineRoutedToCateringReadyChunk() {
+        DomainUtils.createAndPersistStore("CAT_FUL1", 48.0, 2.0);
+        recorder.persistOrderAndFulfillmentFromJson(cateringOrder("CF-040", "CAT_FUL1", "DEMO-TRA-FAB-040", "u-040"));
+        Fulfillment fulfillment = runCateringFulfiller("CF-040");
+
+        FulfillmentChunk cateringChunk = fulfillment.chunks.stream().filter(c -> c.catering).findFirst().orElse(null);
+        assertNotNull(cateringChunk, "A catering chunk must be created");
+        assertEquals(FulfillmentChunk.READY, cateringChunk.type);
+        assertEquals(1, cateringChunk.lines.size());
+        assertNull(cateringChunk.lines.iterator().next().location, "A catering line has no picking location");
+        assertNotNull(CateringUnit.<CateringUnit>find("lineId", "u-040").firstResult().fulfillmentLine,
+                "The unit references its chunk line");
+        assertTrue(fulfillment.chunks.stream().noneMatch(c -> FulfillmentChunk.PENDING.equals(c.type) && !c.lines.isEmpty()),
+                "No catering line leaves the order pending");
+    }
+
+    /**
+     * T1.025/T1.041: a STOCKED unit is left in the pending chunk for the subsequent fulfillers.
+     */
+    @Test
+    @TestTransaction
+    void stockedUnitLeftForSubsequentFulfillers() {
+        Store store = DomainUtils.createAndPersistStore("CAT_FUL2", 48.0, 2.0);
+        persistPolicy(store, "defaultSourcingMode", "STOCKED");
+        recorder.persistOrderAndFulfillmentFromJson(cateringOrder("CF-041", "CAT_FUL2", "DEMO-TRA-STK-041", "u-041"));
+        Fulfillment fulfillment = runCateringFulfiller("CF-041");
+
+        assertTrue(fulfillment.chunks.stream().noneMatch(c -> c.catering), "A STOCKED unit creates no catering chunk");
+        assertTrue(fulfillment.chunks.stream().anyMatch(c -> FulfillmentChunk.PENDING.equals(c.type) && !c.lines.isEmpty()),
+                "The STOCKED line stays for the subsequent fulfillers");
+        CateringUnit unit = CateringUnit.find("lineId", "u-041").firstResult();
+        assertEquals(SourcingMode.STOCKED, unit.sourcingMode);
+        assertNull(unit.fulfillmentLine, "A STOCKED unit is not linked to a catering chunk line");
+    }
+
+    /**
+     * T1.040: a mixed order routes the catering line to the catering chunk and keeps the grocery line
+     * in the pending chunk for the configured fulfillers.
+     */
+    @Test
+    @TestTransaction
+    void mixedOrderRoutesCateringAndKeepsGrocery() {
+        DomainUtils.createAndPersistStore("CAT_FUL3", 48.0, 2.0);
+        DomainUtils.createAndPersistProduct("1234567890123", "Milk", ProductType.UNIT);
+        ObjectNode root = baseOrder("CF-042", "CAT_FUL3");
+        root.set("catering", rootCatering());
+        lines(root).add(groceryLine(1, "1234567890123"));
+        ObjectNode cateringLine = cateringLine(2, "u-042", KEY, null);
+        ((ObjectNode) cateringLine.get("product")).put("ean", "DEMO-TRA-FAB-042");
+        lines(root).add(cateringLine);
+        recorder.persistOrderAndFulfillmentFromJson(root);
+        Fulfillment fulfillment = runCateringFulfiller("CF-042");
+
+        FulfillmentChunk cateringChunk = fulfillment.chunks.stream().filter(c -> c.catering).findFirst().orElse(null);
+        assertNotNull(cateringChunk);
+        assertEquals(1, cateringChunk.lines.size());
+        FulfillmentChunk pending = fulfillment.chunks.stream()
+                .filter(c -> FulfillmentChunk.PENDING.equals(c.type)).findFirst().orElse(null);
+        assertNotNull(pending, "The grocery line stays in a pending chunk");
+        assertEquals(1, pending.lines.size());
+        assertEquals("1234567890123", pending.lines.iterator().next().product.ean);
     }
 }

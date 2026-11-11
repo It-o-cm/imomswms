@@ -48,6 +48,12 @@ public class FulfillmentEngine {
     @Inject
     ObjectMapper objectMapper;
 
+    /**
+     * Catering fulfiller, run first on every fulfillment, outside the store configuration (I7).
+     */
+    @Inject
+    com.intermarche.backoffice.engine.fulfillers.CateringFulfillerFactory cateringFulfillerFactory;
+
     Map<String, BaseFulfillerFactory> factoryMap;
 
     /**
@@ -215,6 +221,13 @@ public class FulfillmentEngine {
             );
             // Rethrow to let the caller (e.g., reservation worker) handle the failure appropriately
             throw e;
+        }
+
+        // Catering fulfiller always runs first, before the configured fulfillers and without being
+        // declared in the store configuration (I7). Always present via CDI in production; a bare
+        // unit test that does not wire it simply has no catering lines to route.
+        if (cateringFulfillerFactory != null) {
+            cateringFulfillerFactory.build(null).process(fulfillment);
         }
 
         // Execute the valid fulfillers

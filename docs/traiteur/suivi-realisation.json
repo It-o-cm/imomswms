@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 112,
-  "remaining": 341,
+  "done": 120,
+  "remaining": 333,
   "currentBatch": {
-    "packet": "4a",
+    "packet": "4b",
     "lot": "T1",
     "status": "TERMINE",
-    "scope": "Unite traiteur I6, EAN inconnu I5, mode F2, enabled (T1.017-021,035-039,045-046)"
+    "scope": "Fulfiller traiteur I7 (T1.022-026, 040-042)"
   },
   "perLot": {
     "T0": 81,
@@ -843,40 +843,40 @@
       "description": "`CateringFulfillerFactory` : toujours exécuté par `FulfillmentEngine` avant les fulfillers de la configuration du magasin, sans y être déclaré.",
       "nature": "Adaptation",
       "ref": "I7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFulfillerFactory (engine/fulfillers) execute en premier par FulfillmentEngine, hors config (I7) : FABRICATED/SUPPLIED et BLOCKED-connu vers un chunk READY catering sans emplacement, CateringUnit.fulfillmentLine liee ; STOCKED laisse aux fulfillers suivants ; lot cree par le mecanisme existant (lot_lines.location nullable). CateringIntakeTest (16 verts)."
     },
     {
       "id": "T1.023",
       "description": "Unité `FABRICATED` ou `SUPPLIED` : sa ligne passe dans un chunk `READY` marqué `catering`, sans emplacement de prélèvement ; `CateringUnit.fulfillmentLine` la référence.",
       "nature": "Règle",
       "ref": "I7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFulfillerFactory (engine/fulfillers) execute en premier par FulfillmentEngine, hors config (I7) : FABRICATED/SUPPLIED et BLOCKED-connu vers un chunk READY catering sans emplacement, CateringUnit.fulfillmentLine liee ; STOCKED laisse aux fulfillers suivants ; lot cree par le mecanisme existant (lot_lines.location nullable). CateringIntakeTest (16 verts)."
     },
     {
       "id": "T1.024",
       "description": "Unité `BLOCKED` dont le produit est connu : même chunk traiteur, quel que soit son mode.",
       "nature": "Règle",
       "ref": "I7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFulfillerFactory (engine/fulfillers) execute en premier par FulfillmentEngine, hors config (I7) : FABRICATED/SUPPLIED et BLOCKED-connu vers un chunk READY catering sans emplacement, CateringUnit.fulfillmentLine liee ; STOCKED laisse aux fulfillers suivants ; lot cree par le mecanisme existant (lot_lines.location nullable). CateringIntakeTest (16 verts)."
     },
     {
       "id": "T1.025",
       "description": "Unité `STOCKED` non bloquée : sa ligne est remplacée par ses produits à prélever, laissés aux fulfillers suivants.",
       "nature": "Règle",
       "ref": "I7 ; F11",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFulfillerFactory (engine/fulfillers) execute en premier par FulfillmentEngine, hors config (I7) : FABRICATED/SUPPLIED et BLOCKED-connu vers un chunk READY catering sans emplacement, CateringUnit.fulfillmentLine liee ; STOCKED laisse aux fulfillers suivants ; lot cree par le mecanisme existant (lot_lines.location nullable). CateringIntakeTest (16 verts)."
     },
     {
       "id": "T1.026",
       "description": "Le lot du chunk traiteur est créé par le mécanisme existant ; aucune ligne traiteur ne laisse la commande à l'état `PENDING`.",
       "nature": "Règle",
       "ref": "I7 ; C4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFulfillerFactory (engine/fulfillers) execute en premier par FulfillmentEngine, hors config (I7) : FABRICATED/SUPPLIED et BLOCKED-connu vers un chunk READY catering sans emplacement, CateringUnit.fulfillmentLine liee ; STOCKED laisse aux fulfillers suivants ; lot cree par le mecanisme existant (lot_lines.location nullable). CateringIntakeTest (16 verts)."
     },
     {
       "id": "T1.027",
@@ -987,24 +987,24 @@
       "description": "Commande mixte avec une unité bloquée : les lots de courses sont créés et la commande n'est pas `PENDING`.",
       "nature": "Test",
       "ref": "I7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFulfillerFactory (engine/fulfillers) execute en premier par FulfillmentEngine, hors config (I7) : FABRICATED/SUPPLIED et BLOCKED-connu vers un chunk READY catering sans emplacement, CateringUnit.fulfillmentLine liee ; STOCKED laisse aux fulfillers suivants ; lot cree par le mecanisme existant (lot_lines.location nullable). CateringIntakeTest (16 verts)."
     },
     {
       "id": "T1.041",
       "description": "Unité `STOCKED` : ses produits à prélever sont répartis par les fulfillers existants.",
       "nature": "Test",
       "ref": "I7 ; F11",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFulfillerFactory (engine/fulfillers) execute en premier par FulfillmentEngine, hors config (I7) : FABRICATED/SUPPLIED et BLOCKED-connu vers un chunk READY catering sans emplacement, CateringUnit.fulfillmentLine liee ; STOCKED laisse aux fulfillers suivants ; lot cree par le mecanisme existant (lot_lines.location nullable). CateringIntakeTest (16 verts)."
     },
     {
       "id": "T1.042",
       "description": "Magasin dont la configuration `fulfillers` ne cite pas le traiteur : les lignes traiteur sont quand même réparties.",
       "nature": "Test",
       "ref": "I7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFulfillerFactory (engine/fulfillers) execute en premier par FulfillmentEngine, hors config (I7) : FABRICATED/SUPPLIED et BLOCKED-connu vers un chunk READY catering sans emplacement, CateringUnit.fulfillmentLine liee ; STOCKED laisse aux fulfillers suivants ; lot cree par le mecanisme existant (lot_lines.location nullable). CateringIntakeTest (16 verts)."
     },
     {
       "id": "T1.043",

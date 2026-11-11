@@ -62,10 +62,12 @@ public class LotLine extends BaseEntity {
 
     /**
      * The physical location where this Lot line is stored or staged.
-     * <b>Mandatory:</b> A Lot line must be assigned to a specific physical location.
+     * <p>
+     * Null for a catering lot line: a catering product is fabricated or supplied and has no picking
+     * location (I7, F16); it is tracked as the catering chunk's lot line.
      */
     @ManyToOne
-    @JoinColumn(name = "location_id", nullable = false, foreignKey = @ForeignKey(name = "fk_lotline_location"))
+    @JoinColumn(name = "location_id", foreignKey = @ForeignKey(name = "fk_lotline_location"))
     public BaseLocation location;
 
     // --------------------------------------------------

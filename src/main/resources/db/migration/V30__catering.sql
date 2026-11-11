@@ -41,5 +41,6 @@ alter table orders add column payment_acknowledged_at timestamp(6);
 alter table orders add column payment_acknowledged_by varchar(100);
 alter table fulfillment_chunks add column catering boolean default false not null;
 alter table picking_shortages alter column handlingOrder_id set null;
+alter table lot_lines alter column location_id set null;
 alter table loaded_totes add column fabrication_execution_id bigint;
 alter table picked_items add column fabrication_execution_id bigint;
