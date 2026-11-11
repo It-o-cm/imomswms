@@ -1,0 +1,10 @@
+{
+  "paquet": 6, "lot": "T2", "titre": "Nomenclature (F4) et fenêtre de fabrication (F5)",
+  "pointsClos": ["T2.009","T2.010","T2.011","T2.012","T2.016","T2.017","T2.018","T2.019","T2.020","T2.021","T2.022","T2.023","T2.024","T2.025","T2.026","T2.027","T2.028"],
+  "fichiersCrees": ["engine/catering/CateringRecipeResolver.java","engine/catering/FabricationWindow.java","src/test/.../CateringRecipeTest.java","src/test/.../FabricationWindowTest.java"],
+  "testsTraiteur": [
+    {"name":"CateringRecipeTest","tests":5,"failures":0,"errors":0,"couverture":"base seule, compléments composition+parfum, complément absent ignoré, × quantité, révision la plus haute / inactive ignorée, défaut sans base."},
+    {"name":"FabricationWindowTest","tests":9,"failures":0,"errors":0,"couverture":"bornes, présent, jour/date fermés, heures, date limite avec/sans réception, début repoussé, fenêtre vide, et les 2 exemples chiffrés (pain surprise, gâteau chiffre) du § F5."}
+  ],
+  "note": "Services de calcul purs (aucun code existant modifié). T2.013-015 (BLOCKED si recipeRequired, défaut, figeage à la validation) relèvent de la proposition F8 et seront réalisés avec F6-F8."
+}

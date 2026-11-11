@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 139,
-  "remaining": 314,
+  "done": 156,
+  "remaining": 297,
   "currentBatch": {
-    "packet": 5,
-    "lot": "T1",
+    "packet": 6,
+    "lot": "T2",
     "status": "TERMINE",
-    "scope": "Referentiel traiteur (T1.043-044,047-061) + T0.050/051"
+    "scope": "Nomenclature F4 et fenetre de fabrication F5 (T2.009-012,016-028)"
   },
   "perLot": {
     "T0": 81,
@@ -1227,32 +1227,32 @@
       "description": "Base : nomenclature active de plus haute révision pour `(item, variantId)`, sans choix.",
       "nature": "Règle",
       "ref": "F4.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRecipeResolver (F4) : base + complements composition/parfum, revision active la plus haute, somme × quantite ; CateringRecipeTest (5 verts)."
     },
     {
       "id": "T2.010",
       "description": "Composition : ajout du complément `(stepId, choiceId)` de chaque choix reçu, s'il existe.",
       "nature": "Règle",
       "ref": "F4.2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRecipeResolver (F4) : base + complements composition/parfum, revision active la plus haute, somme × quantite ; CateringRecipeTest (5 verts)."
     },
     {
       "id": "T2.011",
       "description": "Gâteau : ajout du complément `flavourId`, s'il existe ; forme et texte servis comme consigne.",
       "nature": "Règle",
       "ref": "F4.3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRecipeResolver (F4) : base + complements composition/parfum, revision active la plus haute, somme × quantite ; CateringRecipeTest (5 verts)."
     },
     {
       "id": "T2.012",
       "description": "Quantités et `laborSeconds` additionnés, puis multipliés par la quantité de la ligne.",
       "nature": "Règle",
       "ref": "F4.4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRecipeResolver (F4) : base + complements composition/parfum, revision active la plus haute, somme × quantite ; CateringRecipeTest (5 verts)."
     },
     {
       "id": "T2.013",
@@ -1283,104 +1283,104 @@
       "description": "`CateringRecipeTest` : base seule ; un complément de choix ; plusieurs ; complément absent ; parfum ; révision la plus haute ; révision inactive ignorée.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRecipeResolver (F4) : base + complements composition/parfum, revision active la plus haute, somme × quantite ; CateringRecipeTest (5 verts)."
     },
     {
       "id": "T2.017",
       "description": "`CateringRecipeTest` : nomenclature absente avec `recipeRequired` vrai, puis faux ; figeage à la validation.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRecipeResolver (F4) : base + complements composition/parfum, revision active la plus haute, somme × quantite ; CateringRecipeTest (5 verts)."
     },
     {
       "id": "T2.018",
       "description": "Fin au plus tard : mise à disposition − `stagingLeadMinutes`.",
       "nature": "Règle",
       "ref": "F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.019",
       "description": "Début au plus tôt : mise à disposition − `maxAdvanceHours`, jamais avant l'instant présent.",
       "nature": "Règle",
       "ref": "F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.020",
       "description": "Jours admis : `weekdays` du poste, hors `closedDates`.",
       "nature": "Règle",
       "ref": "F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.021",
       "description": "Plages admises : entre `opensAt` et `closesAt`.",
       "nature": "Règle",
       "ref": "F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.022",
       "description": "Contrôle de date limite avec `reception.date` : la fin de fabrication + `shelfLifeHours` atteint la fin du jour de réception.",
       "nature": "Règle",
       "ref": "F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.023",
       "description": "Contrôle de date limite sans `reception.date` : elle atteint la fin du créneau + `consumptionMarginHours`.",
       "nature": "Règle",
       "ref": "F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.024",
       "description": "Le début au plus tôt est repoussé autant que le contrôle de date limite l'exige.",
       "nature": "Règle",
       "ref": "F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.025",
       "description": "Fenêtre vide : l'unité reste `RECEIVED`, situation `FABRICATION_WINDOW` ; la mise à disposition n'est jamais déplacée.",
       "nature": "Règle",
       "ref": "F5 ; P1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.026",
       "description": "`FabricationWindowTest` : chaque borne ; début ramené à l'instant présent ; jour fermé ; date fermée ; heure d'ouverture et de fermeture.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.027",
       "description": "`FabricationWindowTest` : date limite avec et sans `reception.date` ; début repoussé ; fenêtre vide.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.028",
       "description": "`FabricationWindowTest` : les deux exemples chiffrés de la spécification (pain surprise et gâteau chiffre, créneau du samedi 10:00).",
       "nature": "Test",
       "ref": "F5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "FabricationWindow (F5) : fin au plus tard, debut au plus tot borne a present et au controle de date limite, plages du poste ; FabricationWindowTest (9 verts, dont les 2 exemples chiffres)."
     },
     {
       "id": "T2.029",
