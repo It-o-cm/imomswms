@@ -1,20 +1,20 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 182,
-  "remaining": 271,
-  "lastCompletedPacket": 7,
+  "done": 200,
+  "remaining": 253,
+  "lastCompletedPacket": 8,
   "currentBatch": {
-    "packet": 8,
+    "packet": 9,
     "lot": "T2",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "Validation F8 (POST validate, engagements F9), GET requirements, integration planning ; puis F3 etats"
+    "scope": "F3 etats (T2.001-008) + feuille de fabrication + reste F9/F10 ; puis lot T3 (execution)"
   },
-  "lastFullSuite": "Tests traiteur cibles verts ; aucun code existant modifie par le paquet 5 (nouveau resource + tests uniquement).",
+  "lastFullSuite": "Tests traiteur cibles verts (FabricationPlanningTest 11, CateringRequirementsTest 3) ; regression planning/activity verte.",
   "openEcarts": [
     "T0.050, T0.051 EN_COURS (resolution/validation au niveau unite+poste = T1)",
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil de T1+)"
   ],
-  "notes": "Paquet 7 (moteur de proposition F6-F7, exclusions F8) termine le 2026-11-11. FabricationPlanningTest 6 verts ; regression operateur/supervision/planning/handling verte. Reste F8 validation+engagements (paquet 8), F3 etats, F9-F10."
+  "notes": "Paquet 8 (validation F8 + engagements F9) termine le 2026-11-11. T2 61/73. Reste F3 etats, feuille, puis lot T3 execution."
 }

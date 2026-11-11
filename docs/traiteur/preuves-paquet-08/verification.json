@@ -1,0 +1,20 @@
+{
+  "paquet": 8, "lot": "T2", "titre": "Validation des propositions (F8) et engagements composants (F9)",
+  "pointsClos": ["T2.015","T2.052","T2.053","T2.054","T2.055","T2.056","T2.057","T2.058","T2.061","T2.062","T2.063","T2.064","T2.065","T2.066","T2.067","T2.068","T2.069","T2.072"],
+  "fichiersCrees": ["engine/catering/CateringValidationService.java","src/test/.../CateringRequirementsTest.java"],
+  "fichiersModifies": [
+    "engine/catering/CateringProposalEngine.java (autoValidateProposals)",
+    "engine/catering/CateringFabricationResource.java (POST validate, GET requirements, revision)",
+    "engine/storeops/GlobalPlanningService.java (bâtiment du poste pour FabricationOrder)"
+  ],
+  "regles": {
+    "F8": "POST /catering/fabrication/proposals/validate : contrôle révision/fenêtre/capacité/habilitation, 5 refus 409 ; VALIDATED/SCHEDULED, assignee ; autoValidateProposals ; ordre validé non recalculé, entre au planning.",
+    "F9": "Un StockCommitment par composant INGREDIENT de la nomenclature figée (référence FAB:order:line:ean, bâtiment du poste, preparationAt = début) ; componentShortagePolicy BLOCK refuse (COMPONENT_SHORTAGE), WARN accepte ; le stock daté existant le prend en compte. GET /catering/requirements."
+  },
+  "testsTraiteur": [
+    {"name":"FabricationPlanningTest","tests":11,"failures":0,"errors":0,"ajout":"validation simple, révision périmée, hors fenêtre, employé non habilité, validation automatique + non-recalcul."},
+    {"name":"CateringRequirementsTest","tests":3,"failures":0,"errors":0,"couverture":"engagement créé, BLOCK refuse la pénurie, WARN l'accepte."}
+  ],
+  "nonRegression": "StoreOperationsWorkflowTest, StoreActivityEngineTest, StoreActivityPollingConsumerTest : 0 échec.",
+  "note": "EN_COURS : feuille de fabrication (T2.059), réduction/annulation d'engagements (T2.070/071 = F18/F19), réaction réappro (T2.073), plafond de présence (T2.038) — réalisés avec T5/T7 et l'affectation."
+}

@@ -12,7 +12,10 @@ import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.util.DateTimeProvider;
 import com.intermarche.backoffice.domain.wms.BaseHandlingOrder;
 import com.intermarche.backoffice.domain.wms.handling.FabricationOrder;
+import com.intermarche.backoffice.domain.store.Employee;
 import com.intermarche.backoffice.engine.catering.CateringProposalEngine;
+import com.intermarche.backoffice.engine.catering.CateringValidationService;
+import com.intermarche.backoffice.engine.operator.OperatorFailure;
 import com.intermarche.backoffice.engine.policy.OperationalPolicySchemas;
 import com.intermarche.e2e.domain.util.DomainUtils;
 import io.quarkus.test.TestTransaction;
@@ -38,6 +41,8 @@ public class FabricationPlanningTest {
 
     @Inject
     CateringProposalEngine engine;
+    @Inject
+    CateringValidationService validation;
     @Inject
     ObjectMapper mapper;
 
@@ -279,6 +284,113 @@ public class FabricationPlanningTest {
         unit("C1", "16", "K1");
         engine.recompute(store);
         assertEquals(0, orders().size(), "A unit that exceeds the daily capacity is not placed");
+    }
+
+    /**
+     * Builds a validation input for an order at its current revision.
+     *
+     * @param order the order.
+     * @return the validation input.
+     */
+    private CateringValidationService.OrderValidation input(FabricationOrder order) {
+        var input = new CateringValidationService.OrderValidation();
+        input.id = order.id;
+        input.revision = order.version;
+        return input;
+    }
+
+    /**
+     * T2.061: a simple validation turns the order VALIDATED/SCHEDULED and its units PLANNED.
+     */
+    @Test
+    @TestTransaction
+    void validatesProposal() {
+        setup(0, 120);
+        recipe("16", 600);
+        unit("O1", "16", "K1");
+        engine.recompute(store);
+        FabricationOrder order = orders().get(0);
+        validation.validate(store, List.of(input(order)), true);
+        FabricationOrder reloaded = FabricationOrder.findById(order.id);
+        assertEquals(FabricationOrder.FabricationProposalState.VALIDATED, reloaded.proposalState);
+        assertEquals(BaseHandlingOrder.HandlingOrderStatus.SCHEDULED, reloaded.status);
+        assertEquals(CateringUnitState.PLANNED, CateringUnit.<CateringUnit>find("lineId", "O1-u").firstResult().state);
+    }
+
+    /**
+     * T2.061: a stale revision is refused.
+     */
+    @Test
+    @TestTransaction
+    void staleRevisionRefused() {
+        setup(0, 120);
+        recipe("16", 600);
+        unit("O1", "16", "K1");
+        engine.recompute(store);
+        var stale = input(orders().get(0));
+        stale.revision = 999L;
+        OperatorFailure failure = assertThrows(OperatorFailure.class, () -> validation.validate(store, List.of(stale), true));
+        assertEquals(409, failure.getResponse().getStatus());
+    }
+
+    /**
+     * T2.061: an out-of-window day is refused.
+     */
+    @Test
+    @TestTransaction
+    void outOfWindowRefused() {
+        setup(0, 120);
+        recipe("16", 600);
+        unit("O1", "16", "K1");
+        engine.recompute(store);
+        var input = input(orders().get(0));
+        input.productionDate = "2027-01-01";
+        assertThrows(OperatorFailure.class, () -> validation.validate(store, List.of(input), true));
+    }
+
+    /**
+     * T2.061: an employee not qualified at the station is refused.
+     */
+    @Test
+    @TestTransaction
+    void employeeNotQualifiedRefused() {
+        setup(0, 120);
+        recipe("16", 600);
+        unit("O1", "16", "K1");
+        engine.recompute(store);
+        Employee employee = new Employee();
+        employee.badgeId = "notqual";
+        employee.firstName = "N";
+        employee.lastName = "Q";
+        employee.email = "nq@test.com";
+        employee.password = "x".repeat(60);
+        employee.role = Employee.EmployeeRole.PICKER;
+        employee.active = true;
+        employee.store = store;
+        employee.persistAndFlush();
+        var input = input(orders().get(0));
+        input.employeeId = employee.id;
+        assertThrows(OperatorFailure.class, () -> validation.validate(store, List.of(input), true));
+    }
+
+    /**
+     * T2.062: automatic validation validates the proposals; a validated order is not recomputed.
+     */
+    @Test
+    @TestTransaction
+    void automaticValidationAndValidatedNotRecomputed() {
+        setup(0, 120);
+        policy("autoValidateProposals", true);
+        recipe("16", 600);
+        unit("O1", "16", "K1");
+        engine.recompute(store);
+        assertEquals(0, orders().size(), "No PROPOSED order remains after automatic validation");
+        long validatedId = FabricationOrder.<FabricationOrder>find("store = ?1 and proposalState = ?2", store,
+                FabricationOrder.FabricationProposalState.VALIDATED).firstResult().id;
+        engine.recompute(store);
+        FabricationOrder reloaded = FabricationOrder.findById(validatedId);
+        assertNotNull(reloaded, "The validated order survives a recompute");
+        assertEquals(FabricationOrder.FabricationProposalState.VALIDATED, reloaded.proposalState);
     }
 
     /**

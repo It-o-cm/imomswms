@@ -40,6 +40,8 @@ public class CateringProposalEngine {
     FabricationWindow windows;
     @Inject
     ObjectMapper mapper;
+    @Inject
+    CateringValidationService validation;
 
     /** Reception information extracted from the order payload. */
     private record ReceptionInfo(LocalDate receptionDate, LocalDateTime slotEnd) {
@@ -136,6 +138,19 @@ public class CateringProposalEngine {
         }
 
         buildOrders(store, drafts.values());
+
+        if (parameters.autoValidateProposals(store)) {
+            List<CateringValidationService.OrderValidation> inputs = FabricationOrder.<FabricationOrder>list(
+                            "store = ?1 and proposalState = ?2", store, FabricationProposalState.PROPOSED)
+                    .stream().map(order -> {
+                        var validation = new CateringValidationService.OrderValidation();
+                        validation.id = order.id;
+                        return validation;
+                    }).toList();
+            if (!inputs.isEmpty()) {
+                validation.validate(store, inputs, false);
+            }
+        }
     }
 
     /**

@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 182,
-  "remaining": 271,
+  "done": 200,
+  "remaining": 253,
   "currentBatch": {
-    "packet": 7,
+    "packet": 8,
     "lot": "T2",
     "status": "TERMINE",
-    "scope": "Proposition F6-F7 + exclusions F8 (T2.007,013-014,029-051,060)"
+    "scope": "Validation F8 + engagements F9 (T2.015,052-069,072)"
   },
   "perLot": {
     "T0": 81,
@@ -1275,8 +1275,8 @@
       "description": "Nomenclature figée sur la ligne de fabrication à la validation ; une révision ultérieure ne change pas un ordre validé.",
       "nature": "Règle",
       "ref": "F4.6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.016",
@@ -1571,64 +1571,64 @@
       "description": "`POST /catering/fabrication/proposals/validate` : `proposalState = VALIDATED`, unités `PLANNED`, nomenclature figée, engagements créés.",
       "nature": "API",
       "ref": "§ 8.2 ; F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.053",
       "description": "Validation avec jour, plage ou employé modifiés : F5, F7 et l'habilitation sont revérifiées.",
       "nature": "Règle",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.054",
       "description": "Refus de validation : 409 `STALE_REVISION`, `OUT_OF_WINDOW`, `OVER_CAPACITY`, `COMPONENT_SHORTAGE`, `EMPLOYEE_NOT_QUALIFIED`, raison servie.",
       "nature": "Règle",
       "ref": "§ 8.2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.055",
       "description": "À la validation, `assignee` reçoit l'employé retenu par le manager, à défaut l'employé proposé.",
       "nature": "Règle",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.056",
       "description": "L'ordre validé entre dans le planning contraint existant comme toute manutention.",
       "nature": "Adaptation",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.057",
       "description": "`autoValidateProposals` vrai : validation appliquée par le serveur, auteur `SYSTEM`, mêmes contrôles ; jamais pour les besoins d'achat.",
       "nature": "Règle",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.058",
       "description": "Un ordre validé n'est plus touché par le calcul ; une unité ajoutée ensuite forme une proposition nouvelle.",
       "nature": "Règle",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.059",
       "description": "`GET /catering/fabrication/sheet?storeId=&date=&stationId=` : feuille imprimable du jour, lignes regroupées, compositions, allergènes, commandes et créneaux, date de réception et convives.",
       "nature": "API",
       "ref": "§ 8.2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Partiel : feuille de fabrication (T2.059), reduction/annulation d'engagements (T2.070/071 = F18/F19), reaction reappro (T2.073) realises avec T5/T7."
     },
     {
       "id": "T2.060",
@@ -1643,104 +1643,104 @@
       "description": "`FabricationPlanningTest` : validation simple ; avec chaque modification ; chacun des cinq refus.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.062",
       "description": "`FabricationPlanningTest` : validation automatique ; ordre validé non recalculé ; unité ajoutée après validation.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.063",
       "description": "`FabricationPlanningTest` : chaque déclencheur du recalcul produit la proposition attendue.",
       "nature": "Test",
       "ref": "F8",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.064",
       "description": "À la validation, un `StockCommitment` par composant `INGREDIENT` : référence `FAB:…`, bâtiment du poste, `preparationAt` = début de l'ordre.",
       "nature": "Règle",
       "ref": "F9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.065",
       "description": "Le stock daté existant prend ces engagements en compte comme des engagements de commande.",
       "nature": "Adaptation",
       "ref": "F9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.066",
       "description": "Quantité indisponible à la date de l'ordre, proposé ou validé : situation `CATERING_COMPONENT_SHORTAGE` avec composant, quantité manquante et ordres.",
       "nature": "Règle",
       "ref": "F9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.067",
       "description": "`componentShortagePolicy = BLOCK` : validation refusée ; `WARN` : acceptée.",
       "nature": "Règle",
       "ref": "F9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.068",
       "description": "Les règles de réapprovisionnement existantes voient ces engagements ; aucune règle nouvelle.",
       "nature": "Adaptation",
       "ref": "F9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.069",
       "description": "`GET /catering/requirements?storeId=&from=&to=` : par jour et composant, besoin, disponible daté, écart, ordres.",
       "nature": "API",
       "ref": "§ 8.2 ; F9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.070",
       "description": "Annulation ou baisse d'une unité : engagements annulés ou réduits dans la même transaction.",
       "nature": "Règle",
       "ref": "F9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Partiel : feuille de fabrication (T2.059), reduction/annulation d'engagements (T2.070/071 = F18/F19), reaction reappro (T2.073) realises avec T5/T7."
     },
     {
       "id": "T2.071",
       "description": "`CateringRequirementsTest` : engagements créés à la validation, réduits, annulés.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Partiel : feuille de fabrication (T2.059), reduction/annulation d'engagements (T2.070/071 = F18/F19), reaction reappro (T2.073) realises avec T5/T7."
     },
     {
       "id": "T2.072",
       "description": "`CateringRequirementsTest` : manque sur ordre proposé, sur ordre validé ; `BLOCK` et `WARN`.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService (F8/F9) : POST validate -> VALIDATED/SCHEDULED, unites PLANNED, engagements StockCommitment par composant INGREDIENT (reference FAB:) ; controles F5/F7/habilitation ; 5 refus (STALE_REVISION, OUT_OF_WINDOW, OVER_CAPACITY, EMPLOYEE_NOT_QUALIFIED, COMPONENT_SHORTAGE) ; autoValidateProposals ; BLOCK/WARN ; ordre valide entre au planning (GlobalPlanningService). FabricationPlanningTest (11) + CateringRequirementsTest (3)."
     },
     {
       "id": "T2.073",
       "description": "`CateringRequirementsTest` : le réapprovisionnement existant réagit à un engagement de fabrication.",
       "nature": "Test",
       "ref": "F9",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Partiel : feuille de fabrication (T2.059), reduction/annulation d'engagements (T2.070/071 = F18/F19), reaction reappro (T2.073) realises avec T5/T7."
     },
     {
       "id": "T3.001",
