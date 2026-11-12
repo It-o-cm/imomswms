@@ -1,20 +1,20 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 228,
-  "remaining": 225,
-  "lastCompletedPacket": 13,
+  "done": 231,
+  "remaining": 222,
+  "lastCompletedPacket": 14,
   "currentBatch": {
-    "packet": 14,
+    "packet": 15,
     "lot": "T3",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "Socle d'execution F12 (contrat operateur v2 FABRICATE/FABRICATION_LOSS/FABRICATION_SHORT, T3.023-042), F13 tracabilite, F14 etiquettes, F15 mise en attente, reste F10 execution (T3.010-012,016), F11 synchro d'etat (T3.021-022)."
+    "scope": "F12 actions : applyFabrication dans OperatorExecutionService (dispatch ~l.388) + allowedActions (~l.193) pour FABRICATE/FABRICATION_LOSS/FABRICATION_SHORT/DEPOSIT_TOTE/CONCLUDE. Commencer par l'etat/quantite (T3.026,028,029,031,032,034), puis F13 mouvements de stock/lots, F14 etiquettes, F15 mise en attente."
   },
-  "lastFullSuite": "Catering cible : 113 tests, 0 echec, 0 erreur (BUILD SUCCESS). E-09 inchange (suite complete polluee par le travail parallele non suivi).",
+  "lastFullSuite": "Operateur (121) + catering (73) verts. E-09 inchange.",
   "openEcarts": [
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil des lots)",
     "E-09 : suite complete de l'arbre de travail non verte a cause du travail parallele non committe ; validation traiteur par tests cibles (pattern des paquets precedents)"
   ],
-  "notes": "Paquet 13 termine le 2026-11-12 : F10.4 candidature mise en support. F10 complet sauf execution FABRICATE (T3.010-012,016). Reste T3 : F12 execution, F13-F15, F11 synchro."
+  "notes": "Paquet 14 termine le 2026-11-12 : F12 lecture de mission de fabrication. T3.023 EN_COURS. Prochaine etape : les trois actions FABRICATE/LOSS/SHORT."
 }

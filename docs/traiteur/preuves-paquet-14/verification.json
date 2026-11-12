@@ -1,0 +1,11 @@
+{
+  "packet": 14, "lot": "T3",
+  "scope": "F12 lecture de mission de fabrication (T3.024, T3.025, T3.042). Premier pas du socle d'execution : lecture pure, sans mutation de stock.",
+  "points": {
+    "T3.024": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationMission.java", "src/main/java/com/intermarche/backoffice/engine/executing/OperatorExecutionService.java"], "tests": ["FabricationExecutionTest.missionReadServesLinesWithoutClientIdentity"]},
+    "T3.025": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationMission.java"], "tests": ["FabricationExecutionTest.missionReadServesLinesWithoutClientIdentity"]},
+    "T3.042": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationMission.java"], "tests": ["FabricationExecutionTest.missionReadServesLinesWithoutClientIdentity"]}
+  },
+  "enCours": {"T3.023": "orderView rend fabricationLines pour une FabricationOrder et orders() inclut les ordres non PROPOSED ; reste un test bout-en-bout via service.order avec securite employe."},
+  "regression": {"operatorExecution": "HandlingOrderServiceTest + CollectingWorkflowTest : 121 tests, 0 echec (orderView additif, sans regression)", "catering": "FabricationExecutionTest, FabricationPlanningTest, CateringRequirementsTest, CateringIntakeTest, StoreActivityEngineTest : 73 tests, 0 echec"}
+}

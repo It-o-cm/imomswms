@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 228,
-  "remaining": 225,
+  "done": 231,
+  "remaining": 222,
   "currentBatch": {
-    "packet": 13,
+    "packet": 14,
     "lot": "T3",
     "status": "TERMINE",
-    "scope": "F10.4 candidature mise en support (T3.006-008) et test de flux (T3.015)"
+    "scope": "F12 lecture de mission de fabrication (T3.024, T3.025, T3.042) ; T3.023 EN_COURS (test operateur bout-en-bout)"
   },
   "perLot": {
     "T0": 81,
@@ -1923,24 +1923,24 @@
       "description": "L'ordre validé et affecté apparaît dans les lectures existantes des missions de l'opérateur.",
       "nature": "Adaptation",
       "ref": "F12 ; § 8.4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Cable : orderView ajoute fabricationLines pour une FabricationOrder, et orders() inclut les ordres non PROPOSED. Test bout-en-bout via la lecture operateur (service.order avec securite employe) a ajouter."
     },
     {
       "id": "T3.024",
       "description": "Lecture par ligne : article, variante, quantité, libellés figés, texte du gâteau, allergènes, composants avec quantités et emplacements, temps prévu.",
       "nature": "API",
       "ref": "F12",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFabricationMission.lines (greffee dans OperatorExecutionService.orderView) : par ligne article, variante, quantite, choiceLabels, texte du gateau, allergenes, composants (quantites + emplacements), temps prevu (test FabricationExecutionTest.missionReadServesLinesWithoutClientIdentity)."
     },
     {
       "id": "T3.025",
       "description": "Sous chaque ligne, les unités à servir dans l'ordre de leur mise à disposition : référence de commande, créneau, quantité.",
       "nature": "API",
       "ref": "F12",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Sous chaque ligne, les unites a servir triees par mise a disposition : reference commande, creneau, quantite (test missionReadServesLinesWithoutClientIdentity)."
     },
     {
       "id": "T3.026",
@@ -2075,8 +2075,8 @@
       "description": "Test : la lecture de la mission ne contient ni nom, ni adresse, ni téléphone du client.",
       "nature": "Test",
       "ref": "P6",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "La lecture de mission ne contient ni nom, ni adresse, ni telephone du client (assertions sur la serialisation JSON ; P6)."
     },
     {
       "id": "T3.043",

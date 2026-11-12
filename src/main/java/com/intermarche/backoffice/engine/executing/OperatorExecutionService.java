@@ -27,6 +27,7 @@ import java.util.*;
 /** Adaptation d'exécution : mêmes entités/opérations, avec appartenance, reprise et acquittement atomique. */
 @ApplicationScoped
 public class OperatorExecutionService {
+    @Inject com.intermarche.backoffice.engine.catering.CateringFabricationMission cateringMission;
     @Inject MixedPreparationService mixedPreparation;
     @Inject ProductPickingLocations productLocations;
     @Inject AuthenticationService authentication;
@@ -210,6 +211,7 @@ public class OperatorExecutionService {
         out.put("start",o.requestedStart);out.put("end",o.requestedEnd);out.put("assigneeBadge",o.assignee==null?null:o.assignee.badgeId);out.put("assigneeName",o.assignee==null?null:o.assignee.getFullName());
         out.put("requiredBuilding",building(requiredBuilding(o)));
         out.put("available",(operational==null || operational.state.equals("ACTIVE")) && o.status==BaseHandlingOrder.HandlingOrderStatus.SCHEDULED && es.stream().noneMatch(this::active) && es.stream().noneMatch(e->e.status==HandlingExecution.ExecutionStatus.DONE));
+        if(o instanceof com.intermarche.backoffice.domain.wms.handling.FabricationOrder fabrication)out.put("fabricationLines",cateringMission.lines(fabrication));
         out.put("executions",es.stream().map(e->executionView(e,principal,trace)).toList());return out;
     }
     private boolean visible(BaseHandlingOrder order,List<HandlingExecution> es){
