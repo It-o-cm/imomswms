@@ -50,6 +50,8 @@ public class FabricationExecutionTest {
     @Inject
     com.intermarche.backoffice.engine.catering.CateringFabricationExecution execution;
     @Inject
+    com.intermarche.backoffice.engine.stock.TemporalStockService stocksService;
+    @Inject
     ObjectMapper mapper;
 
     private static final LocalDateTime MONDAY = LocalDateTime.of(2026, 11, 16, 9, 0);
@@ -116,7 +118,22 @@ public class FabricationExecutionTest {
         line.quantity = new BigDecimal("2");
         line.kind = CateringRecipeLine.RecipeLineKind.INGREDIENT;
         line.persistAndFlush();
+        // Seed the component stock in the station building so FABRICATE can draw it (F13).
+        componentLocation = new com.intermarche.backoffice.domain.store.StoreShelfLocation();
+        componentLocation.area = "LAB";
+        componentLocation.aisle = "1";
+        componentLocation.unit = "1";
+        componentLocation.position = "1";
+        componentLocation.elevation = "1";
+        componentLocation.product = component;
+        building.locations.add(componentLocation);
+        componentLocation.persistAndFlush();
+        var account = stocksService.account(store.id, component.id);
+        stocksService.setPhysical(account.id, componentLocation.id, "seed-" + counter,
+                BigDecimal.ZERO, new BigDecimal("100"), "seed");
     }
+
+    private com.intermarche.backoffice.domain.store.StoreShelfLocation componentLocation;
 
     /**
      * Persists a FABRICATED unit still RECEIVED, carrying frozen labels, allergens and a cake text.
@@ -292,6 +309,34 @@ public class FabricationExecutionTest {
         com.intermarche.backoffice.domain.catering.FabricationLine reloaded =
                 com.intermarche.backoffice.domain.catering.FabricationLine.find("order", order).firstResult();
         assertEquals(MONDAY, reloaded.producedAt, "A later quantity does not move producedAt");
+    }
+
+    /**
+     * T3.045/T3.051: FABRICATE draws each component out of stock against its commitment (the commitment
+     * is reduced) and records a FabricationConsumption, in the action's transaction.
+     */
+    @Test
+    @TestTransaction
+    void fabricateConsumesComponentsAndReleasesCommitment() {
+        setup();
+        unit("O1", BigDecimal.ONE);
+        FabricationOrder order = validatedOrder();
+        com.intermarche.backoffice.domain.stock.StockCommitment commitment =
+                com.intermarche.backoffice.domain.stock.StockCommitment.find("reference like 'FAB:%' and status = ?1",
+                        com.intermarche.backoffice.domain.stock.StockCommitment.CommitmentStatus.ACTIVE).firstResult();
+        assertNotNull(commitment, "A component commitment exists after validation");
+        assertEquals(0, new BigDecimal("2").compareTo(commitment.remainingQuantity), "recipe: 2 per unit");
+
+        com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
+        execution.fabricate(order, lineUnit.id, BigDecimal.ONE);
+
+        com.intermarche.backoffice.domain.stock.StockCommitment after =
+                com.intermarche.backoffice.domain.stock.StockCommitment.findById(commitment.id);
+        assertEquals(0, BigDecimal.ZERO.compareTo(after.remainingQuantity), "The commitment is drawn down");
+        assertEquals(com.intermarche.backoffice.domain.stock.StockCommitment.CommitmentStatus.PREPARED, after.status);
+        assertEquals(1, com.intermarche.backoffice.domain.catering.FabricationConsumption.count("line.order = ?1", order),
+                "A consumption is recorded");
     }
 
     /**

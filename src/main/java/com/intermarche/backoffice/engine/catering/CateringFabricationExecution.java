@@ -8,16 +8,25 @@ import com.intermarche.backoffice.domain.store.Employee;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.wms.BaseHandlingOrder.HandlingOrderStatus;
 import com.intermarche.backoffice.domain.wms.handling.FabricationOrder;
+import com.intermarche.backoffice.domain.catering.CateringItem;
+import com.intermarche.backoffice.domain.catering.FabricationConsumption;
+import com.intermarche.backoffice.domain.order.Product;
+import com.intermarche.backoffice.domain.stock.StockAccount;
+import com.intermarche.backoffice.domain.stock.StockCommitment;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.util.DateTimeProvider;
 import com.intermarche.backoffice.engine.executing.OperatorCommandInput;
 import com.intermarche.backoffice.engine.operator.OperatorFailure;
+import com.intermarche.backoffice.engine.stock.TemporalStockService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.hibernate.Hibernate;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Applies the operator v2 fabrication actions to a {@link FabricationExecution} (rule F12).
@@ -36,6 +45,12 @@ public class CateringFabricationExecution {
     CateringUnitStateService states;
     @Inject
     CateringParameters parameters;
+    @Inject
+    CateringRecipeResolver recipes;
+    @Inject
+    TemporalStockService stocks;
+    @Inject
+    ObjectMapper mapper;
 
     /**
      * Applies one operator command to a fabrication execution.
@@ -89,11 +104,109 @@ public class CateringFabricationExecution {
         lineUnit.producedQuantity = lineUnit.producedQuantity.add(quantity);
         line.producedQuantity = line.producedQuantity.add(quantity);
         CateringUnit unit = Hibernate.unproxy(lineUnit.unit, CateringUnit.class);
+        consumeComponents(order, line, unit, quantity, line.producedQuantity); // F13: components out, commitments released
         unit.producedQuantity = unit.producedQuantity.add(quantity);
         if (unit.producedQuantity.compareTo(unit.quantity) >= 0) {
             states.markProduced(unit); // F3: whole quantity fabricated
         } else {
             states.markInProgress(unit); // F3: first quantity fabricated
+        }
+    }
+
+    /**
+     * Consumes the components of a fabricated quantity and releases their commitments (F13, T3.045,
+     * T3.051), in the action's transaction. For a fabricated line the components are the resolved recipe
+     * ingredients; for a mise-en-support line the component is the received article. Each component is
+     * taken from a store location that holds it, the matching {@code FAB:}/{@code CATSUP:} commitment is
+     * drawn down, and a {@link FabricationConsumption} is recorded. A component with no commitment (demo
+     * without a committed component) is skipped.
+     *
+     * @param order    the fabrication order.
+     * @param line     the fabrication line.
+     * @param unit     the served unit.
+     * @param quantity the fabricated quantity.
+     * @param token    a value that makes the stock event key unique across successive actions.
+     */
+    private void consumeComponents(FabricationOrder order, FabricationLine line, CateringUnit unit,
+                                   BigDecimal quantity, BigDecimal token) {
+        Store store = Hibernate.unproxy(order.store, Store.class);
+        CateringItem item = Hibernate.unproxy(line.item, CateringItem.class);
+        LocalDateTime now = DateTimeProvider.now();
+        if (unit.sourcingMode == com.intermarche.backoffice.domain.catering.SourcingMode.SUPPLIED) {
+            consumeOne(store, line, Hibernate.unproxy(item.product, Product.class), quantity,
+                    "CATSUP:" + unit.id, token, now);
+            return;
+        }
+        Map<Product, BigDecimal> components = recipes.resolve(item, line.variantId, configuration(unit), quantity,
+                parameters.defaultLaborSeconds(store)).components();
+        for (Map.Entry<Product, BigDecimal> entry : components.entrySet()) {
+            String reference = "FAB:" + order.id + ":" + line.id + ":" + entry.getKey().ean;
+            consumeOne(store, line, entry.getKey(), entry.getValue(), reference, token, now);
+        }
+    }
+
+    /**
+     * Draws one component out of stock against its commitment and records the consumption (F13).
+     *
+     * @param store     the store.
+     * @param line      the fabrication line.
+     * @param component the component product.
+     * @param quantity  the quantity to consume.
+     * @param reference the commitment reference.
+     * @param token     a uniqueness token for the stock event key.
+     * @param now       the action instant.
+     */
+    private void consumeOne(Store store, FabricationLine line, Product component, BigDecimal quantity,
+                            String reference, BigDecimal token, LocalDateTime now) {
+        StockAccount account = stocks.account(store.id, component.id);
+        StockCommitment commitment = StockCommitment.<StockCommitment>find("reference = ?1 and status = ?2",
+                reference, StockCommitment.CommitmentStatus.ACTIVE).firstResult();
+        if (commitment == null) {
+            return; // nothing committed for this component in the demo
+        }
+        Long locationId = stockLocation(account, quantity);
+        if (locationId == null) {
+            throw new OperatorFailure(409, "COMPONENT_SHORTAGE", "Composant indisponible : " + component.ean);
+        }
+        stocks.prepare(commitment.id, locationId, "fab:" + reference + ":" + token.toPlainString(), quantity, now);
+        FabricationConsumption consumption = new FabricationConsumption();
+        consumption.line = line;
+        consumption.component = component;
+        consumption.quantity = quantity;
+        consumption.loss = false;
+        consumption.persist();
+    }
+
+    /**
+     * Returns a store location holding at least the requested quantity of a component, or null.
+     *
+     * @param account  the component stock account.
+     * @param quantity the required quantity.
+     * @return the location id, or null.
+     */
+    private Long stockLocation(StockAccount account, BigDecimal quantity) {
+        for (TemporalStockService.Position position : stocks.positions(account.id)) {
+            if (position.quantity.compareTo(quantity) >= 0) {
+                return position.locationId;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parses the configuration of a unit, or returns null.
+     *
+     * @param unit the unit.
+     * @return the configuration node, or null.
+     */
+    private JsonNode configuration(CateringUnit unit) {
+        if (unit.configuration == null) {
+            return null;
+        }
+        try {
+            return mapper.readTree(unit.configuration);
+        } catch (Exception e) {
+            return null;
         }
     }
 

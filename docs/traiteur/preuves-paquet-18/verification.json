@@ -1,0 +1,10 @@
+{
+  "packet": 18, "lot": "T3",
+  "scope": "F13 sortie des composants a FABRICATE et libération de l'engagement (T3.045), enregistrement FabricationConsumption (T3.051).",
+  "points": {
+    "T3.045": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationExecution.java"], "tests": ["FabricationExecutionTest.fabricateConsumesComponentsAndReleasesCommitment"]},
+    "T3.051": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationExecution.java"], "tests": ["FabricationExecutionTest.fabricateConsumesComponentsAndReleasesCommitment"]}
+  },
+  "note": "Consommation via stocks.prepare (FIFO/FEFO par traceLedger.allocate) depuis un emplacement du batiment du poste ; le StockCommitment FAB:/CATSUP: est reduit. Reste F13 : entree du produit fini sous ManufacturerLot a l'adresse du support (T3.046-047, couple a F15), componentLots operateur (T3.049-050), /quality/trace (T3.052-053), CATERING_EXPIRED (T3.054). T3.048 (FIFO/FEFO) assure par prepare, test dedie a venir.",
+  "tests": {"class": "FabricationExecutionTest", "testsRun": 9, "failures": 0, "errors": 0}
+}

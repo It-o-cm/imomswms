@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 236,
-  "remaining": 217,
+  "done": 238,
+  "remaining": 215,
   "currentBatch": {
-    "packet": 17,
+    "packet": 18,
     "lot": "T3",
     "status": "TERMINE",
-    "scope": "F13 metadonnees de tracabilite au premier FABRICATE (T3.043 producedAt/useBy, T3.044 lotCode)"
+    "scope": "F13 sortie composants + liberation engagement (T3.045) et FabricationConsumption (T3.051)"
   },
   "perLot": {
     "T0": 81,
@@ -2099,8 +2099,8 @@
       "description": "`FABRICATE` sort chaque composant du stock et libère son engagement, dans la transaction de l'action.",
       "nature": "Règle",
       "ref": "F13",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFabricationExecution.consumeComponents/consumeOne : FABRICATE sort chaque composant du stock (stocks.prepare depuis un emplacement du batiment) et libere son engagement (StockCommitment reduit/PREPARED), dans la transaction (test fabricateConsumesComponentsAndReleasesCommitment)."
     },
     {
       "id": "T3.046",
@@ -2123,8 +2123,8 @@
       "description": "Composants sans choix de l'opérateur : segments alloués en FIFO ou FEFO, comme pour un prélèvement.",
       "nature": "Adaptation",
       "ref": "F13",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Allocation FIFO/FEFO assuree par stocks.prepare (traceLedger.allocate) ; a confirmer par un test multi-segments avec la gestion componentLots (T3.049-050)."
     },
     {
       "id": "T3.049",
@@ -2147,8 +2147,8 @@
       "description": "Chaque sortie de composant enregistrée en `FabricationConsumption` ; perte marquée `loss`.",
       "nature": "Règle",
       "ref": "F13",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Chaque sortie de composant enregistree en FabricationConsumption (line, component, quantity, loss=false) ; test fabricateConsumesComponentsAndReleasesCommitment."
     },
     {
       "id": "T3.052",
