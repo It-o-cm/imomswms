@@ -203,6 +203,9 @@ public class CateringValidationService {
             JsonNode configuration = null;
             if (anyUnit != null) {
                 CateringUnit unit = Hibernate.unproxy(anyUnit.unit, CateringUnit.class);
+                if (unit.sourcingMode == SourcingMode.SUPPLIED) {
+                    continue; // F10.4/F10.5: a mise-en-support line commits its article at reception, not here
+                }
                 configuration = parse(unit.configuration);
             }
             var recipe = recipes.resolve(line.item, line.variantId, configuration, line.plannedQuantity,

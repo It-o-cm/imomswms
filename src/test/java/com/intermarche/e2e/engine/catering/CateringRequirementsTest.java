@@ -537,6 +537,53 @@ public class CateringRequirementsTest {
     }
 
     /**
+     * T3.006/T3.007/T3.008/T3.015: once its need is validated, a SUPPLIED unit becomes a proposal
+     * candidate; its mise-en-support order carries a line for the supplied article (no recipe block,
+     * F4.5 not applied); validating that order marks the unit PLANNED without committing the article
+     * (the article is committed at reception, not at validation); the supply is then received.
+     */
+    @Test
+    @TestTransaction
+    void suppliedUnitMiseEnSupportProposedValidatedThenReceived() {
+        suppliedSetup(24, 2, "Fournisseur démo");
+        CateringUnit unit = suppliedUnit("S1", AVAILABLE);
+        supplyService.recomputeNeeds(store);
+        CateringPurchaseNeed need = CateringPurchaseNeed.find("store", store).firstResult();
+        var needInput = new CateringSupplyService.NeedValidation();
+        needInput.id = need.id;
+        needInput.revision = need.version;
+        supplyService.validate(store, List.of(needInput), true);
+
+        // T3.006/T3.007: the supplied unit is now a candidate; a mise-en-support order is proposed.
+        FabricationOrder order = proposed();
+        assertNotNull(order, "A mise-en-support order is proposed for the supplied unit");
+        FabricationLine line = FabricationLine.find("order", order).firstResult();
+        assertEquals(item.id, line.item.id, "The line carries the supplied article");
+        assertTrue(order.plannedMinutes > 0, "Planned minutes from the base/default labour");
+
+        // T3.008: validating the order marks the unit PLANNED, and no component is committed here.
+        validation.validate(store, List.of(input(order)), true);
+        assertEquals(CateringUnitState.PLANNED, CateringUnit.<CateringUnit>findById(unit.id).state);
+        assertEquals(0, StockCommitment.count("reference like 'FAB:%'"),
+                "A supplied article is not committed at validation (committed at reception)");
+
+        // T3.015: the supply is received through the existing flow and reconciled.
+        ExpectedSupply supply = CateringPurchaseNeed.<CateringPurchaseNeed>findById(need.id).expectedSupply;
+        StoreShelfLocation shelf = new StoreShelfLocation();
+        shelf.area = "RECEP";
+        shelf.aisle = "0";
+        shelf.unit = "0";
+        shelf.position = "1";
+        shelf.elevation = "1";
+        station.building.locations.add(shelf);
+        shelf.persistAndFlush();
+        stocks.receive(supply.id, "rcpt-sup", need.quantity, DateTimeProvider.now(), true, shelf.id);
+        supplyService.reconcileReceipts(store);
+        assertEquals(CateringPurchaseNeed.PurchaseNeedState.RECEIVED,
+                CateringPurchaseNeed.<CateringPurchaseNeed>findById(need.id).state);
+    }
+
+    /**
      * T3.013/T3.017: a PROPOSED need past its order-by is at RISK (order late); a VALIDATED need past
      * its due instant is at RISK (delivery late); once the latest supply end is passed the need is
      * CONFIRMED late.

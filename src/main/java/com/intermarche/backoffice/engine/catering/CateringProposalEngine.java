@@ -91,9 +91,7 @@ public class CateringProposalEngine {
         clearProposed(store);
         LocalDateTime horizonEnd = now.plusDays(parameters.proposalHorizonDays(store));
 
-        List<CateringUnit> units = CateringUnit.list(
-                "order.store = ?1 and state = ?2 and sourcingMode = ?3 and availableAt <= ?4 order by availableAt, id",
-                store, CateringUnitState.RECEIVED, SourcingMode.FABRICATED, horizonEnd);
+        List<CateringUnit> units = candidates(store, horizonEnd);
 
         Map<String, Integer> dayLoad = validatedLoad(store);
         boolean batch = parameters.batchAcrossOrders(store);
@@ -117,8 +115,9 @@ public class CateringProposalEngine {
             }
             var recipe = recipes.resolve(item, unit.variantId, configuration(unit), unit.quantity,
                     parameters.defaultLaborSeconds(store));
-            if (!recipe.hasBase() && parameters.recipeRequired(store)) {
-                blockUnit(unit); // CATERING_RECIPE_MISSING (T6)
+            boolean supplied = unit.sourcingMode == SourcingMode.SUPPLIED;
+            if (!supplied && !recipe.hasBase() && parameters.recipeRequired(store)) {
+                blockUnit(unit); // CATERING_RECIPE_MISSING (T6); F4.5 does not apply to a supplied unit (F10.4)
                 continue;
             }
             int unitMinutes = (int) Math.ceil(recipe.laborSeconds() / 60.0);
@@ -153,6 +152,30 @@ public class CateringProposalEngine {
                 validation.validate(store, inputs, false);
             }
         }
+    }
+
+    /**
+     * Returns the proposal candidates of a store (F6.1, F10.4): every FABRICATED unit still RECEIVED,
+     * and every SUPPLIED unit still RECEIVED whose purchase need is VALIDATED (its supply has been
+     * ordered), within the proposal horizon, earliest availability first.
+     *
+     * @param store      the store.
+     * @param horizonEnd the latest availability considered.
+     * @return the candidate units.
+     */
+    private List<CateringUnit> candidates(Store store, LocalDateTime horizonEnd) {
+        List<CateringUnit> units = new ArrayList<>(CateringUnit.<CateringUnit>list(
+                "order.store = ?1 and state = ?2 and sourcingMode = ?3 and availableAt <= ?4 order by availableAt, id",
+                store, CateringUnitState.RECEIVED, SourcingMode.FABRICATED, horizonEnd));
+        for (CateringUnit unit : CateringUnit.<CateringUnit>list(
+                "order.store = ?1 and state = ?2 and sourcingMode = ?3 and availableAt <= ?4 order by availableAt, id",
+                store, CateringUnitState.RECEIVED, SourcingMode.SUPPLIED, horizonEnd)) {
+            if (CateringPurchaseNeed.count("unit = ?1 and state = ?2", unit,
+                    CateringPurchaseNeed.PurchaseNeedState.VALIDATED) > 0) {
+                units.add(unit); // candidate for its mise-en-support order (F10.4)
+            }
+        }
+        return units;
     }
 
     /**

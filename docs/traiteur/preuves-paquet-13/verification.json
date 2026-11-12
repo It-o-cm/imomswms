@@ -1,0 +1,12 @@
+{
+  "packet": 13, "lot": "T3",
+  "scope": "F10.4 candidature mise en support d'un article fourni (T3.006-008) et test de flux complet (T3.015).",
+  "points": {
+    "T3.006": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringProposalEngine.java"], "tests": ["CateringRequirementsTest.suppliedUnitMiseEnSupportProposedValidatedThenReceived"]},
+    "T3.007": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringProposalEngine.java", "src/main/java/com/intermarche/backoffice/engine/catering/CateringValidationService.java"], "tests": ["CateringRequirementsTest.suppliedUnitMiseEnSupportProposedValidatedThenReceived"]},
+    "T3.008": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringValidationService.java"], "tests": ["CateringRequirementsTest.suppliedUnitMiseEnSupportProposedValidatedThenReceived"]},
+    "T3.015": {"files": ["src/test/java/com/intermarche/e2e/engine/catering/CateringRequirementsTest.java"], "tests": ["CateringRequirementsTest.suppliedUnitMiseEnSupportProposedValidatedThenReceived"]}
+  },
+  "note": "F9 commit ignore les lignes de mise en support (unite SUPPLIED) : l'article est engage a la reception (T3.009), pas a la validation de l'ordre. F4.5 (blocage recette) ne s'applique pas a une unite fournie.",
+  "regression": {"command": "mvn test -Dtest=CateringRequirementsTest,FabricationPlanningTest,FabricationWindowTest,CateringUnitLifecycleTest,CateringIntakeTest,StoreActivityEngineTest,CateringRecipeTest,CateringReferentialTest,CateringParametersTest", "testsRun": 113, "failures": 0, "errors": 0, "result": "BUILD SUCCESS"}
+}

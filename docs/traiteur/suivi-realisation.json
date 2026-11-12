@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 224,
-  "remaining": 229,
+  "done": 228,
+  "remaining": 225,
   "currentBatch": {
-    "packet": 12,
+    "packet": 13,
     "lot": "T3",
     "status": "TERMINE",
-    "scope": "F10 validation besoin -> ExpectedSupply (T3.004) et reconciliation reception -> engagement (T3.009)"
+    "scope": "F10.4 candidature mise en support (T3.006-008) et test de flux (T3.015)"
   },
   "perLot": {
     "T0": 81,
@@ -1787,24 +1787,24 @@
       "description": "Besoin validé : l'unité devient candidate à la proposition, au poste de sa fiche, dans la fenêtre de F5.",
       "nature": "Règle",
       "ref": "F10.4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringProposalEngine.candidates : unite SUPPLIED RECEIVED avec besoin VALIDATED devient candidate a la proposition, au poste de sa fiche, dans la fenetre F5 (test suppliedUnitMiseEnSupportProposedValidatedThenReceived)."
     },
     {
       "id": "T3.007",
       "description": "Ligne de mise en support : seul composant l'article reçu ; temps = `laborSeconds` de la nomenclature de base, à défaut `defaultLaborSeconds` ; F4.5 non appliquée.",
       "nature": "Règle",
       "ref": "F10.4",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Ligne de mise en support : item fourni, temps = laborSeconds de la nomenclature de base a defaut defaultLaborSeconds ; F4.5 non appliquee (pas de blocage recette) ; engagement F9 ignore pour la ligne fournie (commit)."
     },
     {
       "id": "T3.008",
       "description": "L'unité fournie est `PLANNED` quand son ordre de mise en support est validé.",
       "nature": "Règle",
       "ref": "F10.4 ; F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringValidationService.validate marque l unite SUPPLIED PLANNED a la validation de l ordre de mise en support ; aucun engagement FAB: a la validation (test)."
     },
     {
       "id": "T3.009",
@@ -1859,8 +1859,8 @@
       "description": "`CateringRequirementsTest` : validation ; mise en support proposée puis validée ; réception.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRequirementsTest.suppliedUnitMiseEnSupportProposedValidatedThenReceived : validation du besoin, mise en support proposee puis validee (PLANNED), reception."
     },
     {
       "id": "T3.016",
