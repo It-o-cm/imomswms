@@ -48,6 +48,8 @@ public class FabricationExecutionTest {
     @Inject
     CateringFabricationMission mission;
     @Inject
+    com.intermarche.backoffice.engine.catering.CateringFabricationExecution execution;
+    @Inject
     ObjectMapper mapper;
 
     private static final LocalDateTime MONDAY = LocalDateTime.of(2026, 11, 16, 9, 0);
@@ -123,6 +125,17 @@ public class FabricationExecutionTest {
      * @return the unit.
      */
     private CateringUnit unit(String orderId) {
+        return unit(orderId, BigDecimal.ONE);
+    }
+
+    /**
+     * Persists a FABRICATED unit of a given quantity, carrying frozen labels, allergens and a cake text.
+     *
+     * @param orderId the order id.
+     * @param qty     the unit quantity.
+     * @return the unit.
+     */
+    private CateringUnit unit(String orderId, BigDecimal qty) {
         Order order = new Order();
         order.orderId = orderId;
         order.orderDate = DateTimeProvider.now();
@@ -131,7 +144,7 @@ public class FabricationExecutionTest {
         order.store = store;
         OrderLine orderLine = new OrderLine();
         orderLine.lineNumber = 1;
-        orderLine.requestedQuantity = BigDecimal.ONE;
+        orderLine.requestedQuantity = qty;
         orderLine.product = item.product;
         order.addLine(orderLine);
         order.persistAndFlush();
@@ -143,7 +156,7 @@ public class FabricationExecutionTest {
         unit.item = item;
         unit.sourcingMode = SourcingMode.FABRICATED;
         unit.variantId = "15";
-        unit.quantity = BigDecimal.ONE;
+        unit.quantity = qty;
         unit.availableAt = AVAILABLE;
         unit.allergens = "gluten, œuf";
         unit.choiceLabels = "[\"Chiffre\",\"Chocolat\"]";
@@ -209,6 +222,51 @@ public class FabricationExecutionTest {
         assertFalse(serialized.contains("firstname"), "no client first name");
         assertFalse(serialized.contains("address"), "no client address");
         assertFalse(serialized.contains("phone"), "no client phone");
+    }
+
+    /**
+     * T3.029: the first FABRICATE moves the order to PROCESSING and the unit to IN_PROGRESS; the
+     * completing quantity moves the unit to PRODUCED.
+     */
+    @Test
+    @TestTransaction
+    void fabricateTracksOrderAndUnitState() {
+        setup();
+        CateringUnit unit = unit("O1", new BigDecimal("2"));
+        FabricationOrder order = validatedOrder();
+        com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
+
+        execution.fabricate(order, lineUnit.id, BigDecimal.ONE);
+        assertEquals(FabricationOrder.FabricationProposalState.VALIDATED,
+                FabricationOrder.<FabricationOrder>findById(order.id).proposalState);
+        assertEquals(com.intermarche.backoffice.domain.wms.BaseHandlingOrder.HandlingOrderStatus.PROCESSING,
+                FabricationOrder.<FabricationOrder>findById(order.id).status, "The first action starts the order");
+        assertEquals(CateringUnitState.IN_PROGRESS, CateringUnit.<CateringUnit>findById(unit.id).state);
+
+        execution.fabricate(order, lineUnit.id, BigDecimal.ONE);
+        assertEquals(CateringUnitState.PRODUCED, CateringUnit.<CateringUnit>findById(unit.id).state,
+                "The completing quantity moves the unit to PRODUCED");
+        assertEquals(0, new BigDecimal("2").compareTo(
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.<com.intermarche.backoffice.domain.catering.FabricationLineUnit>findById(lineUnit.id).producedQuantity));
+    }
+
+    /**
+     * T3.028: a total fabricated quantity above the planned quantity for the unit is refused with
+     * QUANTITY_EXCEEDED.
+     */
+    @Test
+    @TestTransaction
+    void fabricateRefusesQuantityExceeded() {
+        setup();
+        unit("O1", BigDecimal.ONE);
+        FabricationOrder order = validatedOrder();
+        com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
+        com.intermarche.backoffice.engine.operator.OperatorFailure failure =
+                assertThrows(com.intermarche.backoffice.engine.operator.OperatorFailure.class,
+                        () -> execution.fabricate(order, lineUnit.id, new BigDecimal("2")));
+        assertEquals(409, failure.getResponse().getStatus());
     }
 
     /**

@@ -1,0 +1,10 @@
+{
+  "packet": 15, "lot": "T3",
+  "scope": "F12 action FABRICATE au niveau etat/quantite (T3.028 QUANTITY_EXCEEDED, T3.029 transitions d'etat) + cablage du dispatch operateur pour une FabricationExecution.",
+  "points": {
+    "T3.028": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationExecution.java"], "tests": ["FabricationExecutionTest.fabricateRefusesQuantityExceeded"]},
+    "T3.029": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationExecution.java", "src/main/java/com/intermarche/backoffice/engine/executing/OperatorExecutionService.java"], "tests": ["FabricationExecutionTest.fabricateTracksOrderAndUnitState"]}
+  },
+  "deferred": "Couches a ajouter sur FABRICATE : F13 mouvements de stock/lots/FabricationConsumption (T3.043-056), F15 support toteCode (T3.026 placement, T3.027, T3.063-071), F14 etiquettes (T3.057-062) ; actions FABRICATION_LOSS (T3.030), FABRICATION_SHORT (T3.031-032), CONCLUDE (T3.034-035) ; garanties contrat v2 bout-en-bout (T3.036-041).",
+  "regression": {"operator": "HandlingOrderServiceTest + CollectingWorkflowTest : 137 tests, 0 echec (dispatch restructure sans regression)", "catering": "FabricationExecutionTest 3, FabricationPlanningTest 13 verts"}
+}

@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 231,
-  "remaining": 222,
+  "done": 233,
+  "remaining": 220,
   "currentBatch": {
-    "packet": 14,
+    "packet": 15,
     "lot": "T3",
     "status": "TERMINE",
-    "scope": "F12 lecture de mission de fabrication (T3.024, T3.025, T3.042) ; T3.023 EN_COURS (test operateur bout-en-bout)"
+    "scope": "F12 action FABRICATE etat/quantite (T3.028, T3.029) ; dispatch operateur cable"
   },
   "perLot": {
     "T0": 81,
@@ -1963,16 +1963,16 @@
       "description": "`FABRICATE` : quantité totale supérieure à la quantité prévue pour l'unité refusée, `QUANTITY_EXCEEDED`.",
       "nature": "Règle",
       "ref": "F12",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFabricationExecution.fabricate : quantite totale fabriquee superieure a la quantite prevue pour l unite refusee, 409 QUANTITY_EXCEEDED (test fabricateRefusesQuantityExceeded)."
     },
     {
       "id": "T3.029",
       "description": "La première action passe l'ordre à `PROCESSING` et l'unité à `IN_PROGRESS` ; la quantité complète la passe à `PRODUCED`.",
       "nature": "Règle",
       "ref": "F12 ; F3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "fabricate : la premiere action passe l ordre PROCESSING et l unite IN_PROGRESS ; la quantite complete la passe PRODUCED (test fabricateTracksOrderAndUnitState). Dispatch cable dans OperatorExecutionService (+ allowedActions FABRICATE)."
     },
     {
       "id": "T3.030",

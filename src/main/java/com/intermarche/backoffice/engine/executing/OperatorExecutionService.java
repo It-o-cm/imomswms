@@ -28,6 +28,7 @@ import java.util.*;
 @ApplicationScoped
 public class OperatorExecutionService {
     @Inject com.intermarche.backoffice.engine.catering.CateringFabricationMission cateringMission;
+    @Inject com.intermarche.backoffice.engine.catering.CateringFabricationExecution cateringExecution;
     @Inject MixedPreparationService mixedPreparation;
     @Inject ProductPickingLocations productLocations;
     @Inject AuthenticationService authentication;
@@ -192,6 +193,7 @@ public class OperatorExecutionService {
             if(e instanceof com.intermarche.backoffice.domain.inventory.InventoryExecution)actions.addAll(List.of("START_INVENTORY","COUNT_INVENTORY","SUBMIT_INVENTORY","RECOUNT_INVENTORY"));
             if(order instanceof ReplenishmentOrder){actions.addAll(List.of("PICK_SUPPLIES","RECEIVE_SUPPLIES","REOPEN_SUPPLY"));if(order instanceof ReplenishmentOrder supplyOrder&&supplyOrder.operation==ReplenishmentOrder.Operation.TRUCK_UNLOADING)actions.add("REPORT_DELIVERY_DISCREPANCY");if(order instanceof StockProtectionOrder)actions.add("RECONCILE_PROTECTION");}
             else if(e instanceof PickingExecution && !MixedPreparationService.supports(order))actions.addAll(List.of("ADD_TOTE","REMOVE_TOTE","PICK","MOVE_ITEM","RETURN_ITEM","MISSING","SUBSTITUTE","RETRIEVE_TOTE","DEPOSIT_TOTE","CONCLUDE"));
+            else if(e instanceof com.intermarche.backoffice.domain.executing.FabricationExecution)actions.add("FABRICATE");
         }
         if(order instanceof PreparingOrder)actions.addAll(List.of("VALIDATE_REPORT","CORRECT_SHORTAGE"));
         return actions.stream().distinct().toList();
@@ -386,8 +388,11 @@ public class OperatorExecutionService {
             for(Long id:changed){var o=scoped(store,id);if(executions(o).stream().allMatch(e->e.status==HandlingExecution.ExecutionStatus.DONE)){o.status=BaseHandlingOrder.HandlingOrderStatus.DONE;if(o instanceof CollectingOrder collecting)markCollected(collecting);}}
         }else{
             HandlingExecution raw=ownedExecution(store,employee,input.executionId);BaseHandlingOrder o=Hibernate.unproxy(raw.handlingOrder,BaseHandlingOrder.class);changed.add(o.id);
-            if(!(raw instanceof PickingExecution p) || MixedPreparationService.supports(o))throw bad("Utilisez le rapport complet pour cette préparation mixte.");
-            try { applyPicking(p,input,employee,store); } catch(IllegalArgumentException e) { throw bad(e.getMessage()); }
+            if(raw instanceof com.intermarche.backoffice.domain.executing.FabricationExecution fab){
+                try { cateringExecution.apply(fab,input,employee,store); } catch(IllegalArgumentException e) { throw bad(e.getMessage()); }
+            }
+            else if(!(raw instanceof PickingExecution p) || MixedPreparationService.supports(o))throw bad("Utilisez le rapport complet pour cette préparation mixte.");
+            else { try { applyPicking(p,input,employee,store); } catch(IllegalArgumentException e) { throw bad(e.getMessage()); } }
         }
         if(Set.of("PICK","MOVE_ITEM","RETURN_ITEM","VALIDATE_REPORT","RECOVER_REPORT","CONCLUDE","DEPOSIT_TOTE","RETRIEVE_TOTE").contains(input.action))stockTrace.synchronize(store,changed,input,"operator:"+employee.badgeId+":"+input.requestKey);
         if(Set.of("CONCLUDE","VALIDATE_REPORT").contains(input.action))for(Long orderId:changed)closure.requireFinal(scoped(store,orderId),input.finalScans);

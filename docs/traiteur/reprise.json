@@ -1,20 +1,20 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 231,
-  "remaining": 222,
-  "lastCompletedPacket": 14,
+  "done": 233,
+  "remaining": 220,
+  "lastCompletedPacket": 15,
   "currentBatch": {
-    "packet": 15,
+    "packet": 16,
     "lot": "T3",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "F12 actions : applyFabrication dans OperatorExecutionService (dispatch ~l.388) + allowedActions (~l.193) pour FABRICATE/FABRICATION_LOSS/FABRICATION_SHORT/DEPOSIT_TOTE/CONCLUDE. Commencer par l'etat/quantite (T3.026,028,029,031,032,034), puis F13 mouvements de stock/lots, F14 etiquettes, F15 mise en attente."
+    "scope": "F12 suite : FABRICATION_SHORT (T3.031-032 : shortQuantity unite+ligne, unite SHORT, PickingShortage, incident), FABRICATION_LOSS (T3.030), CONCLUDE fabrication (T3.034-035), puis F13 mouvements de stock/lots (T3.043-056), F14 etiquettes, F15 support/mise en attente."
   },
-  "lastFullSuite": "Operateur (121) + catering (73) verts. E-09 inchange.",
+  "lastFullSuite": "Operateur 137 + catering cibles verts. E-09 inchange.",
   "openEcarts": [
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil des lots)",
     "E-09 : suite complete de l'arbre de travail non verte a cause du travail parallele non committe ; validation traiteur par tests cibles (pattern des paquets precedents)"
   ],
-  "notes": "Paquet 14 termine le 2026-11-12 : F12 lecture de mission de fabrication. T3.023 EN_COURS. Prochaine etape : les trois actions FABRICATE/LOSS/SHORT."
+  "notes": "Paquet 15 termine le 2026-11-12 : FABRICATE etat/quantite. Reste F12 : LOSS/SHORT/CONCLUDE + couches stock/lot/etiquette/support."
 }
