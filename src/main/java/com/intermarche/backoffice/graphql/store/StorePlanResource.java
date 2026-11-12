@@ -102,7 +102,7 @@ public class StorePlanResource implements GraphQLTrait {
      */
     @Query
     @Description("Get the store plan (nodes, aisles geometry, zones) of a building")
-    @RolesAllowed("MANAGER")
+    @RolesAllowed({"MANAGER", "PICKER"})
     public StorePlanData storePlan(@Name("buildingCode") String buildingCode) {
         LOGGER.info("Entering method storePlan with buildingCode: " + buildingCode);
         StorePlanData data = buildStorePlanData(findBuilding(buildingCode));
@@ -203,6 +203,15 @@ public class StorePlanResource implements GraphQLTrait {
             zd.labelOffset = new PointData(zone.labelOffsetX, zone.labelOffsetY);
             data.zones.add(zd);
         }
+
+        // Background image, placed in plan coordinates as Storepilot draws it
+        boolean image = building.planImage != null && !building.planImage.isBlank();
+        data.planImage = image ? building.planImage : null;
+        data.planImageX = image ? building.planImageX : null;
+        data.planImageY = image ? building.planImageY : null;
+        data.planImageScale = image ? building.planImageScale : null;
+        data.planImageRotation = image ? building.planImageRotation : null;
+        data.planImageOpacity = image ? building.planImageOpacity : null;
 
         return data;
     }
@@ -761,6 +770,36 @@ public class StorePlanResource implements GraphQLTrait {
          * The polygonal zones of the plan.
          */
         public List<PlanZoneData> zones;
+
+        /**
+         * The background image of the plan in base64, or null when the building has none.
+         */
+        public String planImage;
+
+        /**
+         * The plan abscissa of the image's top-left corner, or null without image.
+         */
+        public Double planImageX;
+
+        /**
+         * The plan ordinate of the image's top-left corner, or null without image.
+         */
+        public Double planImageY;
+
+        /**
+         * The plan units per image pixel, or null without image.
+         */
+        public Double planImageScale;
+
+        /**
+         * The rotation of the image around its centre, in degrees, or null without image.
+         */
+        public Double planImageRotation;
+
+        /**
+         * The opacity of the image between 0 and 1, or null without image.
+         */
+        public Double planImageOpacity;
     }
 
     /**

@@ -257,6 +257,58 @@ public class StorePlanResourceTest {
     }
 
     /**
+     * Checks that a picker can read the store plan to locate the point to reach.
+     */
+    @Test
+    @TestSecurity(user = "testPicker", roles = {"PICKER"})
+    void pickerCanReadTheStorePlan() {
+        persistBuilding("BLD_SP_PICKER");
+
+        StorePlanResource.StorePlanData data = storePlanResource.storePlan("BLD_SP_PICKER");
+
+        assertEquals("BLD_SP_PICKER", data.buildingCode);
+    }
+
+    /**
+     * Checks that the store plan carries its background image and its placement, as Storepilot draws it.
+     */
+    @Test
+    @TestSecurity(user = "testPicker", roles = {"PICKER"})
+    void storePlanCarriesTheBackgroundImage() {
+        StoreBuilding building = persistBuilding("BLD_SP_BACKGROUND");
+        building.planImage = ONE_PIXEL_PNG;
+        building.planImageX = -283.0;
+        building.planImageY = -238.0;
+        building.planImageScale = 1.5;
+        building.planImageRotation = 90.0;
+        building.planImageOpacity = 0.8;
+
+        StorePlanResource.StorePlanData data = storePlanResource.storePlan("BLD_SP_BACKGROUND");
+
+        assertEquals(ONE_PIXEL_PNG, data.planImage);
+        assertEquals(-283.0, data.planImageX);
+        assertEquals(-238.0, data.planImageY);
+        assertEquals(1.5, data.planImageScale);
+        assertEquals(90.0, data.planImageRotation);
+        assertEquals(0.8, data.planImageOpacity);
+    }
+
+    /**
+     * Checks that a building without background image exposes no placement either.
+     */
+    @Test
+    @TestSecurity(user = "testPicker", roles = {"PICKER"})
+    void storePlanWithoutBackgroundImageHasNoPlacement() {
+        persistBuilding("BLD_SP_NO_BACKGROUND");
+
+        StorePlanResource.StorePlanData data = storePlanResource.storePlan("BLD_SP_NO_BACKGROUND");
+
+        assertNull(data.planImage);
+        assertNull(data.planImageX);
+        assertNull(data.planImageScale);
+    }
+
+    /**
      * Checks test store plan: returns full plan.
      */
     @Test

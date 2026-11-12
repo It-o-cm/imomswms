@@ -1,0 +1,6 @@
+package db.migration;
+import org.flywaydb.core.api.migration.BaseJavaMigration;import org.flywaydb.core.api.migration.Context;import java.util.ArrayList;
+/** Sequence numbers are store scoped; the database constraint must have the same scope. */
+public class V10__store_scoped_handling_codes extends BaseJavaMigration {
+ @Override public void migrate(Context context)throws Exception{var connection=context.getConnection();var constraints=new ArrayList<String>();try(var statement=connection.createStatement();var rows=statement.executeQuery("select tc.constraint_name from information_schema.table_constraints tc join information_schema.key_column_usage k on tc.constraint_catalog=k.constraint_catalog and tc.constraint_schema=k.constraint_schema and tc.constraint_name=k.constraint_name where tc.table_schema='PUBLIC' and tc.table_name='HANDLING_ORDERS' and tc.constraint_type='UNIQUE' group by tc.constraint_name having count(*)=1 and min(k.column_name)='CODE'")){while(rows.next())constraints.add(rows.getString(1));}try(var statement=connection.createStatement()){for(String name:constraints)statement.execute("alter table handling_orders drop constraint \""+name.replace("\"","\"\"")+"\"");statement.execute("drop index if exists idx_handling_code");statement.execute("create unique index idx_handling_store_code on handling_orders(store_id,code)");}}
+}

@@ -1,0 +1,7 @@
+package com.intermarche.backoffice.engine.fieldops;
+import static com.intermarche.backoffice.domain.fieldops.FieldEntityIds.id;
+import com.intermarche.backoffice.domain.shipping.DepartureUnitSnapshot;import com.intermarche.backoffice.domain.store.Store;import com.intermarche.backoffice.domain.executing.PickedItem;import com.intermarche.backoffice.engine.operator.OperatorFailure;import java.util.*;
+public final class DepartureCargoGuard {
+ private DepartureCargoGuard(){}
+ public static void requireUnchanged(Store store,Collection<Long> lotLines){if(lotLines.isEmpty())return;var snapshots=DepartureUnitSnapshot.<DepartureUnitSnapshot>list("select s from DepartureUnitSnapshot s join fetch s.unit u where u.departure.store=?1 and u.state='LOADED' and s.loadCycle=u.loadCycle and s.lotLineId in ?2",store,lotLines);if(snapshots.isEmpty())return;var ids=snapshots.stream().map(s->s.itemId).toList();var actual=new HashMap<Long,PickedItem>();for(var item:PickedItem.<PickedItem>list("id in ?1",ids))actual.put(item.id,item);for(var s:snapshots){var item=actual.get(s.itemId);if(item==null||item.status!=PickedItem.PickStatus.PICKED||item.quantity.compareTo(s.quantity)!=0||!Objects.equals(id(item.product),s.productId)||!Objects.equals(item.loadedTote==null?null:id(item.loadedTote),s.toteId))throw new OperatorFailure(409,"CARGO_ALREADY_LOADED","Ces marchandises sont déjà chargées. Déchargez le support avant de corriger son contenu.");}}
+}

@@ -1,0 +1,42 @@
+package com.intermarche.e2e.engine.fieldops;
+import com.intermarche.backoffice.domain.stock.*;
+import com.intermarche.backoffice.domain.order.*;
+import com.intermarche.backoffice.domain.store.*;
+import com.intermarche.backoffice.engine.stock.*;
+import com.intermarche.backoffice.engine.executing.ToteCapacityService;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import org.junit.jupiter.api.Test;
+import jakarta.inject.Inject;
+import java.util.*;
+import java.math.BigDecimal;
+import java.time.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static io.restassured.RestAssured.given;
+@QuarkusTest @jakarta.enterprise.inject.Typed(PickerTraceRulesTest.class)
+class PickerTraceRulesTest extends TraceabilityWorkflowTest {
+ @Inject ToteCapacityService capacities;
+ void policy(String method,int days){call(f.manager(),"PUT","/traceability-policies",Map.of("storeId",f.store(),"productId",f.product(),"context","PICKING","allocationMethod",method,"minimumRemainingDays",days,"lotRequired",true,"dateRequired",true)).then().statusCode(200);}
+ List<Map> choices(){return call(f.picker(),"GET","/products/"+f.product()+"/stock-segments?storeId="+f.store(),null).then().statusCode(200).extract().jsonPath().getList("$",Map.class);}
+ @Test void fefoChoicesExplainExpiredOrShortLifeAndPhysicalPickRejectsThem(){line();var stock=stock();policy("FEFO",15);var rows=choices();var first=rows.stream().filter(v->v.get("lotId")!=null&&stock.first().longValue()==((Number)v.get("lotId")).longValue()).findFirst().orElseThrow();assertEquals(false,first.get("allowed"));assertNotNull(first.get("reason"));assertEquals(stock.second().longValue(),rows.stream().filter(v->Boolean.TRUE.equals(v.get("preferred"))).mapToLong(v->((Number)v.get("lotId")).longValue()).findFirst().orElseThrow());attach(f.tote());var c=command("PICK");c.putAll(Map.of("itemId",f.item(),"quantity",2,"toteCode",f.tote(),"manufacturerLotId",stock.first()));command(c).then().statusCode(409);}
+ @Test void fifoUsesFirstReceiptAndQualityRecallDisablesChoice(){line();var stock=stock();QuarkusTransaction.requiringNew().run(()->{StockSegment.<StockSegment>findById(stock.secondSegment()).receivedAt=LocalDateTime.now().minusDays(5);StockSegment.<StockSegment>findById(stock.firstSegment()).receivedAt=LocalDateTime.now();});policy("FIFO",0);assertEquals(stock.second().longValue(),choices().stream().filter(v->Boolean.TRUE.equals(v.get("preferred"))).mapToLong(v->((Number)v.get("lotId")).longValue()).findFirst().orElseThrow());quality(f.manager(),"POST","/cases",Map.of("storeId",f.store(),"productId",f.product(),"lotId",stock.second(),"kind","RECALL","reason","Rappel fabricant","requestKey",key(),"includeUnknownLots",false)).then().statusCode(200);assertEquals(false,choices().stream().filter(v->v.get("lotId")!=null&&((Number)v.get("lotId")).longValue()==stock.second()).findFirst().orElseThrow().get("allowed"));}
+ @Test void datesAreStoredAndConflictsCannotRewriteLotIdentity(){line();var lot=Map.of("storeId",f.store(),"productId",f.product(),"code","DATED","manufacturedOn","2026-01-01","bestBefore","2027-01-01","useBy","2027-02-01");call(f.picker(),"POST","/manufacturer-lots",lot).then().statusCode(200);var bad=new HashMap<String,Object>(lot);bad.put("useBy","2027-03-01");call(f.picker(),"POST","/manufacturer-lots",bad).then().statusCode(409);call(f.picker(),"GET","/products/"+f.product()+"/manufacturer-lot?storeId="+f.store()+"&code=DATED",null).then().statusCode(200).body("lot.useBy",org.hamcrest.Matchers.is("2027-02-01"));}
+ @Test void hazardRulesAreConfigurableAndDriveToteChoicesAndPhysicalCapacity(){line();attach(f.tote());var c=command("PICK");c.putAll(Map.of("itemId",f.item(),"quantity",1,"toteCode",f.tote()));command(c).then().statusCode(200);
+  long other=QuarkusTransaction.requiringNew().call(()->{var p=new Product();p.ean="HZ"+f.store();p.name="Produit inflammable";p.productType=ProductType.UNIT;p.temperatureZone=TemperatureZone.AMBIENT;p.persist();return p.id;});
+  call(f.manager(),"PUT","/traceability-policies",Map.of("storeId",f.store(),"productId",f.product(),"context","PICKING","hazardClass","OXIDIZER","incompatibleHazards","FLAMMABLE")).then().statusCode(200);
+  call(f.manager(),"PUT","/traceability-policies",Map.of("storeId",f.store(),"productId",other,"context","PICKING","hazardClass","FLAMMABLE")).then().statusCode(200);
+  call(f.picker(),"GET","/products/"+other+"/handling-compatibility?storeId="+f.store(),null).then().statusCode(200).body("'"+f.tote()+"'",org.hamcrest.Matchers.containsString("danger"));
+  var denied=assertThrows(RuntimeException.class,()->QuarkusTransaction.requiringNew().run(()->{var request=new ToteCapacityService.Request();request.orderIds=List.of(f.order());var load=new ToteCapacityService.Load();load.code=f.tote();load.items=new ArrayList<>();for(var product:List.of(f.product(),other)){var i=new ToteCapacityService.Item();i.sourceOrderId=f.order();i.pickedItemId=f.item();i.quantity=BigDecimal.ONE;if(product==other)i.productId=other;load.items.add(i);}request.totes=List.of(load);var substitution=new com.intermarche.backoffice.domain.executing.ProductSubstitution();substitution.store=Store.findById(f.store());substitution.requested=Product.findById(f.product());substitution.replacement=Product.findById(other);substitution.active=true;substitution.persist();capacities.preview(request);}));
+  Throwable cause=denied;while(!(cause instanceof com.intermarche.backoffice.engine.operator.OperatorFailure)&&cause.getCause()!=null)cause=cause.getCause();assertTrue(cause instanceof com.intermarche.backoffice.engine.operator.OperatorFailure);assertEquals("INCOMPATIBLE_PRODUCT_HANDLING",((Map<?,?>)((com.intermarche.backoffice.engine.operator.OperatorFailure)cause).getResponse().getEntity()).get("code"));
+  call(f.picker(),"PUT","/traceability-policies",Map.of("storeId",f.store(),"productId",other,"context","PICKING","hazardClass","SAFE")).then().statusCode(403);
+ }
+ @Test void gs1DatesAndSerialReachThePhysicalAllocationAndTraceView(){line();attach(f.tote());
+  String revision=given().auth().oauth2(f.manager()).get("/product-information/"+f.product()+"?storeId="+f.store()).then().statusCode(200).extract().path("revision");
+  given().auth().oauth2(f.manager()).contentType("application/json").body(Map.of("storeId",f.store(),"expectedRevision",revision,"kind","GTIN","value","4006381333931")).put("/product-information/"+f.product()+"/identifiers").then().statusCode(200);
+  var scan=given().auth().oauth2(f.picker()).contentType("application/json").body(Map.of("storeId",f.store(),"scanId",key(),"code","(01)04006381333931(10)GS1-LOT(11)260101(17)271231(21)GS1-SERIAL")).post("/product-information/resolve").then().statusCode(200).extract();
+  var c=command("PICK");c.putAll(Map.of("itemId",f.item(),"quantity",1,"toteCode",f.tote(),"scanId",scan.<String>path("scanId")));command(c).then().statusCode(200);
+  long lot=QuarkusTransaction.requiringNew().call(()->{var a=PickedStockAllocation.<PickedStockAllocation>find("state.store.id=?1 and quantity>0",f.store()).firstResult();assertNotNull(a);assertEquals("GS1-LOT",a.holding.lot.code);assertEquals(LocalDate.of(2026,1,1),a.holding.lot.manufacturedOn);assertEquals(LocalDate.of(2027,12,31),a.holding.lot.useBy);assertEquals("GS1-SERIAL",a.holding.serial.code);return a.holding.lot.id;});
+  var trace=quality(f.picker(),"GET","/trace?storeId="+f.store()+"&productId="+f.product()+"&lotId="+lot,null).then().statusCode(200).extract();assertEquals(f.tote(),trace.path("goods[0].toteCode"));assertEquals("GS1-SERIAL",trace.path("goods[0].serialCode"));assertNotNull(trace.path("movements[0].address"));var reserved=choices().stream().filter(v->f.tote().equals(v.get("supportCode"))&&new BigDecimal(v.get("quantity").toString()).signum()>0).findFirst().orElseThrow();assertEquals("RESERVED",reserved.get("state"));assertEquals(false,reserved.get("allowed"));
+ }
+ @Test void traceAnomalyIsAnIdempotentContextualSafetyReport(){line();var packet=Map.of("storeId",f.store(),"orderId",f.order(),"productId",f.product(),"kind","SAFETY","title","Anomalie de traçabilité","comment","Lot : L-1\nSérie : S-1\nDLC illisible","observedAddress","Z-A-1-1-1","requestKey",key());var first=call(f.picker(),"POST","/incidents",packet).then().statusCode(200).extract();call(f.picker(),"POST","/incidents",packet).then().statusCode(200).body("id",org.hamcrest.Matchers.is(first.jsonPath().getInt("id")));assertEquals(f.product().longValue(),first.jsonPath().getLong("product.id"));}
+}

@@ -47,5 +47,19 @@ public enum TemperatureZone {
      * from edible ambient goods to prevent chemical contamination or odor transfer.
      * </p>
      */
-    HOUSEHOLD
+    HOUSEHOLD;
+
+    /**
+     * Tells whether products of a zone are food products.
+     * <p>
+     * Every zone holds food except {@link #HOUSEHOLD}; a missing zone is treated as food, the most
+     * common case, so that it is never mixed with household products.
+     * </p>
+     *
+     * @param zone the product's temperature zone, possibly {@code null}
+     * @return {@code true} for food, {@code false} for household and non-food products
+     */
+    public static boolean isFood(TemperatureZone zone) {
+        return zone != HOUSEHOLD;
+    }
 }
