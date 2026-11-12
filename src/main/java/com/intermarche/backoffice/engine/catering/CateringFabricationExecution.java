@@ -8,12 +8,16 @@ import com.intermarche.backoffice.domain.store.Employee;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.wms.BaseHandlingOrder.HandlingOrderStatus;
 import com.intermarche.backoffice.domain.wms.handling.FabricationOrder;
+import com.intermarche.backoffice.domain.store.Store;
+import com.intermarche.backoffice.domain.util.DateTimeProvider;
 import com.intermarche.backoffice.engine.executing.OperatorCommandInput;
 import com.intermarche.backoffice.engine.operator.OperatorFailure;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.hibernate.Hibernate;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Applies the operator v2 fabrication actions to a {@link FabricationExecution} (rule F12).
@@ -30,6 +34,8 @@ public class CateringFabricationExecution {
 
     @Inject
     CateringUnitStateService states;
+    @Inject
+    CateringParameters parameters;
 
     /**
      * Applies one operator command to a fabrication execution.
@@ -77,6 +83,9 @@ public class CateringFabricationExecution {
         if (order.status != HandlingOrderStatus.PROCESSING) {
             order.status = HandlingOrderStatus.PROCESSING; // F12: the first action starts the order
         }
+        if (line.producedQuantity.signum() == 0) {
+            stampLine(order, line); // F13: producedAt, useBy and lotCode are fixed at the first quantity
+        }
         lineUnit.producedQuantity = lineUnit.producedQuantity.add(quantity);
         line.producedQuantity = line.producedQuantity.add(quantity);
         CateringUnit unit = Hibernate.unproxy(lineUnit.unit, CateringUnit.class);
@@ -86,6 +95,40 @@ public class CateringFabricationExecution {
         } else {
             states.markInProgress(unit); // F3: first quantity fabricated
         }
+    }
+
+    /**
+     * Fixes the traceability metadata of a line at its first fabricated quantity (F13, T3.043, T3.044):
+     * {@code producedAt} is the server time of the first quantity, {@code useBy} is {@code producedAt}
+     * plus the article shelf life, and {@code lotCode} is {@code <order code>-<line rank>}.
+     *
+     * @param order the fabrication order.
+     * @param line  the fabrication line.
+     */
+    private void stampLine(FabricationOrder order, FabricationLine line) {
+        Store store = Hibernate.unproxy(order.store, Store.class);
+        LocalDateTime now = DateTimeProvider.now();
+        line.producedAt = now;
+        line.useBy = now.plusHours(parameters.shelfLifeHours(store, Hibernate.unproxy(line.item,
+                com.intermarche.backoffice.domain.catering.CateringItem.class)));
+        line.lotCode = order.code + "-" + lineRank(order, line);
+    }
+
+    /**
+     * Returns the 1-based rank of a line among the order's lines, ordered by id.
+     *
+     * @param order the fabrication order.
+     * @param line  the fabrication line.
+     * @return the rank.
+     */
+    private int lineRank(FabricationOrder order, FabricationLine line) {
+        List<FabricationLine> lines = FabricationLine.list("order = ?1 order by id", order);
+        for (int i = 0; i < lines.size(); i++) {
+            if (lines.get(i).id.equals(line.id)) {
+                return i + 1;
+            }
+        }
+        return 1;
     }
 
     /**

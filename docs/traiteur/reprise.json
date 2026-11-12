@@ -1,20 +1,20 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 234,
-  "remaining": 219,
-  "lastCompletedPacket": 16,
+  "done": 236,
+  "remaining": 217,
+  "lastCompletedPacket": 17,
   "currentBatch": {
-    "packet": 17,
+    "packet": 18,
     "lot": "T3",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "F13 tracabilite et mouvements de stock de FABRICATE (T3.043-056 : sortie composants + liberation engagement, entree produit fini sous ManufacturerLot, FabricationConsumption, useBy/producedAt/lotCode, /quality/trace), puis F14 etiquettes (T3.057-062), F15 support/mise en attente (T3.026 depot, T3.027, T3.033, T3.035, T3.063-071), incidents LOSS/SHORT (T3.030-032), F11 synchro (T3.021-022)."
+    "scope": "F13 mouvements de stock de FABRICATE (T3.045-053) : sortie composants + liberation engagement, entree produit fini sous ManufacturerLot a l'adresse du support, FabricationConsumption, componentLots FIFO/FEFO, /quality/trace. Puis F14 etiquettes, F15 support/depot, incidents LOSS/SHORT."
   },
   "lastFullSuite": "FabricationExecutionTest 7 verts ; operateur 137 (paquet 15) sans regression. E-09 inchange.",
   "openEcarts": [
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil des lots)",
     "E-09 : suite complete de l'arbre de travail non verte a cause du travail parallele non committe ; validation traiteur par tests cibles (pattern des paquets precedents)"
   ],
-  "notes": "Paquet 16 termine le 2026-11-12 : garde CONCLUDE (T3.034) ; effets d etat LOSS/SHORT poses. Reste F12 : mouvements de stock/lots (F13), etiquettes (F14), support/depot (F15), incidents."
+  "notes": "Paquet 17 termine le 2026-11-12 : F13 metadonnees tracabilite (producedAt/useBy/lotCode). Reste F13 mouvements de stock, F14, F15, incidents."
 }

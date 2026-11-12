@@ -1,0 +1,10 @@
+{
+  "packet": 17, "lot": "T3",
+  "scope": "F13 metadonnees de tracabilite fixees au premier FABRICATE d'une ligne (T3.043, T3.044).",
+  "points": {
+    "T3.043": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationExecution.java"], "tests": ["FabricationExecutionTest.fabricateStampsTraceabilityOnFirstQuantity"]},
+    "T3.044": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationExecution.java"], "tests": ["FabricationExecutionTest.fabricateStampsTraceabilityOnFirstQuantity"]}
+  },
+  "note": "Reste F13 : mouvements de stock de FABRICATE (sortie composants + liberation engagement T3.045, entree produit fini sous ManufacturerLot T3.046-047, allocation FIFO/FEFO et componentLots T3.048-050, FabricationConsumption T3.051, /quality/trace T3.052-053, CATERING_EXPIRED T3.054). lotCode article fourni = lot fournisseur (avec la reception).",
+  "tests": {"class": "FabricationExecutionTest", "testsRun": 8, "failures": 0, "errors": 0}
+}

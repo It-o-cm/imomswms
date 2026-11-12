@@ -270,6 +270,31 @@ public class FabricationExecutionTest {
     }
 
     /**
+     * T3.043/T3.044: the first fabricated quantity of a line fixes producedAt (server time), useBy
+     * (producedAt + shelf life) and lotCode (order code - line rank); a later quantity does not change them.
+     */
+    @Test
+    @TestTransaction
+    void fabricateStampsTraceabilityOnFirstQuantity() {
+        setup();
+        unit("O1", new BigDecimal("2"));
+        FabricationOrder order = validatedOrder();
+        com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
+        execution.fabricate(order, lineUnit.id, BigDecimal.ONE);
+        com.intermarche.backoffice.domain.catering.FabricationLine line =
+                com.intermarche.backoffice.domain.catering.FabricationLine.find("order", order).firstResult();
+        assertEquals(MONDAY, line.producedAt, "producedAt is the server time of the first quantity");
+        assertEquals(MONDAY.plusHours(240), line.useBy, "useBy = producedAt + shelf life (240h)");
+        assertEquals(order.code + "-1", line.lotCode, "lotCode = order code - line rank");
+
+        execution.fabricate(order, lineUnit.id, BigDecimal.ONE);
+        com.intermarche.backoffice.domain.catering.FabricationLine reloaded =
+                com.intermarche.backoffice.domain.catering.FabricationLine.find("order", order).firstResult();
+        assertEquals(MONDAY, reloaded.producedAt, "A later quantity does not move producedAt");
+    }
+
+    /**
      * T3.030: FABRICATION_LOSS records the lost quantity on the line and leaves the quantity still to
      * fabricate unchanged.
      */
