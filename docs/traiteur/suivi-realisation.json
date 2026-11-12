@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 222,
-  "remaining": 231,
+  "done": 224,
+  "remaining": 229,
   "currentBatch": {
-    "packet": 11,
+    "packet": 12,
     "lot": "T3",
     "status": "TERMINE",
-    "scope": "F11 expansion articles en stock (T3.018-020) ; synchro d etat T3.021/022 differee avec le socle d execution F12 (meme mecanisme)"
+    "scope": "F10 validation besoin -> ExpectedSupply (T3.004) et reconciliation reception -> engagement (T3.009)"
   },
   "perLot": {
     "T0": 81,
@@ -1771,8 +1771,8 @@
       "description": "`POST /catering/purchase-needs/validate` : besoins choisis `VALIDATED`, `ExpectedSupply` `EXPECTED` de référence `CAT:…` vers l'emplacement de réception ; 409 `STALE_REVISION`.",
       "nature": "API",
       "ref": "§ 8.2 ; F10.3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringSupplyService.validate + POST /catering/purchase-needs/validate : besoins choisis VALIDATED, ExpectedSupply EXPECTED ref CAT:... vers emplacement de reception (PendingSupplyLocation) ; 409 STALE_REVISION (tests validateCreatesExpectedSupply, validateStaleRevisionRefused)."
     },
     {
       "id": "T3.005",
@@ -1811,8 +1811,8 @@
       "description": "Réception par le flux existant, reconnue à la référence `CAT:…` : besoin `RECEIVED`, entrée en stock avec le lot du fournisseur, engagement immédiat pour l'unité.",
       "nature": "Adaptation",
       "ref": "F10.5",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringSupplyService.reconcileReceipts (cable dans StoreActivityEngine) : ExpectedSupply recu par le flux existant -> besoin RECEIVED + engagement CATSUP:<unit> de la quantite recue ; idempotent (test receptionReconcilesNeedAndCommits)."
     },
     {
       "id": "T3.010",

@@ -7,8 +7,17 @@ import com.intermarche.backoffice.domain.catering.CateringUnit;
 import com.intermarche.backoffice.domain.catering.CateringUnitState;
 import com.intermarche.backoffice.domain.catering.FabricationStation;
 import com.intermarche.backoffice.domain.catering.SourcingMode;
+import com.intermarche.backoffice.domain.order.Order;
+import com.intermarche.backoffice.domain.stock.ExpectedSupply;
+import com.intermarche.backoffice.domain.stock.StockAccount;
+import com.intermarche.backoffice.domain.stock.StockCommitment;
+import com.intermarche.backoffice.domain.store.BaseLocation;
+import com.intermarche.backoffice.domain.store.Building;
+import com.intermarche.backoffice.domain.store.PendingSupplyLocation;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.util.DateTimeProvider;
+import com.intermarche.backoffice.engine.operator.OperatorFailure;
+import com.intermarche.backoffice.engine.stock.TemporalStockService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -16,6 +25,9 @@ import org.hibernate.Hibernate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Builds and tracks the purchase needs of {@code SUPPLIED} catering units (rule F10).
@@ -31,6 +43,14 @@ public class CateringSupplyService {
 
     @Inject
     CateringParameters parameters;
+    @Inject
+    TemporalStockService stocks;
+
+    /** A validation request for one purchase need. */
+    public static class NeedValidation {
+        public Long id;
+        public Long revision;
+    }
 
     /** Lateness of a purchase need (F10.7). */
     public enum SupplyLateState {
@@ -78,6 +98,116 @@ public class CateringSupplyService {
             need.state = PurchaseNeedState.PROPOSED;
             need.persist();
         }
+    }
+
+    /**
+     * Validates the chosen purchase needs (F10.3, T3.004): each {@code PROPOSED} need becomes
+     * {@code VALIDATED} and gets an {@link ExpectedSupply} ({@code EXPECTED}, reference {@code CAT:…})
+     * towards the store's receiving location, created by the existing supply flow. A stale revision or a
+     * need that is not proposable is refused with {@code STALE_REVISION}.
+     *
+     * @param store           the store.
+     * @param inputs          the per-need validation requests.
+     * @param enforceRevision whether to enforce the expected revision.
+     * @return the ids of the validated needs.
+     */
+    @Transactional
+    public List<Long> validate(Store store, List<NeedValidation> inputs, boolean enforceRevision) {
+        List<Long> validated = new ArrayList<>();
+        for (NeedValidation input : inputs) {
+            CateringPurchaseNeed need = input.id == null ? null : CateringPurchaseNeed.findById(input.id);
+            if (need == null || !Hibernate.unproxy(need.store, Store.class).id.equals(store.id)
+                    || need.state != PurchaseNeedState.PROPOSED) {
+                throw new OperatorFailure(409, "STALE_REVISION", "Besoin introuvable ou déjà traité");
+            }
+            if (enforceRevision && input.revision != null && !Objects.equals(need.version, input.revision)) {
+                throw new OperatorFailure(409, "STALE_REVISION", "Le besoin a changé, actualisez");
+            }
+            CateringUnit unit = Hibernate.unproxy(need.unit, CateringUnit.class);
+            CateringItem item = Hibernate.unproxy(unit.item, CateringItem.class);
+            Building building = receptionBuilding(item);
+            if (building == null) {
+                throw new OperatorFailure(409, "NO_RECEPTION_LOCATION", "Aucun bâtiment de réception pour l'article");
+            }
+            BaseLocation destination = receptionLocation(building);
+            StockAccount account = stocks.account(store.id, item.product.id);
+            Order order = Hibernate.unproxy(unit.order, Order.class);
+            String reference = "CAT:" + order.id + ":" + unit.lineId;
+            ExpectedSupply supply = stocks.planSupply(account.id, reference, null, destination.id, need.quantity, need.dueAt);
+            need.expectedSupply = supply;
+            need.state = PurchaseNeedState.VALIDATED;
+            validated.add(need.id);
+        }
+        return validated;
+    }
+
+    /**
+     * Reconciles supplier receipts (F10.5, T3.009): a {@code VALIDATED} need whose {@link ExpectedSupply}
+     * has been received through the existing reception flow becomes {@code RECEIVED}, and the received
+     * quantity is committed for its unit so fabrication can consume it. Idempotent: an already-committed
+     * supply is not committed twice.
+     *
+     * @param store the store.
+     */
+    @Transactional
+    public void reconcileReceipts(Store store) {
+        if (store == null) {
+            return;
+        }
+        for (CateringPurchaseNeed need : CateringPurchaseNeed.<CateringPurchaseNeed>list("store = ?1 and state = ?2",
+                store, PurchaseNeedState.VALIDATED)) {
+            ExpectedSupply supply = Hibernate.unproxy(need.expectedSupply, ExpectedSupply.class);
+            if (supply == null || supply.status != ExpectedSupply.SupplyStatus.RECEIVED) {
+                continue;
+            }
+            need.state = PurchaseNeedState.RECEIVED;
+            CateringUnit unit = Hibernate.unproxy(need.unit, CateringUnit.class);
+            CateringItem item = Hibernate.unproxy(unit.item, CateringItem.class);
+            Building building = receptionBuilding(item);
+            if (building == null) {
+                continue;
+            }
+            String reference = "CATSUP:" + unit.id;
+            if (StockCommitment.count("reference = ?1", reference) == 0) {
+                StockAccount account = stocks.account(store.id, item.product.id);
+                stocks.reserve(account.id, reference, building.id, need.quantity, unit.availableAt, false);
+            }
+        }
+    }
+
+    /**
+     * Returns the building of the article's station, or null when none is resolved.
+     *
+     * @param item the supplied article datasheet.
+     * @return the reception building, or null.
+     */
+    private Building receptionBuilding(CateringItem item) {
+        FabricationStation station = item == null ? null : Hibernate.unproxy(item.station, FabricationStation.class);
+        return station == null || station.building == null ? null : Hibernate.unproxy(station.building, Building.class);
+    }
+
+    /**
+     * Resolves the store's receiving location in a building, creating the forecast
+     * {@link PendingSupplyLocation} when the building has none (the expected supply's forecast address).
+     *
+     * @param building the reception building.
+     * @return the receiving location.
+     */
+    private BaseLocation receptionLocation(Building building) {
+        for (BaseLocation location : building.locations) {
+            if (Hibernate.unproxy(location, BaseLocation.class) instanceof PendingSupplyLocation pending) {
+                return pending;
+            }
+        }
+        PendingSupplyLocation pending = new PendingSupplyLocation();
+        pending.area = "EN_ATTENTE";
+        pending.aisle = "TRAITEUR";
+        pending.unit = "RECEPTION";
+        pending.position = "1";
+        pending.elevation = "1";
+        building.locations.add(pending);
+        pending.persist();
+        return pending;
     }
 
     /**

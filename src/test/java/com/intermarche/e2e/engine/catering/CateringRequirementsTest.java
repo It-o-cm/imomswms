@@ -8,7 +8,9 @@ import com.intermarche.backoffice.domain.order.OrderLine;
 import com.intermarche.backoffice.domain.order.Product;
 import com.intermarche.backoffice.domain.order.ProductType;
 import com.intermarche.backoffice.domain.policy.OperationalPolicyVersion;
+import com.intermarche.backoffice.domain.stock.ExpectedSupply;
 import com.intermarche.backoffice.domain.stock.StockCommitment;
+import com.intermarche.backoffice.domain.store.StoreShelfLocation;
 import com.intermarche.backoffice.domain.store.Store;
 import com.intermarche.backoffice.domain.store.StoreBuilding;
 import com.intermarche.backoffice.domain.util.DateTimeProvider;
@@ -451,6 +453,87 @@ public class CateringRequirementsTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> line = (Map<String, Object>) lines.get(0);
         assertEquals(0, new BigDecimal("2").compareTo((BigDecimal) line.get("quantity")));
+    }
+
+    /**
+     * T3.004: validating a proposed need turns it VALIDATED and creates an EXPECTED supply with a
+     * CAT:… reference towards the receiving location.
+     */
+    @Test
+    @TestTransaction
+    void validateCreatesExpectedSupply() {
+        suppliedSetup(24, 2, "Fournisseur démo");
+        suppliedUnit("S1", AVAILABLE);
+        supplyService.recomputeNeeds(store);
+        CateringPurchaseNeed need = CateringPurchaseNeed.find("store", store).firstResult();
+        var input = new CateringSupplyService.NeedValidation();
+        input.id = need.id;
+        input.revision = need.version;
+        supplyService.validate(store, List.of(input), true);
+        CateringPurchaseNeed reloaded = CateringPurchaseNeed.findById(need.id);
+        assertEquals(CateringPurchaseNeed.PurchaseNeedState.VALIDATED, reloaded.state);
+        ExpectedSupply supply = reloaded.expectedSupply;
+        assertNotNull(supply, "An expected supply is created");
+        assertEquals(ExpectedSupply.SupplyStatus.EXPECTED, supply.status);
+        assertTrue(supply.reference.startsWith("CAT:"), "CAT:… reference");
+        assertEquals(0, need.quantity.compareTo(supply.quantity));
+    }
+
+    /**
+     * T3.004: a stale revision is refused.
+     */
+    @Test
+    @TestTransaction
+    void validateStaleRevisionRefused() {
+        suppliedSetup(24, 2, "Fournisseur démo");
+        suppliedUnit("S1", AVAILABLE);
+        supplyService.recomputeNeeds(store);
+        CateringPurchaseNeed need = CateringPurchaseNeed.find("store", store).firstResult();
+        var input = new CateringSupplyService.NeedValidation();
+        input.id = need.id;
+        input.revision = need.version + 99;
+        OperatorFailure failure = assertThrows(OperatorFailure.class,
+                () -> supplyService.validate(store, List.of(input), true));
+        assertEquals(409, failure.getResponse().getStatus());
+    }
+
+    /**
+     * T3.009: once the expected supply is received through the existing flow, reconciliation turns the
+     * need RECEIVED and commits the received quantity for its unit.
+     */
+    @Test
+    @TestTransaction
+    void receptionReconcilesNeedAndCommits() {
+        suppliedSetup(24, 2, "Fournisseur démo");
+        CateringUnit unit = suppliedUnit("S1", AVAILABLE);
+        supplyService.recomputeNeeds(store);
+        CateringPurchaseNeed need = CateringPurchaseNeed.find("store", store).firstResult();
+        var input = new CateringSupplyService.NeedValidation();
+        input.id = need.id;
+        input.revision = need.version;
+        supplyService.validate(store, List.of(input), true);
+        ExpectedSupply supply = CateringPurchaseNeed.<CateringPurchaseNeed>findById(need.id).expectedSupply;
+
+        // Receive the supply at a receiving shelf through the existing reception flow.
+        StoreShelfLocation shelf = new StoreShelfLocation();
+        shelf.area = "RECEP";
+        shelf.aisle = "0";
+        shelf.unit = "0";
+        shelf.position = "1";
+        shelf.elevation = "1";
+        station.building.locations.add(shelf);
+        shelf.persistAndFlush();
+        stocks.receive(supply.id, "rcpt-1", need.quantity, DateTimeProvider.now(), true, shelf.id);
+        assertEquals(ExpectedSupply.SupplyStatus.RECEIVED, ExpectedSupply.<ExpectedSupply>findById(supply.id).status);
+
+        supplyService.reconcileReceipts(store);
+        assertEquals(CateringPurchaseNeed.PurchaseNeedState.RECEIVED,
+                CateringPurchaseNeed.<CateringPurchaseNeed>findById(need.id).state);
+        assertEquals(1, StockCommitment.count("reference = ?1", "CATSUP:" + unit.id),
+                "The received quantity is committed for the unit");
+        // Idempotent: a second reconciliation does not commit again.
+        supplyService.reconcileReceipts(store);
+        assertEquals(1, StockCommitment.count("reference = ?1", "CATSUP:" + unit.id));
     }
 
     /**

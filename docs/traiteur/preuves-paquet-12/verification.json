@@ -1,0 +1,11 @@
+{
+  "packet": 12, "lot": "T3",
+  "scope": "F10 validation du besoin d'achat et reception fournisseur (T3.004, T3.009).",
+  "points": {
+    "T3.004": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringSupplyService.java", "src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationResource.java"], "tests": ["CateringRequirementsTest.validateCreatesExpectedSupply", "CateringRequirementsTest.validateStaleRevisionRefused"]},
+    "T3.009": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringSupplyService.java", "src/main/java/com/intermarche/backoffice/engine/StoreActivityEngine.java"], "tests": ["CateringRequirementsTest.receptionReconcilesNeedAndCommits"]}
+  },
+  "note": "La reception utilise le flux existant TemporalStockService.planSupply/receive ; l'emplacement de reception est le PendingSupplyLocation du batiment du poste (adresse d'appro previsionnelle), cree si absent. L'engagement pour l'unite porte la reference CATSUP:<unitId> et sera consomme par FABRICATE (F10.6, paquet ulterieur).",
+  "deferred": ["T3.006-008 (candidature mise en support, besoin proposal-engine SUPPLIED)", "T3.010-012 (FABRICATE)", "T3.015 (partie mise en support)", "T3.016"],
+  "regression": {"command": "mvn test -Dtest=CateringRequirementsTest,CateringUnitLifecycleTest,FabricationPlanningTest,CateringIntakeTest,StoreActivityEngineTest,FabricationWindowTest,CateringRecipeTest,CateringReferentialTest,CateringParametersTest", "testsRun": 112, "failures": 0, "errors": 0, "result": "BUILD SUCCESS"}
+}

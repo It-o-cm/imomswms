@@ -264,6 +264,7 @@ public class StoreActivityEngine {
             }
             if (cateringSupply != null) {
                 cateringSupply.recomputeNeeds(store);
+                cateringSupply.reconcileReceipts(store);
             }
             if (cateringProposals != null) {
                 cateringProposals.recompute(store);

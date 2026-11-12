@@ -1,20 +1,20 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 222,
-  "remaining": 231,
-  "lastCompletedPacket": 11,
+  "done": 224,
+  "remaining": 229,
+  "lastCompletedPacket": 12,
   "currentBatch": {
-    "packet": 12,
+    "packet": 13,
     "lot": "T3",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "Socle d'execution F12 (contrat operateur v2 FABRICATE/FABRICATION_LOSS/FABRICATION_SHORT, T3.023-042) + synchro d'etat des unites depuis fabrication et collecte (T3.021/022). Puis F13 tracabilite, F14 etiquettes, F15 mise en attente, et reste F10 (T3.004,006-012,015,016)."
+    "scope": "Candidature mise en support SUPPLIED (T3.006-008) dans le moteur de proposition, puis socle d'execution F12 (T3.023-042) et le reste de T3."
   },
-  "lastFullSuite": "Catering + intake + activity : 150 tests, 0 echec, 0 erreur (BUILD SUCCESS). Suite complete de l'arbre de travail toujours polluee par le travail parallele non suivi (E-09).",
+  "lastFullSuite": "Catering cible : 112 tests, 0 echec, 0 erreur (BUILD SUCCESS). Suite complete toujours polluee par le travail parallele non suivi (E-09).",
   "openEcarts": [
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil des lots)",
     "E-09 : suite complete de l'arbre de travail non verte a cause du travail parallele non committe ; validation traiteur par tests cibles (pattern des paquets precedents)"
   ],
-  "notes": "Paquet 11 termine le 2026-11-12 : F11 expansion articles en stock (T3.018-020). Prochaine etape : socle d'execution F12."
+  "notes": "Paquet 12 termine le 2026-11-12 : F10 validation besoin -> ExpectedSupply et reconciliation reception. Reste T3 : candidature mise en support, F12 execution, F13-F15, F11 synchro d'etat."
 }

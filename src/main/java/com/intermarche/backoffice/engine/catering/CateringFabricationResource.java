@@ -289,6 +289,31 @@ public class CateringFabricationResource implements GraphQLTrait {
         return new java.util.ArrayList<>(groups.values());
     }
 
+    /** A batch purchase-need validation request. */
+    public static class ValidateNeedsRequest {
+        public Long storeId;
+        public List<CateringSupplyService.NeedValidation> needs = new java.util.ArrayList<>();
+    }
+
+    /**
+     * Validates a batch of purchase needs (§ 8.2, F10.3, T3.004): the chosen needs become
+     * {@code VALIDATED} and each gets an {@link com.intermarche.backoffice.domain.stock.ExpectedSupply}.
+     *
+     * @param request the validation request.
+     * @return the validated need ids.
+     */
+    @POST
+    @Path("/purchase-needs/validate")
+    @RolesAllowed({"ADMIN", "MANAGER"})
+    public Map<String, Object> validateNeeds(ValidateNeedsRequest request) {
+        if (request == null) {
+            throw new BadRequestException("Demande de validation requise");
+        }
+        Store store = scope(request.storeId);
+        List<Long> validated = supply.validate(store, request.needs, true);
+        return Map.of("validated", validated);
+    }
+
     /**
      * Serves the printable supplier order form of a store (§ 8.2, F10.3, T3.005): the purchase needs
      * of one supplier due on a given day, as order lines by article and variant. The form is a read:
