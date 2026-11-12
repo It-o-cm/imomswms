@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 212,
-  "remaining": 241,
+  "done": 219,
+  "remaining": 234,
   "currentBatch": {
-    "packet": 9,
-    "lot": "T2",
+    "packet": 10,
+    "lot": "T3",
     "status": "TERMINE",
-    "scope": "F3 états (T2.001-006,008), feuille T2.059, capacité présence T2.038, engagements F9 T2.070-071-073"
+    "scope": "F10 besoins d'achat fournisseur (T3.001-003, T3.005, T3.013, T3.014, T3.017) ; candidature mise en support et FABRICATE differes au paquet 11 (F12)"
   },
   "perLot": {
     "T0": 81,
@@ -1747,24 +1747,24 @@
       "description": "Unité `SUPPLIED` reçue : besoin d'achat `PROPOSED` ; `dueAt` = mise à disposition − `maxAdvanceHours`.",
       "nature": "Règle",
       "ref": "F10.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringSupplyService.recomputeNeeds : unite SUPPLIED -> besoin PROPOSED ; dueAt = mise a disposition - maxAdvanceHours (test proposesNeedWithDueAndOrderBy)."
     },
     {
       "id": "T3.002",
       "description": "`orderBy` = le jour de `dueAt` − `supplierLeadDays`, à l'heure `supplierOrderCutoff`, à défaut à la fin de ce jour.",
       "nature": "Règle",
       "ref": "F10.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "orderBy = jour de dueAt - supplierLeadDays, a supplierOrderCutoff ou fin de jour (tests proposesNeedWithDueAndOrderBy, orderByUsesCutoffWhenSet)."
     },
     {
       "id": "T3.003",
       "description": "`GET /catering/purchase-needs?storeId=&state=` : besoins regroupés par fournisseur, article, variante et jour dû.",
       "nature": "API",
       "ref": "§ 8.2 ; F10.2",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "GET /catering/purchase-needs : besoins regroupes par fournisseur, article, variante, jour du ; etat et retard par besoin (test purchaseNeedsReadGroupsBySupplierArticleVariantDay)."
     },
     {
       "id": "T3.004",
@@ -1779,8 +1779,8 @@
       "description": "`GET /catering/purchase-needs/order-form?storeId=&supplier=&dueDate=` : bon de commande imprimable, jamais transmis.",
       "nature": "API",
       "ref": "§ 8.2 ; F10.3",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "GET /catering/purchase-needs/order-form : bon de commande imprimable par fournisseur et jour du, lignes par article/variante (test orderFormListsSupplierLinesForDueDay)."
     },
     {
       "id": "T3.006",
@@ -1843,16 +1843,16 @@
       "description": "`orderBy` dépassé sans validation, ou `dueAt` dépassé sans réception : `CATERING_SUPPLY_LATE` en risque ; avérée après la fin au plus tard.",
       "nature": "Règle",
       "ref": "F10.7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringSupplyService.lateState : orderBy depasse (PROPOSED) ou dueAt depasse sans reception -> RISK ; fin au plus tard (availableAt - stagingLeadMinutes) depassee -> CONFIRMED (test supplyLateRiskThenConfirmed)."
     },
     {
       "id": "T3.014",
       "description": "`CateringRequirementsTest` : `dueAt` et `orderBy` avec et sans heure limite ; regroupement de la lecture.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRequirementsTest : dueAt/orderBy avec et sans heure limite ; regroupement de la lecture."
     },
     {
       "id": "T3.015",
@@ -1875,8 +1875,8 @@
       "description": "`CateringRequirementsTest` : retard de commande, retard de livraison, passage de risque à avéré.",
       "nature": "Test",
       "ref": "§ 11.1",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRequirementsTest.supplyLateRiskThenConfirmed : retard de commande, retard de livraison, passage de risque a avere, besoin recu non en retard."
     },
     {
       "id": "T3.018",

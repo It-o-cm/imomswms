@@ -1,20 +1,20 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 212,
-  "remaining": 241,
-  "lastCompletedPacket": 9,
+  "done": 219,
+  "remaining": 234,
+  "lastCompletedPacket": 10,
   "currentBatch": {
-    "packet": 10,
+    "packet": 11,
     "lot": "T3",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "Lot T3 (execution de fabrication) : F10 articles fournis (T3.001-017), F11 articles en stock (T3.018-022), puis F12 execution (T3.023+)"
+    "scope": "F10 reste + F12 execution : construire le socle du contrat operateur v2 FABRICATE (T3.023-056), puis finir F10 execution (T3.004,006-012,015,016) et F11 articles en stock (T3.018-022)."
   },
-  "lastFullSuite": "Package catering complet vert : 59 tests, 0 echec, 0 erreur (BUILD SUCCESS). Regression StoreActivityEngineTest 27/27 verte. La suite complete de l'arbre de travail echoue (404 erreurs) a cause du travail parallele NON SUIVI PAR GIT (product-identifiers, replenishment, plan image, demos) qui empoisonne l'isolation des tests ; aucun echec imputable au traiteur (cf. preuves-paquet-09).",
+  "lastFullSuite": "Package catering + StoreActivityEngine : 90 tests, 0 echec, 0 erreur (BUILD SUCCESS). Suite complete de l'arbre de travail toujours polluee par le travail parallele non suivi (E-09).",
   "openEcarts": [
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil des lots)",
     "E-09 : suite complete de l'arbre de travail non verte a cause du travail parallele non committe ; validation traiteur par tests cibles (pattern des paquets precedents)"
   ],
-  "notes": "Lot T2 termine (73/73). Paquet 9 termine le 2026-11-11 : F3 etats, feuille, capacite par presence, engagements F9. Prochaine etape : lot T3 execution."
+  "notes": "Paquet 10 termine le 2026-11-12 : F10 besoins d'achat fournisseur (proposition, datation, lecture regroupee, bon de commande, retard). Prochaine etape paquet 11 : socle d'execution F12 puis reste F10/F11."
 }

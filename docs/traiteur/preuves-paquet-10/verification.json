@@ -1,0 +1,86 @@
+{
+  "packet": 10,
+  "lot": "T3",
+  "scope": "F10 besoins d'achat fournisseur : proposition et datation (T3.001-002), lecture regroupee (T3.003), bon de commande (T3.005), retard d'appro (T3.013), tests (T3.014, T3.017).",
+  "points": {
+    "T3.001": {
+      "files": [
+        "src/main/java/com/intermarche/backoffice/engine/catering/CateringSupplyService.java"
+      ],
+      "tests": [
+        "CateringRequirementsTest.proposesNeedWithDueAndOrderBy"
+      ]
+    },
+    "T3.002": {
+      "files": [
+        "src/main/java/com/intermarche/backoffice/engine/catering/CateringSupplyService.java"
+      ],
+      "tests": [
+        "CateringRequirementsTest.proposesNeedWithDueAndOrderBy",
+        "CateringRequirementsTest.orderByUsesCutoffWhenSet"
+      ]
+    },
+    "T3.003": {
+      "files": [
+        "src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationResource.java"
+      ],
+      "tests": [
+        "CateringRequirementsTest.purchaseNeedsReadGroupsBySupplierArticleVariantDay"
+      ]
+    },
+    "T3.005": {
+      "files": [
+        "src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationResource.java"
+      ],
+      "tests": [
+        "CateringRequirementsTest.orderFormListsSupplierLinesForDueDay"
+      ]
+    },
+    "T3.013": {
+      "files": [
+        "src/main/java/com/intermarche/backoffice/engine/catering/CateringSupplyService.java"
+      ],
+      "tests": [
+        "CateringRequirementsTest.supplyLateRiskThenConfirmed"
+      ]
+    },
+    "T3.014": {
+      "files": [
+        "src/test/java/com/intermarche/e2e/engine/catering/CateringRequirementsTest.java"
+      ],
+      "tests": [
+        "CateringRequirementsTest.proposesNeedWithDueAndOrderBy",
+        "CateringRequirementsTest.orderByUsesCutoffWhenSet",
+        "CateringRequirementsTest.purchaseNeedsReadGroupsBySupplierArticleVariantDay"
+      ]
+    },
+    "T3.017": {
+      "files": [
+        "src/test/java/com/intermarche/e2e/engine/catering/CateringRequirementsTest.java"
+      ],
+      "tests": [
+        "CateringRequirementsTest.supplyLateRiskThenConfirmed"
+      ]
+    }
+  },
+  "deferred": {
+    "note": "Points F10 dependant de l'integration stock/reception et du moteur d'execution F12 (contrat operateur v2), construits au paquet 11 :",
+    "points": [
+      "T3.004 (validation -> ExpectedSupply via planSupply)",
+      "T3.006-008 (candidature mise en support, ligne a composant unique, PLANNED)",
+      "T3.009 (reception CAT:... -> besoin RECEIVED + engagement)",
+      "T3.010-012 (FABRICATE sur ligne de mise en support)",
+      "T3.015 (test validation + mise en support + reception)",
+      "T3.016 (test FABRICATE avant/apres reception, date limite du lot fournisseur)"
+    ]
+  },
+  "cateringSuite": {
+    "command": "mvn test -Dtest=CateringUnitLifecycleTest,CateringRequirementsTest,FabricationPlanningTest,FabricationWindowTest,CateringRecipeTest,CateringReferentialTest,CateringParametersTest,StoreActivityEngineTest",
+    "testsRun": 91,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "result": "BUILD SUCCESS"
+  },
+  "ecartEnvironnement": "E-09 (paquet 9) toujours valable : la suite complete de l'arbre de travail reste polluee par le travail parallele non suivi par git ; validation traiteur par tests cibles."
+}

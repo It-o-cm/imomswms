@@ -79,6 +79,12 @@ public class StoreActivityEngine {
     com.intermarche.backoffice.engine.catering.CateringUnitStateService cateringUnitStates;
 
     /**
+     * Catering supply needs, recomputed each cycle to propose supplier orders (F10).
+     */
+    @Inject
+    com.intermarche.backoffice.engine.catering.CateringSupplyService cateringSupply;
+
+    /**
      * Jackson ObjectMapper for parsing and processing JSON payloads from the database configuration.
      */
     @Inject
@@ -255,6 +261,9 @@ public class StoreActivityEngine {
             }
             if (cateringUnitStates != null) {
                 cateringUnitStates.recompute(store);
+            }
+            if (cateringSupply != null) {
+                cateringSupply.recomputeNeeds(store);
             }
             if (cateringProposals != null) {
                 cateringProposals.recompute(store);

@@ -14,6 +14,7 @@ import com.intermarche.backoffice.domain.store.StoreBuilding;
 import com.intermarche.backoffice.domain.util.DateTimeProvider;
 import com.intermarche.backoffice.domain.wms.handling.FabricationOrder;
 import com.intermarche.backoffice.engine.catering.CateringProposalEngine;
+import com.intermarche.backoffice.engine.catering.CateringSupplyService;
 import com.intermarche.backoffice.engine.catering.CateringValidationService;
 import com.intermarche.backoffice.engine.operator.OperatorFailure;
 import com.intermarche.backoffice.engine.policy.OperationalPolicySchemas;
@@ -23,8 +24,10 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import io.quarkus.test.security.TestSecurity;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +45,10 @@ public class CateringRequirementsTest {
     CateringProposalEngine engine;
     @Inject
     CateringValidationService validation;
+    @Inject
+    com.intermarche.backoffice.engine.catering.CateringSupplyService supplyService;
+    @Inject
+    com.intermarche.backoffice.engine.catering.CateringFabricationResource resource;
     @Inject
     com.intermarche.backoffice.engine.stock.TemporalStockService stocks;
     @Inject
@@ -289,5 +296,198 @@ public class CateringRequirementsTest {
                 StockCommitment.CommitmentStatus.ACTIVE), "The fabrication commitment is now visible demand");
         assertEquals(0, before.subtract(new BigDecimal("2")).compareTo(after),
                 "The existing stock projection reacts: the balance drops by the fabrication demand");
+    }
+
+    // ----- F10 purchase needs (T3.001-003, T3.013, T3.014, T3.017) -----
+
+    /**
+     * Sets up the store, a building, a station and a SUPPLIED article for the supply-need tests.
+     *
+     * @param maxAdvanceHours the article maximum advance in hours.
+     * @param supplierLeadDays the article supplier lead days.
+     * @param supplierName    the supplier name.
+     */
+    private void suppliedSetup(int maxAdvanceHours, int supplierLeadDays, String supplierName) {
+        store = DomainUtils.createAndPersistStore("SUP-" + (counter++), 48.0, 2.0);
+        StoreBuilding building = new StoreBuilding();
+        building.buildingCode = "SUP-SHOP-" + counter;
+        store.buildings.add(building);
+        building.persist();
+        store.persistAndFlush();
+        station = new FabricationStation();
+        station.store = store;
+        station.code = "LAB";
+        station.name = "Laboratoire";
+        station.active = true;
+        station.building = building;
+        station.weekdays = "1,2,3,4,5,6,7";
+        station.opensAt = LocalTime.of(0, 0);
+        station.closesAt = LocalTime.of(23, 59);
+        station.stagingLeadMinutes = 60;
+        station.dailyMinutes = 0;
+        station.maxOrderMinutes = 600;
+        station.persist();
+        Product product = DomainUtils.createAndPersistProduct("SUP-ITEM-" + counter, "Tarte", ProductType.UNIT);
+        item = new CateringItem();
+        item.product = product;
+        item.sourcingMode = SourcingMode.SUPPLIED;
+        item.station = station;
+        item.shelfLifeHours = 48;
+        item.maxAdvanceHours = maxAdvanceHours;
+        item.supplierLeadDays = supplierLeadDays;
+        item.supplierName = supplierName;
+        item.active = true;
+        item.persistAndFlush();
+    }
+
+    /**
+     * Persists a SUPPLIED unit on its own order.
+     *
+     * @param orderId     the order id.
+     * @param availableAt the availability instant.
+     * @return the unit.
+     */
+    private CateringUnit suppliedUnit(String orderId, LocalDateTime availableAt) {
+        Order order = new Order();
+        order.orderId = orderId;
+        order.orderDate = DateTimeProvider.now();
+        order.channel = "ECOMMERCE";
+        order.status = "VALIDATED";
+        order.store = store;
+        OrderLine orderLine = new OrderLine();
+        orderLine.lineNumber = 1;
+        orderLine.requestedQuantity = BigDecimal.ONE;
+        orderLine.product = item.product;
+        order.addLine(orderLine);
+        order.persistAndFlush();
+        CateringUnit unit = new CateringUnit();
+        unit.order = order;
+        unit.orderLine = orderLine;
+        unit.lineId = orderId + "-u";
+        unit.ean = item.product.ean;
+        unit.item = item;
+        unit.sourcingMode = SourcingMode.SUPPLIED;
+        unit.variantId = "std";
+        unit.quantity = BigDecimal.ONE;
+        unit.availableAt = availableAt;
+        unit.state = CateringUnitState.RECEIVED;
+        unit.persistAndFlush();
+        return unit;
+    }
+
+    /**
+     * T3.001/T3.002/T3.014: a SUPPLIED unit yields a PROPOSED need; dueAt = availability − maxAdvance;
+     * orderBy = day of dueAt − supplierLeadDays, at the end of that day when no cutoff is set, and at the
+     * cutoff time when one is set.
+     */
+    @Test
+    @TestTransaction
+    void proposesNeedWithDueAndOrderBy() {
+        suppliedSetup(24, 2, "Fournisseur démo");
+        suppliedUnit("S1", AVAILABLE); // AVAILABLE = 2026-11-18 10:00
+        supplyService.recomputeNeeds(store);
+        CateringPurchaseNeed need = CateringPurchaseNeed.find("store", store).firstResult();
+        assertNotNull(need);
+        assertEquals(CateringPurchaseNeed.PurchaseNeedState.PROPOSED, need.state);
+        assertEquals("Fournisseur démo", need.supplierName);
+        assertEquals(LocalDateTime.of(2026, 11, 17, 10, 0), need.dueAt, "dueAt = 2026-11-18 10:00 − 24h");
+        assertEquals(LocalDateTime.of(2026, 11, 15, 23, 59), need.orderBy, "no cutoff: end of the day 2026-11-15");
+        // recompute is idempotent: no duplicate need for the same unit.
+        supplyService.recomputeNeeds(store);
+        assertEquals(1, CateringPurchaseNeed.count("store", store));
+    }
+
+    /**
+     * T3.014: with a supplier order cutoff, orderBy is taken at the cutoff time of its day.
+     */
+    @Test
+    @TestTransaction
+    void orderByUsesCutoffWhenSet() {
+        suppliedSetup(24, 2, "Fournisseur démo");
+        policy("supplierOrderCutoff", "14:00");
+        suppliedUnit("S1", AVAILABLE);
+        supplyService.recomputeNeeds(store);
+        CateringPurchaseNeed need = CateringPurchaseNeed.find("store", store).firstResult();
+        assertEquals(LocalDateTime.of(2026, 11, 15, 14, 0), need.orderBy, "cutoff 14:00 on 2026-11-15");
+    }
+
+    /**
+     * T3.003/T3.014: the read groups needs by supplier, article, variant and due day, summing the
+     * quantity to order.
+     */
+    @Test
+    @TestTransaction
+    @TestSecurity(user = "mgr", roles = {"ADMIN"})
+    void purchaseNeedsReadGroupsBySupplierArticleVariantDay() {
+        suppliedSetup(24, 2, "Fournisseur démo");
+        suppliedUnit("S1", AVAILABLE);
+        suppliedUnit("S2", AVAILABLE); // same supplier, article, variant, due day
+        supplyService.recomputeNeeds(store);
+        List<Map<String, Object>> groups = resource.purchaseNeeds(store.id, null);
+        assertEquals(1, groups.size(), "Two needs with the same key collapse into one group");
+        Map<String, Object> group = groups.get(0);
+        assertEquals("Fournisseur démo", group.get("supplierName"));
+        assertEquals(0, new BigDecimal("2").compareTo((BigDecimal) group.get("totalQuantity")));
+        assertEquals(2, ((List<?>) group.get("needs")).size());
+    }
+
+    /**
+     * T3.005: the order form lists, for one supplier and due day, the order lines by article and
+     * variant with their summed quantity.
+     */
+    @Test
+    @TestTransaction
+    @TestSecurity(user = "mgr", roles = {"ADMIN"})
+    void orderFormListsSupplierLinesForDueDay() {
+        suppliedSetup(24, 2, "Fournisseur démo");
+        suppliedUnit("S1", AVAILABLE);
+        suppliedUnit("S2", AVAILABLE);
+        supplyService.recomputeNeeds(store);
+        String dueDate = AVAILABLE.minusHours(24).toLocalDate().toString(); // 2026-11-17
+        Map<String, Object> form = resource.orderForm(store.id, "Fournisseur démo", dueDate);
+        assertEquals("Fournisseur démo", form.get("supplier"));
+        List<?> lines = (List<?>) form.get("lines");
+        assertEquals(1, lines.size(), "Same article and variant collapse into one order line");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> line = (Map<String, Object>) lines.get(0);
+        assertEquals(0, new BigDecimal("2").compareTo((BigDecimal) line.get("quantity")));
+    }
+
+    /**
+     * T3.013/T3.017: a PROPOSED need past its order-by is at RISK (order late); a VALIDATED need past
+     * its due instant is at RISK (delivery late); once the latest supply end is passed the need is
+     * CONFIRMED late.
+     */
+    @Test
+    @TestTransaction
+    void supplyLateRiskThenConfirmed() {
+        suppliedSetup(24, 2, "Fournisseur démo");
+        CateringPurchaseNeed need = new CateringPurchaseNeed();
+        need.store = store;
+        need.unit = suppliedUnit("S1", AVAILABLE); // availableAt 2026-11-18 10:00; latest end 09:00
+        need.supplierName = "Fournisseur démo";
+        need.quantity = BigDecimal.ONE;
+        need.dueAt = LocalDateTime.of(2026, 11, 17, 10, 0);
+        need.orderBy = LocalDateTime.of(2026, 11, 15, 23, 59);
+        need.state = CateringPurchaseNeed.PurchaseNeedState.PROPOSED;
+        need.persistAndFlush();
+
+        // On MONDAY 2026-11-16 09:00: order-by (11-15) passed, still PROPOSED -> order late (RISK).
+        assertEquals(CateringSupplyService.SupplyLateState.RISK, supplyService.lateState(need), "order late");
+
+        // Validated, clock at 2026-11-17 12:00: due (10:00) passed, not received -> delivery late (RISK).
+        need.state = CateringPurchaseNeed.PurchaseNeedState.VALIDATED;
+        need.persistAndFlush();
+        DateTimeProvider.setFixedDateTime(LocalDateTime.of(2026, 11, 17, 12, 0));
+        assertEquals(CateringSupplyService.SupplyLateState.RISK, supplyService.lateState(need), "delivery late");
+
+        // Clock past the latest supply end (2026-11-18 09:00) -> confirmed.
+        DateTimeProvider.setFixedDateTime(LocalDateTime.of(2026, 11, 18, 10, 0));
+        assertEquals(CateringSupplyService.SupplyLateState.CONFIRMED, supplyService.lateState(need), "confirmed late");
+
+        // A received need is never late.
+        need.state = CateringPurchaseNeed.PurchaseNeedState.RECEIVED;
+        need.persistAndFlush();
+        assertEquals(CateringSupplyService.SupplyLateState.NONE, supplyService.lateState(need), "received: on time");
     }
 }

@@ -41,6 +41,8 @@ public class CateringFabricationResource implements GraphQLTrait {
     com.intermarche.backoffice.engine.stock.TemporalStockService stocks;
     @Inject
     com.fasterxml.jackson.databind.ObjectMapper mapper;
+    @Inject
+    CateringSupplyService supply;
 
     /**
      * Returns the security identity.
@@ -229,6 +231,108 @@ public class CateringFabricationResource implements GraphQLTrait {
             result.add(row);
         }
         return result;
+    }
+
+    /**
+     * Serves the purchase needs of a store (§ 8.2, F10.2, T3.003), grouped by supplier, article,
+     * variant and due day. Each group carries the total quantity to order, the earliest order-by
+     * instant, the per-need detail and the lateness of each need (F10.7).
+     *
+     * @param storeId the store id.
+     * @param state   an optional {@link CateringPurchaseNeed.PurchaseNeedState} filter.
+     * @return the grouped purchase needs, ordered by due day then supplier.
+     */
+    @GET
+    @Path("/purchase-needs")
+    public List<Map<String, Object>> purchaseNeeds(@QueryParam("storeId") Long storeId,
+                                                   @QueryParam("state") String state) {
+        Store store = scope(storeId);
+        StringBuilder query = new StringBuilder("store = ?1");
+        var params = new java.util.ArrayList<Object>();
+        params.add(store);
+        if (state != null && !state.isBlank()) {
+            query.append(" and state = ?").append(params.size() + 1);
+            params.add(CateringPurchaseNeed.PurchaseNeedState.valueOf(state));
+        }
+        query.append(" order by dueAt, supplierName, id");
+        Map<String, Map<String, Object>> groups = new LinkedHashMap<>();
+        for (CateringPurchaseNeed need : CateringPurchaseNeed.<CateringPurchaseNeed>list(query.toString(), params.toArray())) {
+            CateringUnit unit = Hibernate.unproxy(need.unit, CateringUnit.class);
+            java.time.LocalDate dueDate = need.dueAt == null ? null : need.dueAt.toLocalDate();
+            String key = need.supplierName + "|" + unit.ean + "|" + unit.variantId + "|" + dueDate;
+            var group = groups.computeIfAbsent(key, k -> {
+                var created = new LinkedHashMap<String, Object>();
+                created.put("supplierName", need.supplierName);
+                created.put("articleEan", unit.ean);
+                created.put("variantId", unit.variantId);
+                created.put("dueDate", dueDate);
+                created.put("orderBy", need.orderBy);
+                created.put("totalQuantity", java.math.BigDecimal.ZERO);
+                created.put("needs", new java.util.ArrayList<Map<String, Object>>());
+                return created;
+            });
+            group.put("totalQuantity", ((java.math.BigDecimal) group.get("totalQuantity")).add(need.quantity));
+            if (need.orderBy != null && (group.get("orderBy") == null
+                    || need.orderBy.isBefore((LocalDateTime) group.get("orderBy")))) {
+                group.put("orderBy", need.orderBy);
+            }
+            var detail = new LinkedHashMap<String, Object>();
+            detail.put("needId", need.id);
+            detail.put("orderRef", Hibernate.unproxy(unit.order, Order.class).orderId);
+            detail.put("quantity", need.quantity);
+            detail.put("state", need.state);
+            detail.put("lateState", supply.lateState(need));
+            @SuppressWarnings("unchecked")
+            var needs = (List<Map<String, Object>>) group.get("needs");
+            needs.add(detail);
+        }
+        return new java.util.ArrayList<>(groups.values());
+    }
+
+    /**
+     * Serves the printable supplier order form of a store (§ 8.2, F10.3, T3.005): the purchase needs
+     * of one supplier due on a given day, as order lines by article and variant. The form is a read:
+     * it is never transmitted to the supplier (§ 1.4).
+     *
+     * @param storeId  the store id.
+     * @param supplier the supplier name.
+     * @param dueDate  the due day (ISO local date).
+     * @return the order form.
+     */
+    @GET
+    @Path("/purchase-needs/order-form")
+    public Map<String, Object> orderForm(@QueryParam("storeId") Long storeId,
+                                         @QueryParam("supplier") String supplier, @QueryParam("dueDate") String dueDate) {
+        Store store = scope(storeId);
+        if (supplier == null || supplier.isBlank() || dueDate == null || dueDate.isBlank()) {
+            throw new BadRequestException("Fournisseur et jour dû requis");
+        }
+        java.time.LocalDate day = java.time.LocalDate.parse(dueDate);
+        LocalDateTime from = day.atStartOfDay();
+        LocalDateTime to = day.plusDays(1).atStartOfDay();
+        Map<String, Map<String, Object>> lines = new LinkedHashMap<>();
+        for (CateringPurchaseNeed need : CateringPurchaseNeed.<CateringPurchaseNeed>list(
+                "store = ?1 and supplierName = ?2 and dueAt >= ?3 and dueAt < ?4 order by id",
+                store, supplier, from, to)) {
+            CateringUnit unit = Hibernate.unproxy(need.unit, CateringUnit.class);
+            String key = unit.ean + "|" + unit.variantId;
+            var line = lines.computeIfAbsent(key, k -> {
+                var created = new LinkedHashMap<String, Object>();
+                created.put("articleEan", unit.ean);
+                created.put("articleName", unit.item == null ? null
+                        : Hibernate.unproxy(unit.item.product, Product.class).name);
+                created.put("variantId", unit.variantId);
+                created.put("variantLabel", unit.variantLabel);
+                created.put("quantity", java.math.BigDecimal.ZERO);
+                return created;
+            });
+            line.put("quantity", ((java.math.BigDecimal) line.get("quantity")).add(need.quantity));
+        }
+        var form = new LinkedHashMap<String, Object>();
+        form.put("supplier", supplier);
+        form.put("dueDate", day);
+        form.put("lines", new java.util.ArrayList<>(lines.values()));
+        return form;
     }
 
     /**
