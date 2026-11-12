@@ -2107,8 +2107,8 @@
       "description": "`FABRICATE` entre le produit fini sous un `ManufacturerLot` (code `lotCode`, `manufacturedOn`, `useBy` = date de la date limite), à l'adresse interne de son support.",
       "nature": "Règle",
       "ref": "F13",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Primitive ajoutee et testee : TemporalStockService.produce(account, location, lotCode, manufacturedOn, useBy, qty, key, at) entre le produit fini en stock sous un ManufacturerLot, idempotent (test produceEntersFinishedStockUnderLot). RESTE : cabler dans FABRICATE (resoudre le support toteCode/LoadedTote, entrer a l adresse du support, creer le PickedItem de la ligne de lot traiteur source=poste) -- T3.047."
     },
     {
       "id": "T3.047",

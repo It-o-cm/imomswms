@@ -3,18 +3,18 @@
   "total": 453,
   "done": 238,
   "remaining": 215,
-  "lastCompletedPacket": 18,
+  "lastCompletedPacket": 19,
   "currentBatch": {
-    "packet": 19,
+    "packet": 20,
     "lot": "T3",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "F13/F15 entree du produit fini sous ManufacturerLot a l'adresse du support (T3.046-047) couplee a la mise en attente F15 (support toteCode, T3.026 depot, T3.027, T3.033, T3.063-071) ; F14 etiquettes (T3.057-062) ; componentLots (T3.048-050) ; /quality/trace (T3.052-053) ; incidents LOSS/SHORT (T3.030-032) ; F11 synchro (T3.021-022)."
+    "scope": "Cabler produce() dans FABRICATE : support toteCode->LoadedTote (creer si besoin), entree produit fini a l adresse du support, PickedItem de la ligne de lot traiteur (source=poste) -> clore T3.046/T3.047. Puis F15 depot/buffer (T3.027,033,063-071), F14 etiquettes (T3.057-062), incidents (T3.030-032), trace (T3.052-053), F11 synchro (T3.021-022)."
   },
   "lastFullSuite": "FabricationExecutionTest 7 verts ; operateur 137 (paquet 15) sans regression. E-09 inchange.",
   "openEcarts": [
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil des lots)",
     "E-09 : suite complete de l'arbre de travail non verte a cause du travail parallele non committe ; validation traiteur par tests cibles (pattern des paquets precedents)"
   ],
-  "notes": "Paquet 18 termine le 2026-11-12 : F13 sortie composants + FabricationConsumption. Reste F13/F15 entree produit fini+support, F14 etiquettes, trace, incidents."
+  "notes": "Paquet 19 (2026-11-12) : primitive TemporalStockService.produce ajoutee et testee (de-risque T3.046). Aucun point clos ; infrastructure. Prochain : cablage FABRICATE -> T3.046/047."
 }

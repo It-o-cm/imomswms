@@ -312,6 +312,51 @@ public class FabricationExecutionTest {
     }
 
     /**
+     * T3.046 (primitive): produce() enters finished-goods stock under a manufacturer lot at a location,
+     * creating the lot on first use and being idempotent on the event key.
+     */
+    @Test
+    @TestTransaction
+    void produceEntersFinishedStockUnderLot() {
+        setup();
+        com.intermarche.backoffice.domain.store.StoreShelfLocation loc =
+                new com.intermarche.backoffice.domain.store.StoreShelfLocation();
+        loc.area = "SUP";
+        loc.aisle = "1";
+        loc.unit = "1";
+        loc.position = "1";
+        loc.elevation = "1";
+        loc.product = item.product;
+        station.building.locations.add(loc);
+        loc.persistAndFlush();
+        var account = stocksService.account(store.id, item.product.id);
+
+        com.intermarche.backoffice.domain.stock.ManufacturerLot lot = stocksService.produce(account.id, loc.id,
+                "LOT-FAB-1", MONDAY.toLocalDate(), MONDAY.plusHours(240).toLocalDate(), new BigDecimal("3"), "k1", MONDAY);
+        assertEquals("LOT-FAB-1", lot.code);
+        assertEquals(0, new BigDecimal("3").compareTo(positionQuantity(account.id, loc.id)), "3 produced into stock");
+
+        stocksService.produce(account.id, loc.id, "LOT-FAB-1", MONDAY.toLocalDate(),
+                MONDAY.plusHours(240).toLocalDate(), new BigDecimal("3"), "k1", MONDAY);
+        assertEquals(0, new BigDecimal("3").compareTo(positionQuantity(account.id, loc.id)), "idempotent on the event key");
+        assertEquals(1, com.intermarche.backoffice.domain.stock.ManufacturerLot.count("code = ?1", "LOT-FAB-1"));
+    }
+
+    /**
+     * Returns the stock balance of an account at a location.
+     *
+     * @param accountId  the stock account id.
+     * @param locationId the location id.
+     * @return the balance, or zero.
+     */
+    private BigDecimal positionQuantity(Long accountId, Long locationId) {
+        return stocksService.positions(accountId).stream()
+                .filter(p -> p.locationId.equals(locationId))
+                .map(p -> p.quantity)
+                .findFirst().orElse(BigDecimal.ZERO);
+    }
+
+    /**
      * T3.045/T3.051: FABRICATE draws each component out of stock against its commitment (the commitment
      * is reduced) and records a FabricationConsumption, in the action's transaction.
      */

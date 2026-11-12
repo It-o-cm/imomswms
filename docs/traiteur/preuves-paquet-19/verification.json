@@ -1,0 +1,10 @@
+{
+  "packet": 19, "lot": "T3",
+  "scope": "F13 primitive d'entree du produit fini en stock sous ManufacturerLot (de-risque T3.046). Pas de point clos : infrastructure pour le cablage FABRICATE du prochain paquet.",
+  "infrastructure": {
+    "TemporalStockService.produce": "Entre une quantite positive sous un ManufacturerLot (store, product, code) a un emplacement ; cree le lot au premier usage ; idempotent sur la cle d'evenement. Methode additive sur le service de stock core.",
+    "test": "FabricationExecutionTest.produceEntersFinishedStockUnderLot"
+  },
+  "enCours": {"T3.046": "produce() prete ; reste a cabler dans FABRICATE (support/tote + adresse + PickedItem de la ligne de lot traiteur, T3.047)."},
+  "tests": {"class": "FabricationExecutionTest", "testsRun": 10, "failures": 0, "errors": 0}
+}
