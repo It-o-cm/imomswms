@@ -57,6 +57,8 @@ public class CateringIntakeTest {
     OrderRecorder recorder;
     @Inject
     ObjectMapper mapper;
+    @Inject
+    CateringFulfillerFactory cateringFulfillers;
 
     /**
      * Cleans the database before each test.
@@ -602,7 +604,11 @@ public class CateringIntakeTest {
     private Fulfillment runCateringFulfiller(String orderId) {
         Order order = Order.find("orderId", orderId).firstResult();
         Fulfillment fulfillment = Fulfillment.find("order", order).firstResult();
-        new CateringFulfillerFactory.CateringFulfiller().process(fulfillment);
+        try {
+            cateringFulfillers.build(null).process(fulfillment);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         Fulfillment.getEntityManager().flush();
         return Fulfillment.findById(fulfillment.id);
     }
@@ -646,6 +652,86 @@ public class CateringIntakeTest {
         CateringUnit unit = CateringUnit.find("lineId", "u-041").firstResult();
         assertEquals(SourcingMode.STOCKED, unit.sourcingMode);
         assertNull(unit.fulfillmentLine, "A STOCKED unit is not linked to a catering chunk line");
+    }
+
+    /**
+     * T3.018/T3.020: a STOCKED unit with a recipe has its line replaced, in the pending chunk, by the
+     * recipe's PICKED products multiplied by the unit quantity, for the subsequent fulfillers.
+     */
+    @Test
+    @TestTransaction
+    void stockedUnitWithRecipeExpandedToPickedProducts() {
+        Store store = DomainUtils.createAndPersistStore("CAT_FUL4", 48.0, 2.0);
+        com.intermarche.backoffice.domain.order.Product article =
+                DomainUtils.createAndPersistProduct("DEMO-TRA-STK-044", "Assortiment", ProductType.UNIT);
+        CateringItem datasheet = new CateringItem();
+        datasheet.product = article;
+        datasheet.sourcingMode = SourcingMode.STOCKED;
+        datasheet.active = true;
+        datasheet.persistAndFlush();
+        com.intermarche.backoffice.domain.order.Product cola =
+                DomainUtils.createAndPersistProduct("DEMO-BEV-COLA", "Cola", ProductType.UNIT);
+        com.intermarche.backoffice.domain.order.Product water =
+                DomainUtils.createAndPersistProduct("DEMO-BEV-WATER", "Eau", ProductType.UNIT);
+        com.intermarche.backoffice.domain.catering.CateringRecipe recipe =
+                new com.intermarche.backoffice.domain.catering.CateringRecipe();
+        recipe.item = datasheet;
+        recipe.variantId = "32";
+        recipe.revision = 1;
+        recipe.active = true;
+        recipe.persist();
+        pickedLine(recipe, cola, new BigDecimal("2"));
+        pickedLine(recipe, water, new BigDecimal("1"));
+        com.intermarche.backoffice.domain.catering.CateringRecipeLine.getEntityManager().flush();
+
+        recorder.persistOrderAndFulfillmentFromJson(cateringOrder("CF-044", "CAT_FUL4", "DEMO-TRA-STK-044", "u-044"));
+        Fulfillment fulfillment = runCateringFulfiller("CF-044");
+
+        assertTrue(fulfillment.chunks.stream().noneMatch(c -> c.catering), "A STOCKED unit creates no catering chunk");
+        FulfillmentChunk pending = fulfillment.chunks.stream()
+                .filter(c -> FulfillmentChunk.PENDING.equals(c.type)).findFirst().orElseThrow();
+        java.util.Map<String, BigDecimal> byEan = new java.util.HashMap<>();
+        pending.lines.forEach(l -> byEan.put(l.product.ean, l.requestedQuantity));
+        assertEquals(2, byEan.size(), "The catering article line is replaced by its two picked products");
+        assertEquals(0, new BigDecimal("2").compareTo(byEan.get("DEMO-BEV-COLA")), "2 colas picked");
+        assertEquals(0, new BigDecimal("1").compareTo(byEan.get("DEMO-BEV-WATER")), "1 water picked");
+        assertFalse(byEan.containsKey("DEMO-TRA-STK-044"), "The catering article itself is not picked");
+    }
+
+    /**
+     * T3.019: a STOCKED unit without a recipe picks the article itself; its line stays in the pending
+     * chunk unchanged.
+     */
+    @Test
+    @TestTransaction
+    void stockedUnitWithoutRecipePicksProductItself() {
+        Store store = DomainUtils.createAndPersistStore("CAT_FUL5", 48.0, 2.0);
+        persistPolicy(store, "defaultSourcingMode", "STOCKED");
+        recorder.persistOrderAndFulfillmentFromJson(cateringOrder("CF-045", "CAT_FUL5", "DEMO-TRA-STK-045", "u-045"));
+        Fulfillment fulfillment = runCateringFulfiller("CF-045");
+
+        FulfillmentChunk pending = fulfillment.chunks.stream()
+                .filter(c -> FulfillmentChunk.PENDING.equals(c.type)).findFirst().orElseThrow();
+        assertEquals(1, pending.lines.size(), "The article itself is the single picked line");
+        assertEquals("DEMO-TRA-STK-045", pending.lines.iterator().next().product.ean);
+    }
+
+    /**
+     * Persists a PICKED recipe line.
+     *
+     * @param recipe    the recipe.
+     * @param component the picked product.
+     * @param quantity  the quantity per unit.
+     */
+    private void pickedLine(com.intermarche.backoffice.domain.catering.CateringRecipe recipe,
+                            com.intermarche.backoffice.domain.order.Product component, BigDecimal quantity) {
+        com.intermarche.backoffice.domain.catering.CateringRecipeLine line =
+                new com.intermarche.backoffice.domain.catering.CateringRecipeLine();
+        line.recipe = recipe;
+        line.component = component;
+        line.quantity = quantity;
+        line.kind = com.intermarche.backoffice.domain.catering.CateringRecipeLine.RecipeLineKind.PICKED;
+        line.persist();
     }
 
     /**

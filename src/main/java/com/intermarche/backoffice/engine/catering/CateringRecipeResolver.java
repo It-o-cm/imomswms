@@ -77,6 +77,60 @@ public class CateringRecipeResolver {
     }
 
     /**
+     * Resolves the {@code PICKED} products of a {@code STOCKED} unit (F11, T3.018): the picked lines of
+     * the base recipe and its applicable complements, each multiplied by the unit quantity. Returns an
+     * empty map when the unit has no base recipe (T3.019: the article itself is then picked).
+     *
+     * @param item          the catering article.
+     * @param variantId     the variant.
+     * @param configuration the received configuration (composition or cake), or null.
+     * @param quantity      the unit quantity.
+     * @return the picked product quantities, empty when there is no base recipe.
+     */
+    public Map<Product, BigDecimal> pickedProducts(CateringItem item, String variantId, JsonNode configuration,
+                                                   BigDecimal quantity) {
+        CateringRecipe base = highestActive(item, variantId, null, null, null);
+        if (base == null) {
+            return new LinkedHashMap<>();
+        }
+        var picked = new LinkedHashMap<Product, BigDecimal>();
+        accumulatePicked(base, picked);
+        if (configuration != null && configuration.path("choices").isObject()) {
+            var steps = configuration.path("choices").fields();
+            while (steps.hasNext()) {
+                var step = steps.next();
+                for (JsonNode choice : step.getValue()) {
+                    CateringRecipe complement = highestActive(item, variantId, step.getKey(), choice.asText(), null);
+                    if (complement != null) {
+                        accumulatePicked(complement, picked);
+                    }
+                }
+            }
+        }
+        if (configuration != null && configuration.hasNonNull("flavourId")) {
+            CateringRecipe flavour = highestActive(item, variantId, null, null, configuration.path("flavourId").asText());
+            if (flavour != null) {
+                accumulatePicked(flavour, picked);
+            }
+        }
+        picked.replaceAll((component, value) -> value.multiply(quantity));
+        return picked;
+    }
+
+    /**
+     * Adds the {@code PICKED} lines of a recipe to the accumulator (for a single unit).
+     *
+     * @param recipe the recipe.
+     * @param picked the picked-product accumulator.
+     */
+    private void accumulatePicked(CateringRecipe recipe, Map<Product, BigDecimal> picked) {
+        for (CateringRecipeLine line : CateringRecipeLine.<CateringRecipeLine>list("recipe = ?1 and kind = ?2",
+                recipe, CateringRecipeLine.RecipeLineKind.PICKED)) {
+            picked.merge(line.component, line.quantity, BigDecimal::add);
+        }
+    }
+
+    /**
      * Adds the lines and labour of a recipe to the accumulator (for a single unit).
      *
      * @param recipe     the recipe.

@@ -1,0 +1,12 @@
+{
+  "packet": 11,
+  "lot": "T3",
+  "scope": "F11 articles en stock, expansion de la ligne (T3.018-020). Synchro d'etat (T3.021) et test de cycle complet (T3.022) differes au paquet qui construit le socle d'execution F12 (meme mecanisme de suivi depuis la collecte/fabrication).",
+  "points": {
+    "T3.018": {"files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringRecipeResolver.java", "src/main/java/com/intermarche/backoffice/engine/fulfillers/CateringFulfillerFactory.java"], "tests": ["CateringIntakeTest.stockedUnitWithRecipeExpandedToPickedProducts"]},
+    "T3.019": {"files": ["src/main/java/com/intermarche/backoffice/engine/fulfillers/CateringFulfillerFactory.java"], "tests": ["CateringIntakeTest.stockedUnitWithoutRecipePicksProductItself"]},
+    "T3.020": {"files": ["src/main/java/com/intermarche/backoffice/engine/fulfillers/CateringFulfillerFactory.java"], "tests": ["CateringIntakeTest.stockedUnitWithRecipeExpandedToPickedProducts", "CateringIntakeTest.stockedUnitWithoutRecipePicksProductItself"]}
+  },
+  "testHarnessChange": "CateringIntakeTest.runCateringFulfiller passe desormais par la fabrique injectee (cateringFulfillers.build(null)) car CateringFulfiller recoit ses collaborateurs (resolveur de recette, mapper) par constructeur. Aucun comportement asserte modifie ; l'ancien test STOCKED sans recette reste vert.",
+  "regression": {"command": "mvn test -Dtest=CateringIntakeTest,CateringUnitLifecycleTest,CateringRequirementsTest,FabricationPlanningTest,FabricationWindowTest,CateringRecipeTest,CateringReferentialTest,CateringParametersTest,OrderRecorderTest,StoreActivityEngineTest", "testsRun": 150, "failures": 0, "errors": 0, "result": "BUILD SUCCESS"}
+}

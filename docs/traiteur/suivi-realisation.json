@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 219,
-  "remaining": 234,
+  "done": 222,
+  "remaining": 231,
   "currentBatch": {
-    "packet": 10,
+    "packet": 11,
     "lot": "T3",
     "status": "TERMINE",
-    "scope": "F10 besoins d'achat fournisseur (T3.001-003, T3.005, T3.013, T3.014, T3.017) ; candidature mise en support et FABRICATE differes au paquet 11 (F12)"
+    "scope": "F11 expansion articles en stock (T3.018-020) ; synchro d etat T3.021/022 differee avec le socle d execution F12 (meme mecanisme)"
   },
   "perLot": {
     "T0": 81,
@@ -1883,24 +1883,24 @@
       "description": "Unité `STOCKED` avec nomenclature : ses lignes `PICKED`, multipliées par la quantité, sont les produits à prélever.",
       "nature": "Règle",
       "ref": "F11",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringRecipeResolver.pickedProducts + CateringFulfillerFactory : unite STOCKED avec recette -> lignes PICKED x quantite dans le chunk PENDING (test CateringIntakeTest.stockedUnitWithRecipeExpandedToPickedProducts)."
     },
     {
       "id": "T3.019",
       "description": "Unité `STOCKED` sans nomenclature : le produit lui-même est prélevé.",
       "nature": "Règle",
       "ref": "F11",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFulfillerFactory : unite STOCKED sans recette -> le produit lui-meme reste a prelever (test stockedUnitWithoutRecipePicksProductItself)."
     },
     {
       "id": "T3.020",
       "description": "Lignes remises aux fulfillers suivants comme des lignes ordinaires, datées de la mise à disposition.",
       "nature": "Règle",
       "ref": "F11 ; I7",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "Produits a prelever remis dans le chunk PENDING pour les fulfillers suivants (tests stockedUnitWith/WithoutRecipe...)."
     },
     {
       "id": "T3.021",
