@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 233,
-  "remaining": 220,
+  "done": 234,
+  "remaining": 219,
   "currentBatch": {
-    "packet": 15,
+    "packet": 16,
     "lot": "T3",
     "status": "TERMINE",
-    "scope": "F12 action FABRICATE etat/quantite (T3.028, T3.029) ; dispatch operateur cable"
+    "scope": "F12 actions LOSS/SHORT/CONCLUDE : garde CONCLUDE T3.034 complet ; effets d etat de LOSS/SHORT (T3.030-032) en cours (integrations PickingShortage/incident/situation a venir)"
   },
   "perLot": {
     "T0": 81,
@@ -1979,24 +1979,24 @@
       "description": "`FABRICATION_LOSS` (`itemId`, `quantity`, `reason`) : composants de la quantité perdue consommés, reste à fabriquer inchangé, incident par `FieldOperationsService`.",
       "nature": "Règle",
       "ref": "F12",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Effet d etat fait : declareLoss enregistre lostQuantity sur la ligne, reste a fabriquer inchange (test declareLossRecordsLossKeepsRemainder). RESTE : consommation des composants de la quantite perdue (F13) et incident FieldOperationsService."
     },
     {
       "id": "T3.031",
       "description": "`FABRICATION_SHORT` (`itemId`, `quantity`, `reason`) : `shortQuantity` de l'unité et de la ligne, manquant consigné par `PickingShortage` sur la ligne de lot.",
       "nature": "Règle",
       "ref": "F12",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Effet d etat fait : shortQuantity sur lineUnit + ligne (tests declareShortPartialKeepsState). RESTE : manquant consigne par PickingShortage sur la ligne de lot."
     },
     {
       "id": "T3.032",
       "description": "`FABRICATION_SHORT` : unité entièrement non servie à l'état `SHORT` ; incident ; situation `CATERING_SHORT`.",
       "nature": "Règle",
       "ref": "F12",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "EN_COURS",
+      "evidence": "Effet d etat fait : unite entierement non servie -> SHORT (test declareShortWholeUnitBecomesShort). RESTE : incident et situation CATERING_SHORT (T6)."
     },
     {
       "id": "T3.033",
@@ -2011,8 +2011,8 @@
       "description": "`CONCLUDE` refusé tant qu'une ligne a un reste ni fabriqué ni déclaré non servi.",
       "nature": "Règle",
       "ref": "F12",
-      "status": "A_FAIRE",
-      "evidence": null
+      "status": "TERMINE",
+      "evidence": "CateringFabricationExecution.conclude : CONCLUDE refuse (409 LINE_NOT_COMPLETE) tant qu une part de ligne a un reste ni fabrique ni declare short ; accepte ensuite, ordre DONE (test concludeRefusedUntilComplete)."
     },
     {
       "id": "T3.035",

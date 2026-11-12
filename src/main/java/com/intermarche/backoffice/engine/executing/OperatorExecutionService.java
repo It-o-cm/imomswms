@@ -193,7 +193,7 @@ public class OperatorExecutionService {
             if(e instanceof com.intermarche.backoffice.domain.inventory.InventoryExecution)actions.addAll(List.of("START_INVENTORY","COUNT_INVENTORY","SUBMIT_INVENTORY","RECOUNT_INVENTORY"));
             if(order instanceof ReplenishmentOrder){actions.addAll(List.of("PICK_SUPPLIES","RECEIVE_SUPPLIES","REOPEN_SUPPLY"));if(order instanceof ReplenishmentOrder supplyOrder&&supplyOrder.operation==ReplenishmentOrder.Operation.TRUCK_UNLOADING)actions.add("REPORT_DELIVERY_DISCREPANCY");if(order instanceof StockProtectionOrder)actions.add("RECONCILE_PROTECTION");}
             else if(e instanceof PickingExecution && !MixedPreparationService.supports(order))actions.addAll(List.of("ADD_TOTE","REMOVE_TOTE","PICK","MOVE_ITEM","RETURN_ITEM","MISSING","SUBSTITUTE","RETRIEVE_TOTE","DEPOSIT_TOTE","CONCLUDE"));
-            else if(e instanceof com.intermarche.backoffice.domain.executing.FabricationExecution)actions.add("FABRICATE");
+            else if(e instanceof com.intermarche.backoffice.domain.executing.FabricationExecution)actions.addAll(List.of("FABRICATE","FABRICATION_LOSS","FABRICATION_SHORT","CONCLUDE"));
         }
         if(order instanceof PreparingOrder)actions.addAll(List.of("VALIDATE_REPORT","CORRECT_SHORTAGE"));
         return actions.stream().distinct().toList();

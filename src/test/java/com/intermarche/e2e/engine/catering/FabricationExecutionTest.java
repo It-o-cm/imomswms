@@ -270,6 +270,109 @@ public class FabricationExecutionTest {
     }
 
     /**
+     * T3.030: FABRICATION_LOSS records the lost quantity on the line and leaves the quantity still to
+     * fabricate unchanged.
+     */
+    @Test
+    @TestTransaction
+    void declareLossRecordsLossKeepsRemainder() {
+        setup();
+        unit("O1", new BigDecimal("2"));
+        FabricationOrder order = validatedOrder();
+        com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
+        execution.declareLoss(order, lineUnit.id, BigDecimal.ONE);
+        com.intermarche.backoffice.domain.catering.FabricationLine line =
+                com.intermarche.backoffice.domain.catering.FabricationLine.find("order", order).firstResult();
+        assertEquals(0, BigDecimal.ONE.compareTo(line.lostQuantity), "The loss is recorded");
+        assertEquals(0, BigDecimal.ZERO.compareTo(
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.<com.intermarche.backoffice.domain.catering.FabricationLineUnit>findById(lineUnit.id).producedQuantity),
+                "The quantity still to fabricate is unchanged");
+    }
+
+    /**
+     * T3.032: FABRICATION_SHORT on the whole quantity moves a wholly unserved unit to SHORT.
+     */
+    @Test
+    @TestTransaction
+    void declareShortWholeUnitBecomesShort() {
+        setup();
+        CateringUnit unit = unit("O1", BigDecimal.ONE);
+        FabricationOrder order = validatedOrder();
+        com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
+        execution.declareShort(order, lineUnit.id, BigDecimal.ONE);
+        assertEquals(CateringUnitState.SHORT, CateringUnit.<CateringUnit>findById(unit.id).state);
+        com.intermarche.backoffice.domain.catering.FabricationLine line =
+                com.intermarche.backoffice.domain.catering.FabricationLine.find("order", order).firstResult();
+        assertEquals(0, BigDecimal.ONE.compareTo(line.shortQuantity));
+    }
+
+    /**
+     * T3.031: a partially fabricated unit that is then declared short for the rest keeps its state and
+     * only carries a short quantity.
+     */
+    @Test
+    @TestTransaction
+    void declareShortPartialKeepsState() {
+        setup();
+        CateringUnit unit = unit("O1", new BigDecimal("2"));
+        FabricationOrder order = validatedOrder();
+        com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
+        execution.fabricate(order, lineUnit.id, BigDecimal.ONE);
+        execution.declareShort(order, lineUnit.id, BigDecimal.ONE);
+        CateringUnit reloaded = CateringUnit.findById(unit.id);
+        assertEquals(CateringUnitState.IN_PROGRESS, reloaded.state, "A partially served unit keeps its state");
+        assertEquals(0, BigDecimal.ONE.compareTo(reloaded.shortQuantity));
+    }
+
+    /**
+     * T3.034: CONCLUDE is refused while a line unit still has a remainder neither fabricated nor declared
+     * short, and accepted once every remainder is covered.
+     */
+    @Test
+    @TestTransaction
+    void concludeRefusedUntilComplete() {
+        setup();
+        unit("O1", new BigDecimal("2"));
+        FabricationOrder order = validatedOrder();
+        com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
+                com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
+        com.intermarche.backoffice.domain.executing.FabricationExecution exec =
+                new com.intermarche.backoffice.domain.executing.FabricationExecution(order, employee("FEX-OP"));
+        exec.persistAndFlush();
+
+        execution.fabricate(order, lineUnit.id, BigDecimal.ONE);
+        assertThrows(com.intermarche.backoffice.engine.operator.OperatorFailure.class,
+                () -> execution.conclude(exec, order), "A remainder blocks the conclusion");
+
+        execution.fabricate(order, lineUnit.id, BigDecimal.ONE);
+        execution.conclude(exec, order);
+        assertEquals(com.intermarche.backoffice.domain.wms.BaseHandlingOrder.HandlingOrderStatus.DONE,
+                FabricationOrder.<FabricationOrder>findById(order.id).status);
+    }
+
+    /**
+     * Persists a PICKER employee of the store.
+     *
+     * @param badge the badge id.
+     * @return the employee.
+     */
+    private com.intermarche.backoffice.domain.store.Employee employee(String badge) {
+        com.intermarche.backoffice.domain.store.Employee employee = new com.intermarche.backoffice.domain.store.Employee();
+        employee.firstName = "Chef";
+        employee.lastName = badge;
+        employee.badgeId = badge;
+        employee.email = badge + "@test.invalid";
+        employee.password = org.mindrot.jbcrypt.BCrypt.hashpw("secret", org.mindrot.jbcrypt.BCrypt.gensalt(4));
+        employee.role = com.intermarche.backoffice.domain.store.Employee.EmployeeRole.PICKER;
+        employee.store = store;
+        employee.persistAndFlush();
+        return employee;
+    }
+
+    /**
      * Serializes a projection to JSON for identity-leak assertions.
      *
      * @param value the value.

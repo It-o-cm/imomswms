@@ -1,0 +1,12 @@
+{
+  "packet": 16, "lot": "T3",
+  "scope": "F12 actions FABRICATION_LOSS, FABRICATION_SHORT, CONCLUDE. Garde CONCLUDE complete (T3.034) ; effets d'etat de LOSS/SHORT poses (T3.030-032), integrations a venir.",
+  "points": {
+    "T3.034": {"status": "TERMINE", "files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationExecution.java"], "tests": ["FabricationExecutionTest.concludeRefusedUntilComplete"]},
+    "T3.030": {"status": "EN_COURS", "done": "lostQuantity enregistre, reste inchange", "remaining": "consommation composants (F13) + incident"},
+    "T3.031": {"status": "EN_COURS", "done": "shortQuantity unite+ligne", "remaining": "PickingShortage sur la ligne de lot"},
+    "T3.032": {"status": "EN_COURS", "done": "unite entierement non servie -> SHORT", "remaining": "incident + situation CATERING_SHORT (T6)"}
+  },
+  "tests": {"class": "FabricationExecutionTest", "testsRun": 7, "failures": 0, "errors": 0},
+  "note": "T3.035 (CONCLUDE refuse tant qu'une quantite fabriquee n'est pas deposee) necessite F15 (support/depot) ; traite avec F15."
+}
