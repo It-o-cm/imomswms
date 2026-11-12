@@ -1,0 +1,11 @@
+{
+  "packet": 20, "lot": "T3",
+  "scope": "F12 incidents de fabrication (LOSS/SHORT). T3.032 complet pour le perimetre T3 ; incidents poses sur T3.030/031.",
+  "points": {
+    "T3.032": {"status": "TERMINE", "files": ["src/main/java/com/intermarche/backoffice/engine/catering/CateringFabricationExecution.java"], "tests": ["FabricationExecutionTest.declareShortWholeUnitBecomesShort"], "note": "unite SHORT + incident ; situation CATERING_SHORT = T6.013"},
+    "T3.030": {"status": "EN_COURS", "done": "lostQuantity + incident", "remaining": "consommation des composants de la quantite perdue"},
+    "T3.031": {"status": "EN_COURS", "done": "shortQuantity unite+ligne + incident", "remaining": "PickingShortage sur la ligne de lot"}
+  },
+  "note": "FieldIncident cree directement (store, reporter=badge, requestKey, fingerprint, kind, title, comment), idempotent sur (store, reporter, requestKey). Un appel service sans contexte operateur (reporter/requestKey nuls) n'ouvre pas d'incident.",
+  "tests": {"class": "FabricationExecutionTest", "testsRun": 10, "failures": 0, "errors": 0}
+}

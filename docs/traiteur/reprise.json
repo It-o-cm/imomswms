@@ -1,22 +1,22 @@
 {
   "authority": "suivi-realisation.json",
   "total": 453,
-  "done": 238,
-  "remaining": 215,
-  "lastCompletedPacket": 19,
+  "done": 239,
+  "remaining": 214,
+  "lastCompletedPacket": 20,
   "currentBatch": {
-    "packet": 20,
+    "packet": 21,
     "lot": "T3",
     "status": "A_FAIRE",
     "points": [],
-    "scope": "Cabler produce() dans FABRICATE : support toteCode->LoadedTote (creer si besoin), entree produit fini a l adresse du support, PickedItem de la ligne de lot traiteur (source=poste) -> clore T3.046/T3.047. Puis F15 depot/buffer (T3.027,033,063-071), F14 etiquettes (T3.057-062), incidents (T3.030-032), trace (T3.052-053), F11 synchro (T3.021-022)."
+    "scope": "Au choix selon risque : (a) cabler produce() dans FABRICATE -> PickedItem via PickedStockCoordinator.syncLines pour clore T3.046/047 ; (b) PickingShortage sur SHORT (clore T3.031) ; (c) consommation des composants de la perte (clore T3.030) ; (d) etiquettes F14 (T3.057-062) ; (e) F15 depot/buffer (T3.027,033,063-071)."
   },
   "lastFullSuite": "FabricationExecutionTest 7 verts ; operateur 137 (paquet 15) sans regression. E-09 inchange.",
   "openEcarts": [
     "T0.004, T0.006, T0.007 A_FAIRE (socle transverse realise au fil des lots)",
     "E-09 : suite complete de l'arbre de travail non verte a cause du travail parallele non committe ; validation traiteur par tests cibles (pattern des paquets precedents)"
   ],
-  "notes": "Paquet 19 (2026-11-12) : primitive produce() ajoutee+testee (de-risque T3.046), stock-regression verte. Constat de faisabilite : tout le reste de T3 est integration profonde couplee. Prochain tick (contexte compacte) : cabler produce() dans FABRICATE -> PickedItem via la reconciliation PickedStockCoordinator (source=emplacement de production, puis synchronize), clore T3.046/047. Alternatives plus auto-contenues si blocage : incidents LOSS/SHORT (FieldIncident), etiquettes F14 (etendre PrintingService.subject avec CATERING_LOT).",
+  "notes": "Paquet 20 (2026-11-12) : incidents LOSS/SHORT ; T3.032 complet (perimetre T3). 239/453. Reste F12/F13/F14/F15 integrations profondes.",
   "complexityNotes": {
     "T3.046-047 produit fini": "produce() pose le stock sous lot ; reste a creer le PickedItem de la ligne de lot traiteur dans le LoadedTote du support et a le faire reconnaitre par PickedStockCoordinator.synchronize (ajouter FABRICATE au set declencheur l.392 d'OperatorExecutionService) ; source = emplacement de production. Risque: 100+ tests stock-trace.",
     "T3.057-062 etiquettes": "PrintingService.enqueue exige printer + subject resolver ; ajouter subjectType CATERING_LOT dans subject() + un rendu ; labelCopies exemplaires ; echec impression non bloquant.",

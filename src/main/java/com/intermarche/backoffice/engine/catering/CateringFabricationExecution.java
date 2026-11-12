@@ -65,8 +65,10 @@ public class CateringFabricationExecution {
                 com.intermarche.backoffice.domain.wms.BaseHandlingOrder.class);
         switch (input.action) {
             case "FABRICATE" -> fabricate(order, input.itemId, input.quantity);
-            case "FABRICATION_LOSS" -> declareLoss(order, input.itemId, input.quantity);
-            case "FABRICATION_SHORT" -> declareShort(order, input.itemId, input.quantity);
+            case "FABRICATION_LOSS" -> declareLoss(order, input.itemId, input.quantity, input.reason,
+                    employee == null ? null : employee.badgeId, input.requestKey);
+            case "FABRICATION_SHORT" -> declareShort(order, input.itemId, input.quantity, input.reason,
+                    employee == null ? null : employee.badgeId, input.requestKey);
             case "CONCLUDE" -> conclude(execution, order);
             default -> throw new OperatorFailure(400, "UNKNOWN_ACTION", "Action de fabrication inconnue : " + input.action);
         }
@@ -254,10 +256,26 @@ public class CateringFabricationExecution {
      * @param quantity   the lost quantity.
      */
     public void declareLoss(FabricationOrder order, Long lineUnitId, BigDecimal quantity) {
+        declareLoss(order, lineUnitId, quantity, null, null, null);
+    }
+
+    /**
+     * Declares a fabrication loss and opens an incident (F12, T3.030).
+     *
+     * @param order      the fabrication order.
+     * @param lineUnitId the fabrication-line unit.
+     * @param quantity   the lost quantity.
+     * @param reason     the declared reason.
+     * @param reporter   the operator badge id, or null for a context-less call.
+     * @param requestKey the operator request key, or null.
+     */
+    public void declareLoss(FabricationOrder order, Long lineUnitId, BigDecimal quantity, String reason,
+                            String reporter, String requestKey) {
         FabricationLineUnit lineUnit = require(order, lineUnitId, quantity);
         FabricationLine line = Hibernate.unproxy(lineUnit.line, FabricationLine.class);
         startOrder(order);
         line.lostQuantity = line.lostQuantity.add(quantity); // the remaining to fabricate is unchanged
+        incident(order, "FABRICATION_LOSS", "Perte de fabrication", reason, reporter, requestKey);
     }
 
     /**
@@ -271,6 +289,21 @@ public class CateringFabricationExecution {
      * @param quantity   the quantity that cannot be fabricated.
      */
     public void declareShort(FabricationOrder order, Long lineUnitId, BigDecimal quantity) {
+        declareShort(order, lineUnitId, quantity, null, null, null);
+    }
+
+    /**
+     * Declares that a quantity cannot be fabricated and opens an incident (F12, T3.031, T3.032).
+     *
+     * @param order      the fabrication order.
+     * @param lineUnitId the fabrication-line unit.
+     * @param quantity   the quantity that cannot be fabricated.
+     * @param reason     the declared reason.
+     * @param reporter   the operator badge id, or null for a context-less call.
+     * @param requestKey the operator request key, or null.
+     */
+    public void declareShort(FabricationOrder order, Long lineUnitId, BigDecimal quantity, String reason,
+                             String reporter, String requestKey) {
         FabricationLineUnit lineUnit = require(order, lineUnitId, quantity);
         FabricationLine line = Hibernate.unproxy(lineUnit.line, FabricationLine.class);
         if (lineUnit.producedQuantity.add(lineUnit.shortQuantity).add(quantity).compareTo(lineUnit.quantity) > 0) {
@@ -281,6 +314,43 @@ public class CateringFabricationExecution {
         line.shortQuantity = line.shortQuantity.add(quantity);
         CateringUnit unit = Hibernate.unproxy(lineUnit.unit, CateringUnit.class);
         states.recordShort(unit, unit.shortQuantity.add(quantity)); // SHORT only when wholly unserved (F3)
+        incident(order, "FABRICATION_SHORT", "Fabrication impossible", reason, reporter, requestKey);
+    }
+
+    /**
+     * Opens a field incident for a fabrication problem (F12, T3.030, T3.032), idempotent on
+     * (store, reporter, requestKey). A context-less call (no reporter or request key, e.g. a direct
+     * service call outside the operator contract) records no incident.
+     *
+     * @param order      the fabrication order.
+     * @param kind       the incident kind.
+     * @param title      the incident title.
+     * @param reason     the declared reason (incident comment).
+     * @param reporter   the operator badge id, or null.
+     * @param requestKey the operator request key, or null.
+     */
+    private void incident(FabricationOrder order, String kind, String title, String reason,
+                          String reporter, String requestKey) {
+        if (reporter == null || requestKey == null) {
+            return;
+        }
+        Store store = Hibernate.unproxy(order.store, Store.class);
+        if (com.intermarche.backoffice.domain.fieldops.FieldIncident.count(
+                "store = ?1 and reporter = ?2 and requestKey = ?3", store, reporter, requestKey) > 0) {
+            return; // idempotent on the operator request key
+        }
+        String comment = reason == null || reason.isBlank() ? title + " — ordre " + order.code : reason;
+        var fieldIncident = new com.intermarche.backoffice.domain.fieldops.FieldIncident();
+        fieldIncident.store = store;
+        fieldIncident.handlingOrder = order;
+        fieldIncident.reporter = reporter;
+        fieldIncident.requestKey = requestKey;
+        fieldIncident.fingerprint = Integer.toHexString(java.util.Objects.hash(kind, order.id, comment));
+        fieldIncident.kind = kind;
+        fieldIncident.state = "OPEN";
+        fieldIncident.title = title;
+        fieldIncident.comment = comment;
+        fieldIncident.persist();
     }
 
     /**

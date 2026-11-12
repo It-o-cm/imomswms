@@ -2,13 +2,13 @@
   "authority": "plan-realisation-traiteur-v1.md",
   "batchSize": "20-30",
   "total": 453,
-  "done": 238,
-  "remaining": 215,
+  "done": 239,
+  "remaining": 214,
   "currentBatch": {
-    "packet": 18,
+    "packet": 20,
     "lot": "T3",
     "status": "TERMINE",
-    "scope": "F13 sortie composants + liberation engagement (T3.045) et FabricationConsumption (T3.051)"
+    "scope": "F12 incidents LOSS/SHORT (T3.032 complet ; T3.030/031 incident pose, consommation perte / PickingShortage restants)"
   },
   "perLot": {
     "T0": 81,
@@ -1980,7 +1980,7 @@
       "nature": "Règle",
       "ref": "F12",
       "status": "EN_COURS",
-      "evidence": "Effet d etat fait : declareLoss enregistre lostQuantity sur la ligne, reste a fabriquer inchange (test declareLossRecordsLossKeepsRemainder). RESTE : consommation des composants de la quantite perdue (F13) et incident FieldOperationsService."
+      "evidence": "declareLoss : lostQuantity enregistre (reste a fabriquer inchange) ; incident FieldIncident FABRICATION_LOSS ouvert (test declareLossRecordsLossKeepsRemainder). RESTE : consommation des composants de la quantite perdue (F13)."
     },
     {
       "id": "T3.031",
@@ -1988,15 +1988,15 @@
       "nature": "Règle",
       "ref": "F12",
       "status": "EN_COURS",
-      "evidence": "Effet d etat fait : shortQuantity sur lineUnit + ligne (tests declareShortPartialKeepsState). RESTE : manquant consigne par PickingShortage sur la ligne de lot."
+      "evidence": "declareShort : shortQuantity sur lineUnit + ligne + unite. RESTE : manquant consigne par PickingShortage sur la ligne de lot."
     },
     {
       "id": "T3.032",
       "description": "`FABRICATION_SHORT` : unité entièrement non servie à l'état `SHORT` ; incident ; situation `CATERING_SHORT`.",
       "nature": "Règle",
       "ref": "F12",
-      "status": "EN_COURS",
-      "evidence": "Effet d etat fait : unite entierement non servie -> SHORT (test declareShortWholeUnitBecomesShort). RESTE : incident et situation CATERING_SHORT (T6)."
+      "status": "TERMINE",
+      "evidence": "declareShort : unite entierement non servie -> SHORT ; incident FieldIncident FABRICATION_SHORT ouvert (idempotent sur requestKey) ; test declareShortWholeUnitBecomesShort. La situation CATERING_SHORT releve de T6.013 (supervision)."
     },
     {
       "id": "T3.033",

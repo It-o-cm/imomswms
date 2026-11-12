@@ -396,13 +396,19 @@ public class FabricationExecutionTest {
         FabricationOrder order = validatedOrder();
         com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
                 com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
-        execution.declareLoss(order, lineUnit.id, BigDecimal.ONE);
+        execution.declareLoss(order, lineUnit.id, BigDecimal.ONE, "Raté", "FEX-OP", "k-loss-1");
         com.intermarche.backoffice.domain.catering.FabricationLine line =
                 com.intermarche.backoffice.domain.catering.FabricationLine.find("order", order).firstResult();
         assertEquals(0, BigDecimal.ONE.compareTo(line.lostQuantity), "The loss is recorded");
         assertEquals(0, BigDecimal.ZERO.compareTo(
                 com.intermarche.backoffice.domain.catering.FabricationLineUnit.<com.intermarche.backoffice.domain.catering.FabricationLineUnit>findById(lineUnit.id).producedQuantity),
                 "The quantity still to fabricate is unchanged");
+        assertEquals(1, com.intermarche.backoffice.domain.fieldops.FieldIncident.count(
+                "kind = ?1 and handlingOrder = ?2", "FABRICATION_LOSS", order), "An incident is opened");
+        // Idempotent on the request key.
+        execution.declareLoss(order, lineUnit.id, BigDecimal.ONE, "Raté", "FEX-OP", "k-loss-1");
+        assertEquals(1, com.intermarche.backoffice.domain.fieldops.FieldIncident.count(
+                "kind = ?1 and handlingOrder = ?2", "FABRICATION_LOSS", order));
     }
 
     /**
@@ -416,11 +422,13 @@ public class FabricationExecutionTest {
         FabricationOrder order = validatedOrder();
         com.intermarche.backoffice.domain.catering.FabricationLineUnit lineUnit =
                 com.intermarche.backoffice.domain.catering.FabricationLineUnit.find("line.order", order).firstResult();
-        execution.declareShort(order, lineUnit.id, BigDecimal.ONE);
+        execution.declareShort(order, lineUnit.id, BigDecimal.ONE, "Composant manquant", "FEX-OP", "k-short-1");
         assertEquals(CateringUnitState.SHORT, CateringUnit.<CateringUnit>findById(unit.id).state);
         com.intermarche.backoffice.domain.catering.FabricationLine line =
                 com.intermarche.backoffice.domain.catering.FabricationLine.find("order", order).firstResult();
         assertEquals(0, BigDecimal.ONE.compareTo(line.shortQuantity));
+        assertEquals(1, com.intermarche.backoffice.domain.fieldops.FieldIncident.count(
+                "kind = ?1 and handlingOrder = ?2", "FABRICATION_SHORT", order), "An incident is opened");
     }
 
     /**
